@@ -2,17 +2,17 @@ package com.example.myworkoutlog
 
 import androidx.lifecycle.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.util.UUID
+import java.util.*
 
 // The ViewModel for managing WorkoutTemplates.
-class WorkoutTemplateViewModel(private val templateDao: WorkoutTemplateDao) : ViewModel() {
+// It now takes BOTH DAOs because it needs to access templates and exercises.
+class WorkoutTemplateViewModel(
+    private val templateDao: WorkoutTemplateDao,
+    private val exerciseDao: ExerciseDao
+) : ViewModel() {
 
-    // Expose a stream of all templates from the database.
-    // The UI will observe this to stay up-to-date.
     val allTemplates: StateFlow<List<WorkoutTemplate>> = templateDao.getAllTemplates()
         .stateIn(
             scope = viewModelScope,
@@ -20,7 +20,21 @@ class WorkoutTemplateViewModel(private val templateDao: WorkoutTemplateDao) : Vi
             initialValue = emptyList()
         )
 
-    // Function to add a new template to the database.
+    // We also expose the full list of master exercises to the UI
+    val allMasterExercises: StateFlow<List<Exercise>> = exerciseDao.getAllExercises()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    // NEW: A function to get a single template by its ID.
+    // This will be used by our detail screen.
+    fun getTemplateById(id: String): Flow<WorkoutTemplate?> {
+        return templateDao.getTemplateById(id)
+    }
+
+
     fun insert(templateName: String, description: String?) {
         viewModelScope.launch(Dispatchers.IO) {
             val newTemplate = WorkoutTemplate(
@@ -33,14 +47,12 @@ class WorkoutTemplateViewModel(private val templateDao: WorkoutTemplateDao) : Vi
         }
     }
 
-    // Function to update an existing template (e.g., after adding exercises to it).
     fun update(template: WorkoutTemplate) {
         viewModelScope.launch(Dispatchers.IO) {
             templateDao.update(template)
         }
     }
 
-    // Function to delete a template.
     fun deleteById(templateId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             templateDao.deleteById(templateId)
@@ -49,12 +61,15 @@ class WorkoutTemplateViewModel(private val templateDao: WorkoutTemplateDao) : Vi
 }
 
 
-// The Factory to create our WorkoutTemplateViewModel.
-class WorkoutTemplateViewModelFactory(private val templateDao: WorkoutTemplateDao) : ViewModelProvider.Factory {
+// The Factory now needs to accept BOTH DAOs.
+class WorkoutTemplateViewModelFactory(
+    private val templateDao: WorkoutTemplateDao,
+    private val exerciseDao: ExerciseDao
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(WorkoutTemplateViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return WorkoutTemplateViewModel(templateDao) as T
+            return WorkoutTemplateViewModel(templateDao, exerciseDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

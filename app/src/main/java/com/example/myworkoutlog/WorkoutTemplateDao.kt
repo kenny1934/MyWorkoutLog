@@ -21,4 +21,7 @@ interface WorkoutTemplateDao {
 
     @Query("DELETE FROM workout_template_table WHERE id = :templateId")
     fun deleteById(templateId: String)
+
+    @Query("SELECT * FROM workout_template_table WHERE id = :templateId")
+    fun getTemplateById(templateId: String): Flow<WorkoutTemplate?>
 }

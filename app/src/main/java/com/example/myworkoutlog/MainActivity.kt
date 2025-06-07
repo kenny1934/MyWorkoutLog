@@ -9,10 +9,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,13 +24,17 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import java.util.*
 
 class MainActivity : ComponentActivity() {
     private val exerciseViewModel: ExerciseViewModel by viewModels {
         ExerciseViewModelFactory((application as WorkoutApplication).database.exerciseDao())
     }
     private val workoutTemplateViewModel: WorkoutTemplateViewModel by viewModels {
-        WorkoutTemplateViewModelFactory((application as WorkoutApplication).database.workoutTemplateDao())
+        WorkoutTemplateViewModelFactory(
+            (application as WorkoutApplication).database.workoutTemplateDao(),
+            (application as WorkoutApplication).database.exerciseDao()
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -93,7 +95,11 @@ fun AppNavHost(
         }
         composable(Screen.TemplateDetail.route) { backStackEntry ->
             val templateId = backStackEntry.arguments?.getString("templateId") ?: ""
-            TemplateDetailScreen(templateId = templateId)
+            TemplateDetailScreen(
+                templateId = templateId,
+                viewModel = templateViewModel,
+                onNavigateUp = { navController.navigateUp() }
+            )
         }
     }
 }
@@ -118,7 +124,7 @@ fun AppBottomNavigationBar(navController: NavHostController) {
                     when (screen) {
                         Screen.Dashboard -> Icon(Icons.Filled.Home, contentDescription = "Dashboard")
                         Screen.History -> Icon(Icons.Filled.DateRange, contentDescription = "History")
-                        Screen.Library -> Icon(Icons.Filled.List, contentDescription = "Library")
+                        Screen.Library -> Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Library")
                         // The 'else' branch handles any other cases, satisfying the compiler.
                         // We need this even though our 'items' list is specific.
                         else -> {} // Do nothing for other screens not in the nav bar
@@ -258,15 +264,191 @@ fun ManageTemplatesScreen(
     }
 }
 
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TemplateDetailScreen(templateId: String) {
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text("Template Detail Screen", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("Editing template with ID: $templateId")
+fun TemplateDetailScreen(
+    templateId: String,
+    viewModel: WorkoutTemplateViewModel,
+    onNavigateUp: () -> Unit
+) {
+    val templateFromDb by viewModel.getTemplateById(templateId).collectAsState(initial = null)
+    val allExercises by viewModel.allMasterExercises.collectAsStateWithLifecycle()
+
+    var editedName by remember { mutableStateOf("") }
+    var editedExercises by remember { mutableStateOf<List<TemplateExercise>>(emptyList()) }
+    var showAddExerciseDialog by remember { mutableStateOf(false) }
+
+    // This effect now runs only when the template from the database (templateFromDb)
+    // changes, and it updates the local, editable state.
+    LaunchedEffect(templateFromDb) {
+        templateFromDb?.let {
+            editedName = it.name
+            editedExercises = it.templateExercises
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(editedName) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateUp) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    Button(onClick = {
+                        // When saving, use the current state of our editable variables
+                        templateFromDb?.let {
+                            val updatedTemplate = it.copy(
+                                name = editedName,
+                                templateExercises = editedExercises
+                            )
+                            viewModel.update(updatedTemplate)
+                        }
+                        onNavigateUp()
+                    }) {
+                        Text("Save")
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { showAddExerciseDialog = true }) {
+                Icon(Icons.Filled.Add, "Add Exercise")
+            }
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .padding(paddingValues)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            OutlinedTextField(
+                value = editedName,
+                onValueChange = { editedName = it },
+                label = { Text("Template Name") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // This LazyColumn now shows the exercises and their sets
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                items(editedExercises) { templateExercise ->
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(templateExercise.exerciseName, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Spacer(Modifier.height(8.dp))
+
+                            // Display a row for each set of this exercise
+                            templateExercise.sets.forEachIndexed { setIndex, set ->
+                                TemplateExerciseSetRow(
+                                    set = set,
+                                    onRepsChange = { newReps ->
+                                        // Update the reps for this specific set
+                                        val updatedSets = templateExercise.sets.toMutableList()
+                                        updatedSets[setIndex] = set.copy(targetReps = newReps)
+                                        val updatedExercise = templateExercise.copy(sets = updatedSets)
+                                        editedExercises = editedExercises.map {
+                                            if (it.id == templateExercise.id) updatedExercise else it
+                                        }
+                                    },
+                                    onDelete = {
+                                        // Delete this specific set
+                                        val updatedSets = templateExercise.sets.toMutableList()
+                                        updatedSets.removeAt(setIndex)
+                                        val updatedExercise = templateExercise.copy(sets = updatedSets)
+                                        editedExercises = editedExercises.map {
+                                            if (it.id == templateExercise.id) updatedExercise else it
+                                        }
+                                    }
+                                )
+                            }
+
+                            // Button to add a new set to this exercise
+                            TextButton(
+                                onClick = {
+                                    val newSet = TemplateExerciseSet(id = UUID.randomUUID().toString(), targetReps = "")
+                                    val updatedSets = templateExercise.sets + newSet
+                                    val updatedExercise = templateExercise.copy(sets = updatedSets)
+                                    editedExercises = editedExercises.map {
+                                        if (it.id == templateExercise.id) updatedExercise else it
+                                    }
+                                },
+                                modifier = Modifier.align(Alignment.End)
+                            ) {
+                                Text("Add Set")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Dialog for adding an exercise (remains unchanged)
+        if (showAddExerciseDialog) {
+            AlertDialog(
+                onDismissRequest = { showAddExerciseDialog = false },
+                title = { Text("Add Exercise to Template") },
+                text = {
+                    LazyColumn {
+                        items(allExercises) { exercise ->
+                            Text(
+                                text = exercise.name,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        val newTemplateExercise = TemplateExercise(
+                                            id = UUID.randomUUID().toString(),
+                                            exerciseId = exercise.id,
+                                            exerciseName = exercise.name,
+                                            order = (editedExercises.maxOfOrNull { it.order } ?: 0) + 1,
+                                            sets = listOf(
+                                                TemplateExerciseSet(
+                                                    id = UUID.randomUUID().toString(),
+                                                    targetReps = "8-12"
+                                                )
+                                            )
+                                        )
+                                        editedExercises = editedExercises + newTemplateExercise
+                                        showAddExerciseDialog = false
+                                    }
+                                    .padding(vertical = 8.dp)
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showAddExerciseDialog = false }) { Text("Cancel") }
+                }
+            )
+        }
     }
 }
 
+@Composable
+fun TemplateExerciseSetRow(
+    set: TemplateExerciseSet,
+    onRepsChange: (String) -> Unit,
+    onDelete: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        OutlinedTextField(
+            value = set.targetReps ?: "",
+            onValueChange = onRepsChange,
+            label = { Text("Reps / Secs") },
+            modifier = Modifier.weight(1f)
+        )
+        IconButton(onClick = onDelete) {
+            Icon(Icons.Filled.Delete, contentDescription = "Delete Set")
+        }
+    }
+}
 
 @Composable
 fun ManageExercisesScreen(viewModel: ExerciseViewModel) {
