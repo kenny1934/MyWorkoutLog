@@ -9,13 +9,14 @@ import androidx.room.TypeConverters
 // @Database marks this as the main database class.
 // 'entities' lists all the Entity classes (tables) for this database.
 // 'version' is important. If you change your table structure later, you must increase this number.
-@Database(entities = [Exercise::class, WorkoutTemplate::class], version = 2, exportSchema = false)
+@Database(entities = [Exercise::class, WorkoutTemplate::class, LoggedWorkout::class], version = 3, exportSchema = false)
 @TypeConverters(Converters::class) // Also tell the database about our converters
 abstract class WorkoutDatabase : RoomDatabase() {
 
     // The database needs to know about each DAO
     abstract fun exerciseDao(): ExerciseDao
     abstract fun workoutTemplateDao(): WorkoutTemplateDao
+    abstract fun loggedWorkoutDao(): LoggedWorkoutDao
 
     // This 'companion object' block makes it so there's only ONE instance
     // of the database in the whole app (a singleton pattern).

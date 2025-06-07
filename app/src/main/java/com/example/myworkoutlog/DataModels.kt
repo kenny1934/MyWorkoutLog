@@ -57,6 +57,17 @@ class Converters {
         val listType = object : TypeToken<List<TemplateExercise>>() {}.type
         return gson.fromJson(value, listType)
     }
+
+    @TypeConverter
+    fun fromLoggedExerciseList(value: List<LoggedExercise>): String {
+        return gson.toJson(value)
+    }
+
+    @TypeConverter
+    fun toLoggedExerciseList(value: String): List<LoggedExercise> {
+        val listType = object : TypeToken<List<LoggedExercise>>() {}.type
+        return gson.fromJson(value, listType)
+    }
 }
 
 
@@ -104,4 +115,33 @@ data class WorkoutTemplate(
     // We will store the list of exercises as a single JSON string in the database.
     // This is simpler for now than creating complex database relations.
     val templateExercises: List<TemplateExercise>
+)
+
+data class LoggedSet(
+    val id: String,
+    val reps: Int? = null,
+    val secs: Int? = null,
+    val weight: Double? = null,
+    val rir: Int? = null,
+    val notes: String? = null
+)
+
+data class LoggedExercise(
+    val id: String,
+    val exerciseId: String,
+    val exerciseName: String,
+    val sets: List<LoggedSet>,
+    val notes: String? = null
+)
+
+@Entity(tableName = "logged_workout_table")
+data class LoggedWorkout(
+    @PrimaryKey val id: String,
+    val date: String,
+    val name: String? = null,
+    val overallComments: String? = null,
+    val durationMinutes: Int? = null,
+    // We will store this list as a single JSON string
+    val loggedExercises: List<LoggedExercise>,
+    val workoutTemplateId: String? = null
 )

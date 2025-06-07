@@ -13,4 +13,9 @@ sealed class Screen(val route: String) {
         // Helper function to create the route with a specific ID
         fun createRoute(templateId: String) = "template_detail/$templateId"
     }
+
+    // NEW: The route for the workout logger screen
+    data object WorkoutLogger : Screen("workout_logger/{templateId}") {
+        fun createRoute(templateId: String) = "workout_logger/$templateId"
+    }
 }
