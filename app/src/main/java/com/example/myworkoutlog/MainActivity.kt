@@ -47,6 +47,10 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    private val historyViewModel: HistoryViewModel by viewModels {
+        HistoryViewModelFactory((application as WorkoutApplication).database.loggedWorkoutDao())
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -54,7 +58,8 @@ class MainActivity : ComponentActivity() {
                 MainApp(
                     exerciseViewModel = exerciseViewModel,
                     templateViewModel = workoutTemplateViewModel,
-                    loggerViewModel = workoutLoggerViewModel
+                    loggerViewModel = workoutLoggerViewModel,
+                    historyViewModel = historyViewModel
                 )
             }
         }
@@ -64,7 +69,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainApp(exerciseViewModel: ExerciseViewModel,
             templateViewModel: WorkoutTemplateViewModel,
-            loggerViewModel: WorkoutLoggerViewModel
+            loggerViewModel: WorkoutLoggerViewModel,
+            historyViewModel: HistoryViewModel
 ) {
     val navController = rememberNavController()
     Scaffold(
@@ -75,6 +81,7 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             exerciseViewModel = exerciseViewModel,
             templateViewModel = templateViewModel,
             loggerViewModel = loggerViewModel,
+            historyViewModel = historyViewModel,
             modifier = Modifier.padding(innerPadding)
         )
     }
@@ -86,6 +93,7 @@ fun AppNavHost(
     exerciseViewModel: ExerciseViewModel,
     templateViewModel: WorkoutTemplateViewModel,
     loggerViewModel: WorkoutLoggerViewModel,
+    historyViewModel: HistoryViewModel,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -94,7 +102,7 @@ fun AppNavHost(
         modifier = modifier
     ) {
         composable(Screen.Dashboard.route) { DashboardScreen() }
-        composable(Screen.History.route) { HistoryScreen() }
+        composable(Screen.History.route) { HistoryScreen(viewModel = historyViewModel) }
         composable(Screen.Library.route) {
             LibraryScreen(onNavigate = { route -> navController.navigate(route) })
         }
@@ -127,6 +135,9 @@ fun AppNavHost(
                 viewModel = loggerViewModel,
                 onNavigateUp = { navController.navigateUp() }
             )
+        }
+        composable(Screen.History.route) {
+            HistoryScreen(viewModel = historyViewModel)
         }
     }
 }
@@ -182,9 +193,35 @@ fun DashboardScreen() {
 }
 
 @Composable
-fun HistoryScreen() {
+fun HistoryScreen(viewModel: HistoryViewModel) {
+    val loggedWorkouts by viewModel.allLoggedWorkouts.collectAsStateWithLifecycle()
+
     Column(modifier = Modifier.padding(16.dp)) {
-        Text("History Screen", fontSize = 24.sp)
+        Text("Workout History", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (loggedWorkouts.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("No workouts logged yet.")
+            }
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(loggedWorkouts) { workout ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            // In the future, this will navigate to a detail view
+                            .clickable { /* TODO: Navigate to workout detail */ },
+                        elevation = CardDefaults.cardElevation(2.dp)
+                    ) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text(workout.name ?: "Workout", fontWeight = FontWeight.Bold)
+                            Text(workout.date, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
