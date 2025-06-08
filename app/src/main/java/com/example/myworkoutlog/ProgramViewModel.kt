@@ -11,9 +11,20 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-class ProgramViewModel(private val programDao: ProgramTemplateDao) : ViewModel() {
+class ProgramViewModel(
+    private val programDao: ProgramTemplateDao,
+    private val templateDao: WorkoutTemplateDao
+) : ViewModel() {
 
     val allPrograms: StateFlow<List<ProgramTemplate>> = programDao.getAllPrograms()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    // NEW: Expose all workout templates so the UI can access them
+    val allWorkoutTemplates: StateFlow<List<WorkoutTemplate>> = templateDao.getAllTemplates()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -46,12 +57,13 @@ class ProgramViewModel(private val programDao: ProgramTemplateDao) : ViewModel()
 }
 
 class ProgramViewModelFactory(
-    private val programDao: ProgramTemplateDao
+    private val programDao: ProgramTemplateDao,
+    private val templateDao: WorkoutTemplateDao
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ProgramViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ProgramViewModel(programDao) as T
+            return ProgramViewModel(programDao, templateDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

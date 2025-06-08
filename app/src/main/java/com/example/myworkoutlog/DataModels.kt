@@ -79,6 +79,17 @@ class Converters {
         val listType = object : TypeToken<List<ProgramWeekDefinition>>() {}.type
         return gson.fromJson(value, listType)
     }
+
+    @TypeConverter
+    fun fromStringMap(value: Map<String, String>): String {
+        return gson.toJson(value)
+    }
+
+    @TypeConverter
+    fun toStringMap(value: String): Map<String, String> {
+        val mapType = object : TypeToken<Map<String, String>>() {}.type
+        return gson.fromJson(value, mapType)
+    }
 }
 
 
@@ -182,4 +193,16 @@ data class ProgramTemplate(
     val description: String? = null,
     // We will store the list of weeks as a single JSON string
     val weeks: List<ProgramWeekDefinition>
+)
+
+// Using a simple ID for the primary key, since we'll only have one row.
+@Entity(tableName = "active_program_cycle_table")
+data class ActiveProgramCycle(
+    @PrimaryKey val id: Int = 1,
+    val programTemplateId: String,
+    val programTemplateName: String,
+    val userCycleName: String, // e.g., "My Hypertrophy Cycle"
+    val startDate: String,
+    // Map of "weekId_sessionId" to "loggedWorkoutId"
+    val completedSessions: Map<String, String>
 )

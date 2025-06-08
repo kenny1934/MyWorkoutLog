@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,7 +63,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private val programViewModel: ProgramViewModel by viewModels {
-        ProgramViewModelFactory((application as WorkoutApplication).database.programTemplateDao())
+        ProgramViewModelFactory(
+            (application as WorkoutApplication).database.programTemplateDao(),
+            (application as WorkoutApplication).database.workoutTemplateDao() // Pass the template DAO
+        )
+    }
+
+    private val activeCycleViewModel: ActiveCycleViewModel by viewModels {
+        ActiveCycleViewModelFactory((application as WorkoutApplication).database.activeCycleDao())
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,7 +83,8 @@ class MainActivity : ComponentActivity() {
                     templateViewModel = workoutTemplateViewModel,
                     loggerViewModel = workoutLoggerViewModel,
                     historyViewModel = historyViewModel,
-                    programViewModel = programViewModel
+                    programViewModel = programViewModel,
+                    activeCycleViewModel = activeCycleViewModel
                 )
             }
         }
@@ -87,7 +96,8 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             templateViewModel: WorkoutTemplateViewModel,
             loggerViewModel: WorkoutLoggerViewModel,
             historyViewModel: HistoryViewModel,
-            programViewModel: ProgramViewModel
+            programViewModel: ProgramViewModel,
+            activeCycleViewModel: ActiveCycleViewModel
 ) {
     val navController = rememberNavController()
     Scaffold(
@@ -100,6 +110,7 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             loggerViewModel = loggerViewModel,
             historyViewModel = historyViewModel,
             programViewModel = programViewModel,
+            activeCycleViewModel = activeCycleViewModel,
             modifier = Modifier.padding(innerPadding)
         )
     }
@@ -113,6 +124,7 @@ fun AppNavHost(
     loggerViewModel: WorkoutLoggerViewModel,
     historyViewModel: HistoryViewModel,
     programViewModel: ProgramViewModel,
+    activeCycleViewModel: ActiveCycleViewModel,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -123,6 +135,8 @@ fun AppNavHost(
         composable(Screen.Dashboard.route) {
             DashboardScreen(
                 historyViewModel = historyViewModel,
+                activeCycleViewModel = activeCycleViewModel,
+                programViewModel = programViewModel,
                 onNavigate = { route -> navController.navigate(route) }
             )
         }
@@ -178,8 +192,8 @@ fun AppNavHost(
         }
         composable(Screen.ManagePrograms.route) {
             ManageProgramsScreen(
-                viewModel = programViewModel,
-                // UPDATE: Navigate to the new editor screen
+                programViewModel = programViewModel,
+                activeCycleViewModel = activeCycleViewModel, // Pass it here
                 onNavigateToProgram = { programId ->
                     navController.navigate(Screen.ProgramEditor.createRoute(programId))
                 }
@@ -189,7 +203,9 @@ fun AppNavHost(
             val programId = backStackEntry.arguments?.getString("programId") ?: ""
             ProgramEditorScreen(
                 programId = programId,
-                viewModel = programViewModel,
+                programViewModel = programViewModel,
+                // Pass the template view model as well
+                templateViewModel = templateViewModel,
                 onNavigateUp = { navController.navigateUp() }
             )
         }
@@ -241,6 +257,84 @@ fun AppBottomNavigationBar(navController: NavHostController) {
 
 @Composable
 fun DashboardScreen(
+    historyViewModel: HistoryViewModel,
+    activeCycleViewModel: ActiveCycleViewModel,
+    programViewModel: ProgramViewModel, // Needed for program details
+    onNavigate: (String) -> Unit
+) {
+    val activeCycle by activeCycleViewModel.activeCycle.collectAsStateWithLifecycle()
+
+    // Conditionally show the correct dashboard
+    if (activeCycle == null) {
+        NoActiveCycleDashboard(historyViewModel = historyViewModel, onNavigate = onNavigate)
+    } else {
+        ActiveCycleDashboard(
+            activeCycle = activeCycle!!,
+            programViewModel = programViewModel,
+            activeCycleViewModel = activeCycleViewModel,
+            onNavigate = onNavigate
+        )
+    }
+}
+
+// NEW: The dashboard for when a cycle is active
+@Composable
+fun ActiveCycleDashboard(
+    activeCycle: ActiveProgramCycle,
+    programViewModel: ProgramViewModel,
+    activeCycleViewModel: ActiveCycleViewModel,
+    onNavigate: (String) -> Unit
+) {
+    // Get the details of the program blueprint for our active cycle
+    val program by programViewModel.getProgramById(activeCycle.programTemplateId).collectAsState(initial = null)
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Text(activeCycle.userCycleName, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text(activeCycle.programTemplateName, style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(onClick = { activeCycleViewModel.endCycle() }, modifier = Modifier.fillMaxWidth()) {
+                Text("End Current Cycle")
+            }
+        }
+
+        program?.weeks?.sortedBy { it.order }?.forEach { week ->
+            item {
+                Text(week.weekLabel, style = MaterialTheme.typography.titleLarge)
+                Divider(modifier = Modifier.padding(vertical = 4.dp))
+            }
+            items(week.sessions.sortedBy { it.order }) { session ->
+                val isCompleted = activeCycle.completedSessions.containsKey("${week.id}_${session.id}")
+                Card(elevation = CardDefaults.cardElevation(2.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(session.sessionName, modifier = Modifier.weight(1f))
+                        if (isCompleted) {
+                            Icon(Icons.Filled.CheckCircle, contentDescription = "Completed", tint = MaterialTheme.colorScheme.primary)
+                        } else {
+                            Button(onClick = {
+                                val route = Screen.WorkoutLogger.createRoute(session.workoutTemplateId)
+                                onNavigate(route)
+                            }) {
+                                Text("Start")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun NoActiveCycleDashboard(
     historyViewModel: HistoryViewModel,
     onNavigate: (String) -> Unit
 ) {
@@ -508,16 +602,18 @@ fun LibraryScreen(onNavigate: (String) -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManageProgramsScreen(
-    viewModel: ProgramViewModel,
-    onNavigateToProgram: (String) -> Unit // New navigation parameter
+    programViewModel: ProgramViewModel,
+    activeCycleViewModel: ActiveCycleViewModel,
+    onNavigateToProgram: (String) -> Unit
 ) {
-    val programs by viewModel.allPrograms.collectAsStateWithLifecycle()
-    var showDialog by remember { mutableStateOf(false) }
-    var programName by remember { mutableStateOf("") }
+    val programs by programViewModel.allPrograms.collectAsStateWithLifecycle()
+    var showCreateProgramDialog by remember { mutableStateOf(false) }
+    var showStartCycleDialog by remember { mutableStateOf<ProgramTemplate?>(null) }
+    var newName by remember { mutableStateOf("") }
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { showDialog = true }) {
+            FloatingActionButton(onClick = { showCreateProgramDialog = true }) {
                 Icon(Icons.Filled.Add, contentDescription = "Create new program")
             }
         }
@@ -535,26 +631,39 @@ fun ManageProgramsScreen(
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(programs) { program ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onNavigateToProgram(program.id) },
-                            elevation = CardDefaults.cardElevation(2.dp)
-                        ) {
-                            Text(program.name, modifier = Modifier.padding(16.dp))
+                        Card(elevation = CardDefaults.cardElevation(2.dp)) {
+                            Row(
+                                modifier = Modifier.padding(start = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onNavigateToProgram(program.id) }
+                                        .padding(vertical = 16.dp)
+                                ) { Text(program.name) }
+                                // New "Start Cycle" button
+                                IconButton(onClick = { showStartCycleDialog = program }) {
+                                    Icon(
+                                        Icons.Outlined.PlayArrow,
+                                        contentDescription = "Start Cycle"
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            if (showDialog) {
+            // THIS IS THE DIALOG FOR CREATING A NEW PROGRAM
+            if (showCreateProgramDialog) {
                 AlertDialog(
-                    onDismissRequest = { showDialog = false },
+                    onDismissRequest = { showCreateProgramDialog = false },
                     title = { Text("New Program Blueprint") },
                     text = {
                         OutlinedTextField(
-                            value = programName,
-                            onValueChange = { programName = it },
+                            value = newName,
+                            onValueChange = { newName = it },
                             label = { Text("Program Name") },
                             singleLine = true
                         )
@@ -562,18 +671,52 @@ fun ManageProgramsScreen(
                     confirmButton = {
                         Button(
                             onClick = {
-                                if (programName.isNotBlank()) {
-                                    viewModel.insert(programName, null)
-                                    programName = ""
-                                    showDialog = false
+                                if (newName.isNotBlank()) {
+                                    programViewModel.insert(newName, null)
+                                    newName = ""
+                                    showCreateProgramDialog = false
                                 }
                             }
                         ) { Text("Create") }
                     },
                     dismissButton = {
-                        TextButton(onClick = { showDialog = false }) {
+                        TextButton(onClick = { showCreateProgramDialog = false }) {
                             Text("Cancel")
                         }
+                    }
+                )
+            }
+
+            // THIS IS THE DIALOG FOR STARTING A NEW CYCLE
+            if (showStartCycleDialog != null) {
+                val programToStart = showStartCycleDialog!!
+                AlertDialog(
+                    onDismissRequest = { showStartCycleDialog = null },
+                    title = { Text("Start New Cycle") },
+                    text = {
+                        Column {
+                            Text("You are about to start the program: ${programToStart.name}")
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = newName,
+                                onValueChange = { newName = it },
+                                label = { Text("Give this cycle a name") },
+                                placeholder = { Text(programToStart.name) }
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(onClick = {
+                            val cycleName = newName.ifBlank { programToStart.name }
+                            activeCycleViewModel.startCycle(programToStart, cycleName)
+                            showStartCycleDialog = null
+                            newName = ""
+                        }) { Text("Start") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {
+                            showStartCycleDialog = null
+                        }) { Text("Cancel") }
                     }
                 )
             }
@@ -583,23 +726,22 @@ fun ManageProgramsScreen(
 
 
 // NEW SCREEN for editing a program
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProgramEditorScreen(
     programId: String,
-    viewModel: ProgramViewModel,
+    programViewModel: ProgramViewModel,
+    templateViewModel: WorkoutTemplateViewModel, // New parameter
     onNavigateUp: () -> Unit
 ) {
-    // This line gets the specific program from the database.
-    // The 'programFromDb' variable will be of type ProgramTemplate? (nullable)
-    val programFromDb by viewModel.getProgramById(programId).collectAsState(initial = null)
+    val programFromDb by programViewModel.getProgramById(programId).collectAsState(initial = null)
+    val allWorkoutTemplates by templateViewModel.allTemplates.collectAsStateWithLifecycle()
 
-    // These 'remember' states hold the user's edits locally.
     var editedName by remember { mutableStateOf("") }
     var editedWeeks by remember { mutableStateOf<List<ProgramWeekDefinition>>(emptyList()) }
+    var showAddSessionDialog by remember { mutableStateOf<String?>(null) } // Holds the ID of the week we're adding a session to
 
-    // This effect runs when programFromDb is loaded from the database.
-    // It copies the database values into our local, editable state variables.
     LaunchedEffect(programFromDb) {
         programFromDb?.let {
             editedName = it.name
@@ -618,12 +760,9 @@ fun ProgramEditorScreen(
                 },
                 actions = {
                     Button(onClick = {
-                        // When the user clicks "Save"
                         programFromDb?.let {
-                            // Create an updated copy of the program with the edited values
                             val updatedProgram = it.copy(name = editedName, weeks = editedWeeks)
-                            // Tell the ViewModel to save this updated program to the database
-                            viewModel.update(updatedProgram)
+                            programViewModel.update(updatedProgram)
                         }
                         onNavigateUp()
                     }) { Text("Save") }
@@ -632,35 +771,108 @@ fun ProgramEditorScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = {
-                // When the user clicks the '+' button
                 val newWeek = ProgramWeekDefinition(
                     id = UUID.randomUUID().toString(),
                     weekLabel = "Week ${editedWeeks.size + 1}",
                     order = editedWeeks.size + 1,
                     sessions = emptyList()
                 )
-                // Add the new week to our local list of edited weeks
                 editedWeeks = editedWeeks + newWeek
             }) {
                 Icon(Icons.Filled.Add, "Add Week")
             }
         }
     ) { paddingValues ->
-        Column(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
+        Column(modifier = Modifier.padding(paddingValues).padding(horizontal = 16.dp)) {
             OutlinedTextField(
                 value = editedName,
                 onValueChange = { editedName = it },
                 label = { Text("Program Name") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
             )
-            Spacer(Modifier.height(16.dp))
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 items(editedWeeks) { week ->
-                    // For now, we just show the week's label.
-                    // In the next step, we'll make this editable and add sessions.
-                    Text(week.weekLabel)
+                    Card(elevation = CardDefaults.cardElevation(2.dp)) {
+                        Column(Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                OutlinedTextField(
+                                    value = week.weekLabel,
+                                    onValueChange = { newLabel ->
+                                        editedWeeks = editedWeeks.map {
+                                            if (it.id == week.id) it.copy(weekLabel = newLabel) else it
+                                        }
+                                    },
+                                    label = { Text("Week Label") },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(onClick = {
+                                    editedWeeks = editedWeeks.filter { it.id != week.id }
+                                }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete Week")
+                                }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            // List the sessions for this week
+                            week.sessions.sortedBy { it.order }.forEach { session ->
+                                val templateName = allWorkoutTemplates.find { it.id == session.workoutTemplateId }?.name ?: "Unknown Template"
+                                Text("  - ${session.sessionName}: $templateName", style = MaterialTheme.typography.bodyMedium)
+                            }
+                            TextButton(onClick = { showAddSessionDialog = week.id }) {
+                                Text("Add Session to Week")
+                            }
+                        }
+                    }
                 }
             }
+        }
+
+        // Dialog for adding a session to a week
+        if (showAddSessionDialog != null) {
+            val weekIdToAddSessionTo = showAddSessionDialog
+            var sessionName by remember { mutableStateOf("") }
+            AlertDialog(
+                onDismissRequest = { showAddSessionDialog = null },
+                title = { Text("Add Session") },
+                text = {
+                    Column {
+                        OutlinedTextField(
+                            value = sessionName,
+                            onValueChange = { sessionName = it },
+                            label = { Text("Session Name (e.g., Day 1)") }
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text("Choose a template:", fontWeight = FontWeight.Bold)
+                        LazyColumn(modifier = Modifier.height(150.dp)) {
+                            items(allWorkoutTemplates) { template ->
+                                Text(
+                                    text = template.name,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            val weekToUpdate = editedWeeks.find { it.id == weekIdToAddSessionTo }
+                                            if (weekToUpdate != null) {
+                                                val newSession = ProgramSessionDefinition(
+                                                    id = UUID.randomUUID().toString(),
+                                                    sessionName = sessionName.ifBlank { "Session ${weekToUpdate.sessions.size + 1}" },
+                                                    workoutTemplateId = template.id,
+                                                    order = weekToUpdate.sessions.size + 1
+                                                )
+                                                val updatedSessions = weekToUpdate.sessions + newSession
+                                                val updatedWeek = weekToUpdate.copy(sessions = updatedSessions)
+                                                editedWeeks = editedWeeks.map { if (it.id == weekIdToAddSessionTo) updatedWeek else it }
+                                            }
+                                            showAddSessionDialog = null
+                                        }
+                                        .padding(vertical = 8.dp)
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showAddSessionDialog = null }) { Text("Cancel") }
+                }
+            )
         }
     }
 }
