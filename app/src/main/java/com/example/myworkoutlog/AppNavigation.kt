@@ -22,4 +22,7 @@ sealed class Screen(val route: String) {
     data object HistoryDetail : Screen("history_detail/{workoutId}") {
         fun createRoute(workoutId: String) = "history_detail/$workoutId"
     }
+
+    // NEW: The route for managing program blueprints
+    data object ManagePrograms : Screen("manage_programs")
 }

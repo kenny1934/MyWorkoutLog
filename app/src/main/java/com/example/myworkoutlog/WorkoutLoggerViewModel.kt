@@ -96,6 +96,12 @@ class WorkoutLoggerViewModel(
             }
         }
     }
+
+    fun updateBodyweight(bodyweight: String) {
+        _activeWorkoutState.update { currentWorkout ->
+            currentWorkout?.copy(bodyweight = bodyweight.toDoubleOrNull())
+        }
+    }
 }
 
 // The factory for creating our new ViewModel

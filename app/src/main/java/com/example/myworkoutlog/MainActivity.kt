@@ -27,6 +27,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.myworkoutlog.ui.theme.MyWorkoutLogTheme
+import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
+import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
+import com.patrykandpatrick.vico.compose.chart.Chart
+import com.patrykandpatrick.vico.compose.chart.line.lineChart
+import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
+import com.patrykandpatrick.vico.core.entry.entryOf
+import com.patrykandpatrick.vico.core.axis.AxisPosition
+import com.patrykandpatrick.vico.core.axis.formatter.AxisValueFormatter
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -53,6 +61,10 @@ class MainActivity : ComponentActivity() {
         HistoryViewModelFactory((application as WorkoutApplication).database.loggedWorkoutDao())
     }
 
+    private val programViewModel: ProgramViewModel by viewModels {
+        ProgramViewModelFactory((application as WorkoutApplication).database.programTemplateDao())
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -62,7 +74,8 @@ class MainActivity : ComponentActivity() {
                     exerciseViewModel = exerciseViewModel,
                     templateViewModel = workoutTemplateViewModel,
                     loggerViewModel = workoutLoggerViewModel,
-                    historyViewModel = historyViewModel
+                    historyViewModel = historyViewModel,
+                    programViewModel = programViewModel
                 )
             }
         }
@@ -73,7 +86,8 @@ class MainActivity : ComponentActivity() {
 fun MainApp(exerciseViewModel: ExerciseViewModel,
             templateViewModel: WorkoutTemplateViewModel,
             loggerViewModel: WorkoutLoggerViewModel,
-            historyViewModel: HistoryViewModel
+            historyViewModel: HistoryViewModel,
+            programViewModel: ProgramViewModel
 ) {
     val navController = rememberNavController()
     Scaffold(
@@ -85,6 +99,7 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             templateViewModel = templateViewModel,
             loggerViewModel = loggerViewModel,
             historyViewModel = historyViewModel,
+            programViewModel = programViewModel,
             modifier = Modifier.padding(innerPadding)
         )
     }
@@ -97,6 +112,7 @@ fun AppNavHost(
     templateViewModel: WorkoutTemplateViewModel,
     loggerViewModel: WorkoutLoggerViewModel,
     historyViewModel: HistoryViewModel,
+    programViewModel: ProgramViewModel,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -160,6 +176,9 @@ fun AppNavHost(
                 onNavigateUp = { navController.navigateUp() }
             )
         }
+        composable(Screen.ManagePrograms.route) {
+            ManageProgramsScreen(viewModel = programViewModel)
+        }
     }
 }
 
@@ -214,6 +233,38 @@ fun DashboardScreen(
     val loggedWorkouts by historyViewModel.allLoggedWorkouts.collectAsStateWithLifecycle()
     val latestWorkout = loggedWorkouts.firstOrNull()
 
+    // --- NEW: Prepare data and labels for the chart ---
+    val chartData = loggedWorkouts
+        .filter { it.bodyweight != null && it.bodyweight > 0 }
+        .sortedBy { it.date }
+
+    val bodyweightEntries = chartData.mapIndexed { index, workout ->
+        entryOf(index.toFloat(), workout.bodyweight!!.toFloat())
+    }
+
+    val chartModelProducer = ChartEntryModelProducer(bodyweightEntries)
+
+    // --- NEW: Create a custom formatter for the bottom axis ---
+    val bottomAxisValueFormatter = AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, _ ->
+        // We use the integer part of the value as an index to get the date
+        val index = value.toInt()
+        if (index in chartData.indices) {
+            // Format the date string like "06/08" from "2025-06-08"
+            val date = chartData[index].date
+            date.substring(5).replace('-', '/')
+        } else {
+            ""
+        }
+    }
+
+    // --- NEW: Dynamic Greeting Logic ---
+    val calendar = Calendar.getInstance()
+    val greeting = when (calendar.get(Calendar.HOUR_OF_DAY)) {
+        in 0..11 -> "Good morning!"
+        in 12..16 -> "Good afternoon!"
+        else -> "Good evening!"
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -230,12 +281,36 @@ fun DashboardScreen(
                 elevation = CardDefaults.cardElevation(2.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Welcome Back!", style = MaterialTheme.typography.titleMedium)
+                    // Use the new dynamic greeting
+                    Text(greeting, style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Ready for your next session?", style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
+
+        // The chart now has its axes configured with the new formatter
+        if (bodyweightEntries.isNotEmpty()) {
+            item {
+                Text("Bodyweight Trend", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(elevation = CardDefaults.cardElevation(2.dp)) {
+                    Chart(
+                        chart = lineChart(),
+                        chartModelProducer = chartModelProducer,
+                        startAxis = rememberStartAxis(
+                            title = "Bodyweight" // Add a title to the Y-axis
+                        ),
+                        bottomAxis = rememberBottomAxis(
+                            valueFormatter = bottomAxisValueFormatter, // Use our custom date formatter
+                            guideline = null // Hide vertical guidelines for a cleaner look
+                        ),
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+        }
+
 
         item {
             Text("Start a new workout:", style = MaterialTheme.typography.titleMedium)
@@ -403,8 +478,92 @@ fun LibraryScreen(onNavigate: (String) -> Unit) {
         ) {
             Text("Manage Templates", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
         }
+        // NEW BUTTON
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onNavigate(Screen.ManagePrograms.route) },
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Text("Manage Program Blueprints", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
+        }
     }
 }
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ManageProgramsScreen(viewModel: ProgramViewModel) {
+    val programs by viewModel.allPrograms.collectAsStateWithLifecycle()
+    var showDialog by remember { mutableStateOf(false) }
+    var programName by remember { mutableStateOf("") }
+
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(onClick = { showDialog = true }) {
+                Icon(Icons.Filled.Add, contentDescription = "Create new program")
+            }
+        }
+    ) { paddingValues ->
+        Column(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
+            Text("Program Blueprints", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (programs.isEmpty()) {
+                Text(
+                    "No programs yet. Click the '+' button to create one.",
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    textAlign = TextAlign.Center
+                )
+            } else {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(programs) { program ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { /* TODO: Navigate to program editor */ },
+                            elevation = CardDefaults.cardElevation(2.dp)
+                        ) {
+                            Text(program.name, modifier = Modifier.padding(16.dp))
+                        }
+                    }
+                }
+            }
+
+            if (showDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDialog = false },
+                    title = { Text("New Program Blueprint") },
+                    text = {
+                        OutlinedTextField(
+                            value = programName,
+                            onValueChange = { programName = it },
+                            label = { Text("Program Name") },
+                            singleLine = true
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                if (programName.isNotBlank()) {
+                                    viewModel.insert(programName, null)
+                                    programName = ""
+                                    showDialog = false
+                                }
+                            }
+                        ) { Text("Create") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -554,6 +713,17 @@ fun WorkoutLoggerScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // NEW: Add a bodyweight input field as the first item in the list
+                item {
+                    OutlinedTextField(
+                        value = activeWorkout!!.bodyweight?.toString() ?: "",
+                        onValueChange = { newBw ->
+                            viewModel.updateBodyweight(newBw)
+                        },
+                        label = { Text("Bodyweight") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
                 items(activeWorkout!!.loggedExercises) { exercise ->
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {

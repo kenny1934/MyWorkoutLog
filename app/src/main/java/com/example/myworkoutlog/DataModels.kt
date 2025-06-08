@@ -68,6 +68,17 @@ class Converters {
         val listType = object : TypeToken<List<LoggedExercise>>() {}.type
         return gson.fromJson(value, listType)
     }
+
+    @TypeConverter
+    fun fromProgramWeekDefinitionList(value: List<ProgramWeekDefinition>): String {
+        return gson.toJson(value)
+    }
+
+    @TypeConverter
+    fun toProgramWeekDefinitionList(value: String): List<ProgramWeekDefinition> {
+        val listType = object : TypeToken<List<ProgramWeekDefinition>>() {}.type
+        return gson.fromJson(value, listType)
+    }
 }
 
 
@@ -141,7 +152,34 @@ data class LoggedWorkout(
     val name: String? = null,
     val overallComments: String? = null,
     val durationMinutes: Int? = null,
+    val bodyweight: Double? = null,
     // We will store this list as a single JSON string
     val loggedExercises: List<LoggedExercise>,
     val workoutTemplateId: String? = null
+)
+
+// Represents a single session within a week, like "Day 1: Push Day"
+data class ProgramSessionDefinition(
+    val id: String,
+    val sessionName: String,
+    val workoutTemplateId: String, // Links to a WorkoutTemplate
+    val order: Int
+)
+
+// Represents a single week within a program
+data class ProgramWeekDefinition(
+    val id: String,
+    val weekLabel: String, // e.g., "Week 1: RIR 3"
+    val sessions: List<ProgramSessionDefinition>,
+    val order: Int
+)
+
+// This is the main database table for our program blueprints
+@Entity(tableName = "program_template_table")
+data class ProgramTemplate(
+    @PrimaryKey val id: String,
+    val name: String,
+    val description: String? = null,
+    // We will store the list of weeks as a single JSON string
+    val weeks: List<ProgramWeekDefinition>
 )

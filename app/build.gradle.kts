@@ -66,6 +66,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
     // --- Navigation ---
     implementation("androidx.navigation:navigation-compose:2.7.7")
+    // --- Charting Library (Vico) ---
+    implementation("com.patrykandpatrick.vico:compose-m3:1.14.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
