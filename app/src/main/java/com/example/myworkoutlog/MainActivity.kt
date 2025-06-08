@@ -3,6 +3,7 @@ package com.example.myworkoutlog
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,10 +26,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.myworkoutlog.ui.theme.MyWorkoutLogTheme
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.ui.text.style.TextAlign
+
 
 class MainActivity : ComponentActivity() {
     private val exerciseViewModel: ExerciseViewModel by viewModels {
@@ -52,9 +54,10 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
+            MyWorkoutLogTheme {
                 MainApp(
                     exerciseViewModel = exerciseViewModel,
                     templateViewModel = workoutTemplateViewModel,
@@ -101,7 +104,12 @@ fun AppNavHost(
         startDestination = Screen.Dashboard.route,
         modifier = modifier
     ) {
-        composable(Screen.Dashboard.route) { DashboardScreen() }
+        composable(Screen.Dashboard.route) {
+            DashboardScreen(
+                historyViewModel = historyViewModel,
+                onNavigate = { route -> navController.navigate(route) }
+            )
+        }
         composable(Screen.History.route) {
             HistoryScreen(
                 viewModel = historyViewModel,
@@ -199,9 +207,69 @@ fun AppBottomNavigationBar(navController: NavHostController) {
 // --- Our Screens ---
 
 @Composable
-fun DashboardScreen() {
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text("Dashboard Screen", fontSize = 24.sp)
+fun DashboardScreen(
+    historyViewModel: HistoryViewModel,
+    onNavigate: (String) -> Unit
+) {
+    val loggedWorkouts by historyViewModel.allLoggedWorkouts.collectAsStateWithLifecycle()
+    val latestWorkout = loggedWorkouts.firstOrNull()
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Text("Dashboard", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        }
+
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Welcome Back!", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Ready for your next session?", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+
+        item {
+            Text("Start a new workout:", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = { onNavigate(Screen.Library.route) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Choose from Template")
+            }
+        }
+
+        if (latestWorkout != null) {
+            item {
+                Text("Last Workout", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            // Navigate to the detail screen for this specific workout
+                            onNavigate(Screen.HistoryDetail.createRoute(latestWorkout.id))
+                        },
+                    elevation = CardDefaults.cardElevation(2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(latestWorkout.name ?: "Workout", fontWeight = FontWeight.Bold)
+                        Text(latestWorkout.date, style = MaterialTheme.typography.bodySmall)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("${latestWorkout.loggedExercises.size} exercises performed.", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+        }
     }
 }
 
