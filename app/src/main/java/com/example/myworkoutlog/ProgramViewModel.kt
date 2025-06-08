@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -19,6 +20,11 @@ class ProgramViewModel(private val programDao: ProgramTemplateDao) : ViewModel()
             initialValue = emptyList()
         )
 
+    // NEW: Get a single program
+    fun getProgramById(id: String): Flow<ProgramTemplate?> {
+        return programDao.getProgramById(id)
+    }
+
     fun insert(programName: String, description: String?) {
         viewModelScope.launch(Dispatchers.IO) {
             val newProgram = ProgramTemplate(
@@ -28,6 +34,13 @@ class ProgramViewModel(private val programDao: ProgramTemplateDao) : ViewModel()
                 weeks = emptyList() // A new program starts with no weeks
             )
             programDao.insert(newProgram)
+        }
+    }
+
+    // NEW: Update an existing program
+    fun update(program: ProgramTemplate) {
+        viewModelScope.launch(Dispatchers.IO) {
+            programDao.update(program)
         }
     }
 }

@@ -25,4 +25,9 @@ sealed class Screen(val route: String) {
 
     // NEW: The route for managing program blueprints
     data object ManagePrograms : Screen("manage_programs")
+
+    // NEW: Route for the program editor screen
+    data object ProgramEditor : Screen("program_editor/{programId}") {
+        fun createRoute(programId: String) = "program_editor/$programId"
+    }
 }

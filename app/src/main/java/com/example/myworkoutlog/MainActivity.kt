@@ -177,7 +177,21 @@ fun AppNavHost(
             )
         }
         composable(Screen.ManagePrograms.route) {
-            ManageProgramsScreen(viewModel = programViewModel)
+            ManageProgramsScreen(
+                viewModel = programViewModel,
+                // UPDATE: Navigate to the new editor screen
+                onNavigateToProgram = { programId ->
+                    navController.navigate(Screen.ProgramEditor.createRoute(programId))
+                }
+            )
+        }
+        composable(Screen.ProgramEditor.route) { backStackEntry ->
+            val programId = backStackEntry.arguments?.getString("programId") ?: ""
+            ProgramEditorScreen(
+                programId = programId,
+                viewModel = programViewModel,
+                onNavigateUp = { navController.navigateUp() }
+            )
         }
     }
 }
@@ -493,7 +507,10 @@ fun LibraryScreen(onNavigate: (String) -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ManageProgramsScreen(viewModel: ProgramViewModel) {
+fun ManageProgramsScreen(
+    viewModel: ProgramViewModel,
+    onNavigateToProgram: (String) -> Unit // New navigation parameter
+) {
     val programs by viewModel.allPrograms.collectAsStateWithLifecycle()
     var showDialog by remember { mutableStateOf(false) }
     var programName by remember { mutableStateOf("") }
@@ -521,7 +538,7 @@ fun ManageProgramsScreen(viewModel: ProgramViewModel) {
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { /* TODO: Navigate to program editor */ },
+                                .clickable { onNavigateToProgram(program.id) },
                             elevation = CardDefaults.cardElevation(2.dp)
                         ) {
                             Text(program.name, modifier = Modifier.padding(16.dp))
@@ -559,6 +576,90 @@ fun ManageProgramsScreen(viewModel: ProgramViewModel) {
                         }
                     }
                 )
+            }
+        }
+    }
+}
+
+
+// NEW SCREEN for editing a program
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProgramEditorScreen(
+    programId: String,
+    viewModel: ProgramViewModel,
+    onNavigateUp: () -> Unit
+) {
+    // This line gets the specific program from the database.
+    // The 'programFromDb' variable will be of type ProgramTemplate? (nullable)
+    val programFromDb by viewModel.getProgramById(programId).collectAsState(initial = null)
+
+    // These 'remember' states hold the user's edits locally.
+    var editedName by remember { mutableStateOf("") }
+    var editedWeeks by remember { mutableStateOf<List<ProgramWeekDefinition>>(emptyList()) }
+
+    // This effect runs when programFromDb is loaded from the database.
+    // It copies the database values into our local, editable state variables.
+    LaunchedEffect(programFromDb) {
+        programFromDb?.let {
+            editedName = it.name
+            editedWeeks = it.weeks
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(editedName) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateUp) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    Button(onClick = {
+                        // When the user clicks "Save"
+                        programFromDb?.let {
+                            // Create an updated copy of the program with the edited values
+                            val updatedProgram = it.copy(name = editedName, weeks = editedWeeks)
+                            // Tell the ViewModel to save this updated program to the database
+                            viewModel.update(updatedProgram)
+                        }
+                        onNavigateUp()
+                    }) { Text("Save") }
+                }
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = {
+                // When the user clicks the '+' button
+                val newWeek = ProgramWeekDefinition(
+                    id = UUID.randomUUID().toString(),
+                    weekLabel = "Week ${editedWeeks.size + 1}",
+                    order = editedWeeks.size + 1,
+                    sessions = emptyList()
+                )
+                // Add the new week to our local list of edited weeks
+                editedWeeks = editedWeeks + newWeek
+            }) {
+                Icon(Icons.Filled.Add, "Add Week")
+            }
+        }
+    ) { paddingValues ->
+        Column(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
+            OutlinedTextField(
+                value = editedName,
+                onValueChange = { editedName = it },
+                label = { Text("Program Name") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(16.dp))
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(editedWeeks) { week ->
+                    // For now, we just show the week's label.
+                    // In the next step, we'll make this editable and add sessions.
+                    Text(week.weekLabel)
+                }
             }
         }
     }

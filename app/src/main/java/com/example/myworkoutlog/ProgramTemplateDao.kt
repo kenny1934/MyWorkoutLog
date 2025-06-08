@@ -17,4 +17,7 @@ interface ProgramTemplateDao {
 
     @Query("DELETE FROM program_template_table WHERE id = :programId")
     fun deleteById(programId: String)
+
+    @Query("SELECT * FROM program_template_table WHERE id = :programId")
+    fun getProgramById(programId: String): Flow<ProgramTemplate?>
 }
