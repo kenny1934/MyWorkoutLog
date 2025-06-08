@@ -3,12 +3,14 @@ package com.example.myworkoutlog
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 
 // This ViewModel provides the list of all saved workouts.
-class HistoryViewModel(loggedWorkoutDao: LoggedWorkoutDao) : ViewModel() {
+class HistoryViewModel(private val loggedWorkoutDao: LoggedWorkoutDao) : ViewModel() {
+
 
     val allLoggedWorkouts: StateFlow<List<LoggedWorkout>> = loggedWorkoutDao.getAllLoggedWorkouts()
         .stateIn(
@@ -16,6 +18,10 @@ class HistoryViewModel(loggedWorkoutDao: LoggedWorkoutDao) : ViewModel() {
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    fun getLoggedWorkoutById(id: String): Flow<LoggedWorkout?> {
+        return loggedWorkoutDao.getLoggedWorkoutById(id)
+    }
 }
 
 // The factory for creating our HistoryViewModel

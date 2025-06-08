@@ -15,4 +15,8 @@ interface LoggedWorkoutDao {
     // We'll use this function later for the History screen
     @Query("SELECT * FROM logged_workout_table ORDER BY date DESC")
     fun getAllLoggedWorkouts(): Flow<List<LoggedWorkout>>
+
+    // NEW function to get a single logged workout by its ID
+    @Query("SELECT * FROM logged_workout_table WHERE id = :workoutId")
+    fun getLoggedWorkoutById(workoutId: String): Flow<LoggedWorkout?>
 }

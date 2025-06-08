@@ -18,4 +18,8 @@ sealed class Screen(val route: String) {
     data object WorkoutLogger : Screen("workout_logger/{templateId}") {
         fun createRoute(templateId: String) = "workout_logger/$templateId"
     }
+
+    data object HistoryDetail : Screen("history_detail/{workoutId}") {
+        fun createRoute(workoutId: String) = "history_detail/$workoutId"
+    }
 }

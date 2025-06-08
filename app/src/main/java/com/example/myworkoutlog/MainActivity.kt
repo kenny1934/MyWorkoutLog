@@ -102,7 +102,23 @@ fun AppNavHost(
         modifier = modifier
     ) {
         composable(Screen.Dashboard.route) { DashboardScreen() }
-        composable(Screen.History.route) { HistoryScreen(viewModel = historyViewModel) }
+        composable(Screen.History.route) {
+            HistoryScreen(
+                viewModel = historyViewModel,
+                // Pass a navigation action to the history screen
+                onNavigateToWorkout = { workoutId ->
+                    navController.navigate(Screen.HistoryDetail.createRoute(workoutId))
+                }
+            )
+        }
+        composable(Screen.HistoryDetail.route) { backStackEntry ->
+            val workoutId = backStackEntry.arguments?.getString("workoutId") ?: ""
+            HistoryDetailScreen(
+                workoutId = workoutId,
+                viewModel = historyViewModel,
+                onNavigateUp = { navController.navigateUp() }
+            )
+        }
         composable(Screen.Library.route) {
             LibraryScreen(onNavigate = { route -> navController.navigate(route) })
         }
@@ -135,9 +151,6 @@ fun AppNavHost(
                 viewModel = loggerViewModel,
                 onNavigateUp = { navController.navigateUp() }
             )
-        }
-        composable(Screen.History.route) {
-            HistoryScreen(viewModel = historyViewModel)
         }
     }
 }
@@ -193,7 +206,10 @@ fun DashboardScreen() {
 }
 
 @Composable
-fun HistoryScreen(viewModel: HistoryViewModel) {
+fun HistoryScreen(
+    viewModel: HistoryViewModel,
+    onNavigateToWorkout: (String) -> Unit // New parameter for navigation
+) {
     val loggedWorkouts by viewModel.allLoggedWorkouts.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.padding(16.dp)) {
@@ -211,12 +227,81 @@ fun HistoryScreen(viewModel: HistoryViewModel) {
                         modifier = Modifier
                             .fillMaxWidth()
                             // In the future, this will navigate to a detail view
-                            .clickable { /* TODO: Navigate to workout detail */ },
+                            .clickable { onNavigateToWorkout(workout.id) },
                         elevation = CardDefaults.cardElevation(2.dp)
                     ) {
                         Column(Modifier.padding(16.dp)) {
                             Text(workout.name ?: "Workout", fontWeight = FontWeight.Bold)
                             Text(workout.date, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HistoryDetailScreen(
+    workoutId: String,
+    viewModel: HistoryViewModel,
+    onNavigateUp: () -> Unit
+) {
+    val workout by viewModel.getLoggedWorkoutById(workoutId).collectAsState(initial = null)
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(workout?.name ?: "Workout Details") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateUp) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        if (workout == null) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.padding(paddingValues),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    Text(workout!!.date, style = MaterialTheme.typography.headlineSmall)
+                    if (!workout!!.overallComments.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(workout!!.overallComments!!, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+
+                items(workout!!.loggedExercises) { exercise ->
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(exercise.exerciseName, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.height(8.dp))
+
+                            // Display the header for the sets table
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                Text("Set", modifier = Modifier.width(60.dp), style = MaterialTheme.typography.labelSmall)
+                                Text("Weight", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
+                                Text("Reps", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
+                            }
+                            Divider(modifier = Modifier.padding(vertical = 4.dp))
+
+                            // Display each logged set
+                            exercise.sets.forEachIndexed { index, set ->
+                                Row(modifier = Modifier.fillMaxWidth()) {
+                                    Text((index + 1).toString(), modifier = Modifier.width(60.dp))
+                                    Text(set.weight?.toString() ?: "--", modifier = Modifier.weight(1f))
+                                    Text(set.reps?.toString() ?: "--", modifier = Modifier.weight(1f))
+                                }
+                            }
                         }
                     }
                 }
