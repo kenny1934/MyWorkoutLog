@@ -21,6 +21,7 @@ object PrService {
                             exerciseId = loggedEx.exerciseId,
                             exerciseName = loggedEx.exerciseName,
                             date = workout.date,
+                            loggedWorkoutId = workout.id,
                             type = PRType.MAX_WEIGHT_FOR_REPS,
                             reps = set.reps,
                             weight = set.weight,
@@ -37,6 +38,7 @@ object PrService {
                             exerciseId = loggedEx.exerciseId,
                             exerciseName = loggedEx.exerciseName,
                             date = workout.date,
+                            loggedWorkoutId = workout.id,
                             type = PRType.MAX_REPS_AT_WEIGHT,
                             reps = set.reps,
                             weight = set.weight,
@@ -53,6 +55,7 @@ object PrService {
                             exerciseId = loggedEx.exerciseId,
                             exerciseName = loggedEx.exerciseName,
                             date = workout.date,
+                            loggedWorkoutId = workout.id,
                             type = PRType.DURATION,
                             reps = null,
                             weight = null,
@@ -91,7 +94,6 @@ object PrService {
             }
         }
 
-        // Return only the PRs that were newly set in this workout.
-        return bestPRs.values.filter { it.date == workout.date }
+        return bestPRs.values.filter { existingPRs.contains(it).not() }
     }
 }

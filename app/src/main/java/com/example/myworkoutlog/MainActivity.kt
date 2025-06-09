@@ -74,6 +74,10 @@ class MainActivity : ComponentActivity() {
         ActiveCycleViewModelFactory((application as WorkoutApplication).database.activeCycleDao())
     }
 
+    private val prViewModel: PrViewModel by viewModels {
+        PrViewModelFactory((application as WorkoutApplication).database.personalRecordDao())
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -85,7 +89,8 @@ class MainActivity : ComponentActivity() {
                     loggerViewModel = workoutLoggerViewModel,
                     historyViewModel = historyViewModel,
                     programViewModel = programViewModel,
-                    activeCycleViewModel = activeCycleViewModel
+                    activeCycleViewModel = activeCycleViewModel,
+                    prViewModel = prViewModel
                 )
             }
         }
@@ -98,7 +103,8 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             loggerViewModel: WorkoutLoggerViewModel,
             historyViewModel: HistoryViewModel,
             programViewModel: ProgramViewModel,
-            activeCycleViewModel: ActiveCycleViewModel
+            activeCycleViewModel: ActiveCycleViewModel,
+            prViewModel: PrViewModel
 ) {
     val navController = rememberNavController()
     Scaffold(
@@ -112,6 +118,7 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             historyViewModel = historyViewModel,
             programViewModel = programViewModel,
             activeCycleViewModel = activeCycleViewModel,
+            prViewModel = prViewModel,
             modifier = Modifier.padding(innerPadding)
         )
     }
@@ -126,6 +133,7 @@ fun AppNavHost(
     historyViewModel: HistoryViewModel,
     programViewModel: ProgramViewModel,
     activeCycleViewModel: ActiveCycleViewModel,
+    prViewModel: PrViewModel,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -208,6 +216,15 @@ fun AppNavHost(
                 // Pass the template view model as well
                 templateViewModel = templateViewModel,
                 onNavigateUp = { navController.navigateUp() }
+            )
+        }
+        composable(Screen.PersonalRecords.route) {
+            PersonalRecordsScreen(
+                viewModel = prViewModel,
+                // Pass a navigation action to the PR screen
+                onNavigateToWorkout = { workoutId ->
+                    navController.navigate(Screen.HistoryDetail.createRoute(workoutId))
+                }
             )
         }
     }
@@ -587,7 +604,6 @@ fun LibraryScreen(onNavigate: (String) -> Unit) {
         ) {
             Text("Manage Templates", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
         }
-        // NEW BUTTON
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -596,6 +612,15 @@ fun LibraryScreen(onNavigate: (String) -> Unit) {
         ) {
             Text("Manage Program Blueprints", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
         }
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onNavigate(Screen.PersonalRecords.route) },
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Text("Personal Records", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
+        }
+
     }
 }
 
@@ -1224,6 +1249,88 @@ fun TemplateDetailScreen(
                     TextButton(onClick = { showAddExerciseDialog = false }) { Text("Cancel") }
                 }
             )
+        }
+    }
+}
+
+@Composable
+fun PersonalRecordsScreen(
+    viewModel: PrViewModel,
+    onNavigateToWorkout: (String) -> Unit
+) {
+    val allPRs by viewModel.allPRs.collectAsStateWithLifecycle()
+
+    // Group the PRs by exercise name for a clean, organized list
+    val prsByExercise = allPRs.groupBy { it.exerciseName }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Text("Personal Records", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        }
+
+        if (prsByExercise.isEmpty()) {
+            item {
+                Text(
+                    "No PRs recorded yet. Finish a workout to start tracking them!",
+                    modifier = Modifier.padding(top = 16.dp)
+                )
+            }
+        } else {
+            // Loop through each exercise that has PRs
+            prsByExercise.forEach { (exerciseName, prsForExercise) ->
+                item {
+                    Text(
+                        exerciseName,
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                    Divider()
+                }
+                // List all the PRs for that exercise
+                items(prsForExercise) { pr ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToWorkout(pr.loggedWorkoutId) }, // Make the whole card clickable
+                        elevation = CardDefaults.cardElevation(2.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                val prText = when (pr.type) {
+                                    PRType.MAX_WEIGHT_FOR_REPS -> "${pr.reps} reps"
+                                    PRType.MAX_REPS_AT_WEIGHT -> "@ ${pr.weight} kg"
+                                    PRType.DURATION -> "Max Duration"
+                                }
+                                Text(prText, style = MaterialTheme.typography.bodyLarge)
+
+                                // NEW: Display the date of the PR
+                                Text(pr.date, style = MaterialTheme.typography.bodySmall)
+                            }
+
+                            val prValue = when (pr.type) {
+                                PRType.MAX_WEIGHT_FOR_REPS -> "${pr.weight} kg"
+                                PRType.MAX_REPS_AT_WEIGHT -> "${pr.reps} reps"
+                                PRType.DURATION -> "${pr.durationSecs}s"
+                            }
+                            Text(
+                                prValue,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

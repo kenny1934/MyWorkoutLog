@@ -228,6 +228,7 @@ data class PersonalRecord(
     val exerciseId: String,
     val exerciseName: String,
     val date: String,
+    val loggedWorkoutId: String,
     val type: PRType,
 
     // These values will be set depending on the PR type

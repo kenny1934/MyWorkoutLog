@@ -30,4 +30,7 @@ sealed class Screen(val route: String) {
     data object ProgramEditor : Screen("program_editor/{programId}") {
         fun createRoute(programId: String) = "program_editor/$programId"
     }
+
+    // NEW: The route for viewing personal records
+    data object PersonalRecords : Screen("personal_records")
 }
