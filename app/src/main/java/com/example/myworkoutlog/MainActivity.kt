@@ -54,7 +54,8 @@ class MainActivity : ComponentActivity() {
     private val workoutLoggerViewModel: WorkoutLoggerViewModel by viewModels {
         WorkoutLoggerViewModelFactory(
             (application as WorkoutApplication).database.workoutTemplateDao(),
-            (application as WorkoutApplication).database.loggedWorkoutDao()
+            (application as WorkoutApplication).database.loggedWorkoutDao(),
+            (application as WorkoutApplication).database.personalRecordDao()
         )
     }
 

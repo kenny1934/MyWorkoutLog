@@ -90,6 +90,12 @@ class Converters {
         val mapType = object : TypeToken<Map<String, String>>() {}.type
         return gson.fromJson(value, mapType)
     }
+
+    @TypeConverter
+    fun fromPRType(value: PRType): String = value.name
+
+    @TypeConverter
+    fun toPRType(value: String): PRType = PRType.valueOf(value)
 }
 
 
@@ -205,4 +211,27 @@ data class ActiveProgramCycle(
     val startDate: String,
     // Map of "weekId_sessionId" to "loggedWorkoutId"
     val completedSessions: Map<String, String>
+)
+
+// An enum to define the type of PR
+enum class PRType {
+    MAX_WEIGHT_FOR_REPS,
+    MAX_REPS_AT_WEIGHT,
+    DURATION
+}
+
+// The database table for storing personal records
+@Entity(tableName = "personal_record_table")
+data class PersonalRecord(
+    // We'll create a unique ID for each PR based on the exercise and type
+    @PrimaryKey val id: String,
+    val exerciseId: String,
+    val exerciseName: String,
+    val date: String,
+    val type: PRType,
+
+    // These values will be set depending on the PR type
+    val reps: Int?,
+    val weight: Double?,
+    val durationSecs: Int?
 )

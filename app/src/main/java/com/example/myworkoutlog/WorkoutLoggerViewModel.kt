@@ -15,7 +15,8 @@ import java.util.*
 // This ViewModel holds the state for an active workout session.
 class WorkoutLoggerViewModel(
     private val templateDao: WorkoutTemplateDao,
-    private val loggedWorkoutDao: LoggedWorkoutDao
+    private val loggedWorkoutDao: LoggedWorkoutDao,
+    private val personalRecordDao: PersonalRecordDao
 ) : ViewModel() {
 
     // A private mutable state flow to hold the in-progress workout
@@ -88,10 +89,24 @@ class WorkoutLoggerViewModel(
 
     // Saves the completed workout to the database
     fun finishWorkout() {
-        viewModelScope.launch(Dispatchers.IO) {
-            activeWorkoutState.value?.let {
-                loggedWorkoutDao.insert(it)
-                // Clear the state after saving
+        activeWorkoutState.value?.let { workoutToSave ->
+            viewModelScope.launch(Dispatchers.IO) {
+                // Step 1: Save the workout itself
+                loggedWorkoutDao.insert(workoutToSave)
+
+                // Step 2: Detect and save PRs
+                // Get a list of all exercise IDs in the workout
+                val exerciseIds = workoutToSave.loggedExercises.map { it.exerciseId }
+                // Fetch all existing PRs for those specific exercises
+                val existingPRs = exerciseIds.flatMap { personalRecordDao.getPRsForExercise(it) }
+                // Call our service to get a list of new PRs from this workout
+                val newPRs = PrService.detectNewPRs(workoutToSave, existingPRs)
+                // Save each new PR to the database
+                newPRs.forEach { pr ->
+                    personalRecordDao.upsert(pr)
+                }
+
+                // Step 3: Clear the active workout state
                 _activeWorkoutState.value = null
             }
         }
@@ -107,12 +122,13 @@ class WorkoutLoggerViewModel(
 // The factory for creating our new ViewModel
 class WorkoutLoggerViewModelFactory(
     private val templateDao: WorkoutTemplateDao,
-    private val loggedWorkoutDao: LoggedWorkoutDao
+    private val loggedWorkoutDao: LoggedWorkoutDao,
+    private val personalRecordDao: PersonalRecordDao
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(WorkoutLoggerViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return WorkoutLoggerViewModel(templateDao, loggedWorkoutDao) as T
+            return WorkoutLoggerViewModel(templateDao, loggedWorkoutDao, personalRecordDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
