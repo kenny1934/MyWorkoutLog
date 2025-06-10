@@ -8,7 +8,10 @@ object PrService {
 
     // This function takes a completed workout and a list of existing PRs,
     // and returns a list of new or updated PRs.
-    fun detectNewPRs(workout: LoggedWorkout, existingPRs: List<PersonalRecord>): List<PersonalRecord> {
+    fun detectNewPRs(
+        workout: LoggedWorkout,
+        existingPRs: List<PersonalRecord>
+    ): List<PersonalRecord> {
         val potentialPRs = mutableListOf<PersonalRecord>()
 
         workout.loggedExercises.forEach { loggedEx ->
@@ -23,6 +26,7 @@ object PrService {
                             date = workout.date,
                             loggedWorkoutId = workout.id,
                             type = PRType.MAX_WEIGHT_FOR_REPS,
+                            weightUnit = workout.performedWeightUnit,
                             reps = set.reps,
                             weight = set.weight,
                             durationSecs = null
@@ -40,6 +44,7 @@ object PrService {
                             date = workout.date,
                             loggedWorkoutId = workout.id,
                             type = PRType.MAX_REPS_AT_WEIGHT,
+                            weightUnit = workout.performedWeightUnit,
                             reps = set.reps,
                             weight = set.weight,
                             durationSecs = null
@@ -57,6 +62,7 @@ object PrService {
                             date = workout.date,
                             loggedWorkoutId = workout.id,
                             type = PRType.DURATION,
+                            weightUnit = null,
                             reps = null,
                             weight = null,
                             durationSecs = set.secs
@@ -74,26 +80,37 @@ object PrService {
             if (existingBest == null) {
                 bestPRs[pr.id] = pr
             } else {
+                var shouldUpdate = false
                 when (pr.type) {
                     PRType.MAX_WEIGHT_FOR_REPS -> {
-                        if ((pr.weight ?: 0.0) > (existingBest.weight ?: 0.0)) {
-                            bestPRs[pr.id] = pr
+                        // THE NEW LOGIC: Convert both weights to KG for comparison
+                        val newWeightInKg = UnitConverter.toKg(pr.weight ?: 0.0, pr.weightUnit)
+                        val existingWeightInKg = UnitConverter.toKg(existingBest.weight ?: 0.0, existingBest.weightUnit)
+
+                        if (newWeightInKg >= existingWeightInKg) {
+                            shouldUpdate = true
                         }
                     }
+
                     PRType.MAX_REPS_AT_WEIGHT -> {
-                        if ((pr.reps ?: 0) > (existingBest.reps ?: 0)) {
-                            bestPRs[pr.id] = pr
+                        if ((pr.reps ?: 0) >= (existingBest.reps ?: 0)) {
+                            shouldUpdate = true
                         }
                     }
+
                     PRType.DURATION -> {
-                        if ((pr.durationSecs ?: 0) > (existingBest.durationSecs ?: 0)) {
-                            bestPRs[pr.id] = pr
+                        if ((pr.durationSecs ?: 0) >= (existingBest.durationSecs ?: 0)) {
+                            shouldUpdate = true
                         }
                     }
+                }
+                if (shouldUpdate) {
+                    bestPRs[pr.id] = pr
                 }
             }
         }
 
-        return bestPRs.values.filter { existingPRs.contains(it).not() }
+        // Return only the PRs that were updated/set in this workout
+        return bestPRs.values.filter { it.loggedWorkoutId == workout.id }
     }
 }

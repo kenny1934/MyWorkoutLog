@@ -52,6 +52,7 @@ class WorkoutLoggerViewModel(
                         id = UUID.randomUUID().toString(),
                         name = template.name,
                         date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
+                        performedWeightUnit = null,
                         loggedExercises = loggedExercises,
                         workoutTemplateId = template.id
                     )
@@ -88,25 +89,22 @@ class WorkoutLoggerViewModel(
     }
 
     // Saves the completed workout to the database
-    fun finishWorkout() {
+    fun finishWorkout(currentUnit: String) {
         activeWorkoutState.value?.let { workoutToSave ->
-            viewModelScope.launch(Dispatchers.IO) {
-                // Step 1: Save the workout itself
-                loggedWorkoutDao.insert(workoutToSave)
+            // Create a new copy of the workout that includes the unit
+            val finalWorkout = workoutToSave.copy(performedWeightUnit = currentUnit)
 
-                // Step 2: Detect and save PRs
-                // Get a list of all exercise IDs in the workout
-                val exerciseIds = workoutToSave.loggedExercises.map { it.exerciseId }
-                // Fetch all existing PRs for those specific exercises
+            viewModelScope.launch(Dispatchers.IO) {
+                loggedWorkoutDao.insert(finalWorkout) // Save the workout with the unit
+
+                val exerciseIds = finalWorkout.loggedExercises.map { it.exerciseId }
                 val existingPRs = exerciseIds.flatMap { personalRecordDao.getPRsForExercise(it) }
-                // Call our service to get a list of new PRs from this workout
-                val newPRs = PrService.detectNewPRs(workoutToSave, existingPRs)
-                // Save each new PR to the database
+                // Pass the workout with the unit to the PR service
+                val newPRs = PrService.detectNewPRs(finalWorkout, existingPRs)
                 newPRs.forEach { pr ->
                     personalRecordDao.upsert(pr)
                 }
 
-                // Step 3: Clear the active workout state
                 _activeWorkoutState.value = null
             }
         }

@@ -33,4 +33,7 @@ sealed class Screen(val route: String) {
 
     // NEW: The route for viewing personal records
     data object PersonalRecords : Screen("personal_records")
+
+    // NEW: The route for the settings screen
+    data object Settings : Screen("settings")
 }

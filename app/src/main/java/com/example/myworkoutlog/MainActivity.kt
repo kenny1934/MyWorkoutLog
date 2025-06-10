@@ -78,6 +78,10 @@ class MainActivity : ComponentActivity() {
         PrViewModelFactory((application as WorkoutApplication).database.personalRecordDao())
     }
 
+    private val settingsViewModel: SettingsViewModel by viewModels {
+        SettingsViewModelFactory((application as WorkoutApplication).appSettingsRepository)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -90,7 +94,8 @@ class MainActivity : ComponentActivity() {
                     historyViewModel = historyViewModel,
                     programViewModel = programViewModel,
                     activeCycleViewModel = activeCycleViewModel,
-                    prViewModel = prViewModel
+                    prViewModel = prViewModel,
+                    settingsViewModel = settingsViewModel
                 )
             }
         }
@@ -104,7 +109,8 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             historyViewModel: HistoryViewModel,
             programViewModel: ProgramViewModel,
             activeCycleViewModel: ActiveCycleViewModel,
-            prViewModel: PrViewModel
+            prViewModel: PrViewModel,
+            settingsViewModel: SettingsViewModel
 ) {
     val navController = rememberNavController()
     Scaffold(
@@ -119,6 +125,7 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             programViewModel = programViewModel,
             activeCycleViewModel = activeCycleViewModel,
             prViewModel = prViewModel,
+            settingsViewModel = settingsViewModel,
             modifier = Modifier.padding(innerPadding)
         )
     }
@@ -134,8 +141,11 @@ fun AppNavHost(
     programViewModel: ProgramViewModel,
     activeCycleViewModel: ActiveCycleViewModel,
     prViewModel: PrViewModel,
+    settingsViewModel: SettingsViewModel,
     modifier: Modifier = Modifier
 ) {
+    val weightUnit by settingsViewModel.weightUnit.collectAsStateWithLifecycle()
+
     NavHost(
         navController = navController,
         startDestination = Screen.Dashboard.route,
@@ -196,6 +206,7 @@ fun AppNavHost(
             WorkoutLoggerScreen(
                 templateId = templateId,
                 viewModel = loggerViewModel,
+                weightUnit = weightUnit,
                 onNavigateUp = { navController.navigateUp() }
             )
         }
@@ -226,6 +237,9 @@ fun AppNavHost(
                     navController.navigate(Screen.HistoryDetail.createRoute(workoutId))
                 }
             )
+        }
+        composable(Screen.Settings.route) {
+            SettingsScreen(viewModel = settingsViewModel)
         }
     }
 }
@@ -324,7 +338,7 @@ fun ActiveCycleDashboard(
         program?.weeks?.sortedBy { it.order }?.forEach { week ->
             item {
                 Text(week.weekLabel, style = MaterialTheme.typography.titleLarge)
-                Divider(modifier = Modifier.padding(vertical = 4.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
             }
             items(week.sessions.sortedBy { it.order }) { session ->
                 val isCompleted = activeCycle.completedSessions.containsKey("${week.id}_${session.id}")
@@ -558,10 +572,10 @@ fun HistoryDetailScreen(
                             // Display the header for the sets table
                             Row(modifier = Modifier.fillMaxWidth()) {
                                 Text("Set", modifier = Modifier.width(60.dp), style = MaterialTheme.typography.labelSmall)
-                                Text("Weight", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
+                                Text("Weight (${workout!!.performedWeightUnit ?: "kg"})", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
                                 Text("Reps", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
                             }
-                            Divider(modifier = Modifier.padding(vertical = 4.dp))
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                             // Display each logged set
                             exercise.sets.forEachIndexed { index, set ->
@@ -619,6 +633,15 @@ fun LibraryScreen(onNavigate: (String) -> Unit) {
             elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Text("Personal Records", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
+        }
+        // NEW BUTTON for Settings
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onNavigate(Screen.Settings.route) },
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Text("Settings", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
         }
 
     }
@@ -1006,6 +1029,7 @@ fun ManageTemplatesScreen(
 fun WorkoutLoggerScreen(
     templateId: String,
     viewModel: WorkoutLoggerViewModel,
+    weightUnit: String,
     onNavigateUp: () -> Unit
 ) {
     // LaunchedEffect runs a coroutine when the composable first appears.
@@ -1030,7 +1054,7 @@ fun WorkoutLoggerScreen(
                 },
                 actions = {
                     Button(onClick = {
-                        viewModel.finishWorkout()
+                        viewModel.finishWorkout(weightUnit)
                         onNavigateUp()
                     }) {
                         Text("Finish")
@@ -1074,6 +1098,7 @@ fun WorkoutLoggerScreen(
                                 LoggedSetRow(
                                     set = set,
                                     setNumber = index + 1,
+                                    weightUnit = weightUnit,
                                     onRepsChange = { newReps ->
                                         viewModel.updateSet(exercise.id, set.id, newReps, set.weight?.toString() ?: "")
                                     },
@@ -1288,7 +1313,7 @@ fun PersonalRecordsScreen(
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(top = 8.dp)
                     )
-                    Divider()
+                    HorizontalDivider()
                 }
                 // List all the PRs for that exercise
                 items(prsForExercise) { pr ->
@@ -1308,7 +1333,7 @@ fun PersonalRecordsScreen(
                             Column {
                                 val prText = when (pr.type) {
                                     PRType.MAX_WEIGHT_FOR_REPS -> "${pr.reps} reps"
-                                    PRType.MAX_REPS_AT_WEIGHT -> "@ ${pr.weight} kg"
+                                    PRType.MAX_REPS_AT_WEIGHT -> "@ ${pr.weight} ${pr.weightUnit ?: "kg"}"
                                     PRType.DURATION -> "Max Duration"
                                 }
                                 Text(prText, style = MaterialTheme.typography.bodyLarge)
@@ -1318,7 +1343,7 @@ fun PersonalRecordsScreen(
                             }
 
                             val prValue = when (pr.type) {
-                                PRType.MAX_WEIGHT_FOR_REPS -> "${pr.weight} kg"
+                                PRType.MAX_WEIGHT_FOR_REPS -> "${pr.weight} ${pr.weightUnit ?: "kg"}"
                                 PRType.MAX_REPS_AT_WEIGHT -> "${pr.reps} reps"
                                 PRType.DURATION -> "${pr.durationSecs}s"
                             }
@@ -1334,6 +1359,38 @@ fun PersonalRecordsScreen(
         }
     }
 }
+
+
+@Composable
+fun SettingsScreen(viewModel: SettingsViewModel) {
+    val weightUnit by viewModel.weightUnit.collectAsStateWithLifecycle()
+    val options = listOf("kg", "lb")
+
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text("Settings", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Weight Unit", style = MaterialTheme.typography.bodyLarge)
+            SingleChoiceSegmentedButtonRow {
+                options.forEachIndexed { index, label ->
+                    SegmentedButton(
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                        onClick = { viewModel.setWeightUnit(label) },
+                        selected = weightUnit == label
+                    ) {
+                        Text(label)
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 fun TemplateExerciseSetRow(
@@ -1362,6 +1419,7 @@ fun TemplateExerciseSetRow(
 fun LoggedSetRow(
     set: LoggedSet,
     setNumber: Int,
+    weightUnit: String,
     onRepsChange: (String) -> Unit,
     onWeightChange: (String) -> Unit
 ) {
@@ -1379,7 +1437,7 @@ fun LoggedSetRow(
         OutlinedTextField(
             value = set.weight?.toString() ?: "",
             onValueChange = onWeightChange,
-            label = { Text("Weight") },
+            label = { Text("Weight ($weightUnit)") },
             modifier = Modifier.weight(1f)
         )
         // Text field for reps

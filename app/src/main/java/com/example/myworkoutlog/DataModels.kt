@@ -170,6 +170,7 @@ data class LoggedWorkout(
     val overallComments: String? = null,
     val durationMinutes: Int? = null,
     val bodyweight: Double? = null,
+    val performedWeightUnit: String?,
     // We will store this list as a single JSON string
     val loggedExercises: List<LoggedExercise>,
     val workoutTemplateId: String? = null
@@ -230,7 +231,7 @@ data class PersonalRecord(
     val date: String,
     val loggedWorkoutId: String,
     val type: PRType,
-
+    val weightUnit: String?,
     // These values will be set depending on the PR type
     val reps: Int?,
     val weight: Double?,

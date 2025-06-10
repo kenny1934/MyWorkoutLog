@@ -6,4 +6,6 @@ import android.app.Application
 class WorkoutApplication : Application() {
     // 'lazy' means the database will only be created when it's first needed.
     val database by lazy { WorkoutDatabase.getDatabase(this) }
+    // Create a single instance of the settings repository for the whole app
+    val appSettingsRepository by lazy { AppSettingsRepository(this) }
 }
