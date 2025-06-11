@@ -41,6 +41,20 @@ class ExerciseViewModel(private val exerciseDao: ExerciseDao) : ViewModel() {
             exerciseDao.insert(newExercise)
         }
     }
+
+    // NEW function for updating
+    fun update(exercise: Exercise) {
+        viewModelScope.launch(Dispatchers.IO) {
+            exerciseDao.update(exercise)
+        }
+    }
+
+    // NEW function for deleting
+    fun delete(exercise: Exercise) {
+        viewModelScope.launch(Dispatchers.IO) {
+            exerciseDao.delete(exercise)
+        }
+    }
 }
 
 

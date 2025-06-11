@@ -1500,76 +1500,228 @@ fun LoggedSetRow(
     }
 }
 
+
+
 @Composable
 fun ManageExercisesScreen(viewModel: ExerciseViewModel) {
     val exercises by viewModel.allExercises.collectAsStateWithLifecycle()
+
+    // State for managing the dialogs
+    var showAddDialog by remember { mutableStateOf(false) }
+    var exerciseToEdit by remember { mutableStateOf<Exercise?>(null) }
+    var exerciseToDelete by remember { mutableStateOf<Exercise?>(null) }
+
+    // Scaffold provides the structure for the FloatingActionButton
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(onClick = { showAddDialog = true }) {
+                Icon(Icons.Filled.Add, contentDescription = "Add new exercise")
+            }
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .padding(paddingValues)
+                .padding(16.dp)
+        ) {
+            Text("Manage Exercises", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(exercises) { exercise ->
+                    ExerciseItem(
+                        exercise = exercise,
+                        onEditClick = { exerciseToEdit = exercise },
+                        onDeleteClick = { exerciseToDelete = exercise }
+                    )
+                }
+            }
+        }
+    }
+
+    // Show the Add dialog when showAddDialog is true
+    if (showAddDialog) {
+        AddExerciseDialog(
+            onDismiss = { showAddDialog = false },
+            onConfirm = { name, equipment, usesBodyweight ->
+                viewModel.insert(name, equipment, usesBodyweight)
+                showAddDialog = false
+            }
+        )
+    }
+
+    // Show the Edit dialog when exerciseToEdit is not null
+    if (exerciseToEdit != null) {
+        EditExerciseDialog(
+            exercise = exerciseToEdit!!,
+            onDismiss = { exerciseToEdit = null },
+            onConfirm = { updatedExercise ->
+                viewModel.update(updatedExercise)
+                exerciseToEdit = null
+            }
+        )
+    }
+
+    // Show the Delete confirmation dialog when exerciseToDelete is not null
+    if (exerciseToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { exerciseToDelete = null },
+            title = { Text("Delete Exercise") },
+            text = { Text("Are you sure you want to delete '${exerciseToDelete!!.name}'? This cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.delete(exerciseToDelete!!)
+                        exerciseToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { exerciseToDelete = null }) { Text("Cancel") }
+            }
+        )
+    }
+}
+
+
+
+@Composable
+fun AddExerciseDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String, String, Boolean) -> Unit
+) {
     var newExerciseName by remember { mutableStateOf("") }
     var newExerciseEquipment by remember { mutableStateOf("") }
     var newExerciseUsesBodyweight by remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text(text = "Manage Exercises", fontSize = 24.sp, modifier = Modifier.padding(bottom = 16.dp))
-        OutlinedTextField(
-            value = newExerciseName,
-            onValueChange = { newExerciseName = it },
-            label = { Text("Exercise Name") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(
-            value = newExerciseEquipment,
-            onValueChange = { newExerciseEquipment = it },
-            label = { Text("Equipment (e.g., DUMBBELL)") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth().clickable { newExerciseUsesBodyweight = !newExerciseUsesBodyweight },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("Exercise uses bodyweight in total load")
-            Switch(checked = newExerciseUsesBodyweight, onCheckedChange = { newExerciseUsesBodyweight = it })
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(
-            onClick = {
-                if (newExerciseName.isNotBlank()) {
-                    // Pass the new boolean to the ViewModel
-                    viewModel.insert(newExerciseName, newExerciseEquipment, newExerciseUsesBodyweight)
-                    // Reset states
-                    newExerciseName = ""
-                    newExerciseEquipment = ""
-                    newExerciseUsesBodyweight = false
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add New Exercise") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = newExerciseName,
+                    onValueChange = { newExerciseName = it },
+                    label = { Text("Exercise Name") }
+                )
+                OutlinedTextField(
+                    value = newExerciseEquipment,
+                    onValueChange = { newExerciseEquipment = it },
+                    label = { Text("Equipment (e.g., DUMBBELL)") }
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Uses Bodyweight")
+                    Switch(checked = newExerciseUsesBodyweight, onCheckedChange = { newExerciseUsesBodyweight = it })
                 }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) { Text("Add Exercise") }
-        Spacer(modifier = Modifier.height(24.dp))
-        LazyColumn {
-            items(exercises) { exercise ->
-                ExerciseItem(exercise = exercise)
             }
+        },
+        confirmButton = {
+            Button(onClick = {
+                if (newExerciseName.isNotBlank()) {
+                    onConfirm(newExerciseName, newExerciseEquipment, newExerciseUsesBodyweight)
+                }
+            }) { Text("Create") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
-    }
+    )
 }
 
+
 @Composable
-fun ExerciseItem(exercise: Exercise) {
+fun EditExerciseDialog(
+    exercise: Exercise,
+    onDismiss: () -> Unit,
+    onConfirm: (Exercise) -> Unit
+) {
+    var editedName by remember { mutableStateOf(exercise.name) }
+    var editedEquipment by remember { mutableStateOf(exercise.equipment.joinToString()) }
+    var editedUsesBodyweight by remember { mutableStateOf(exercise.usesBodyweight) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Exercise") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = editedName,
+                    onValueChange = { editedName = it },
+                    label = { Text("Exercise Name") }
+                )
+                OutlinedTextField(
+                    value = editedEquipment,
+                    onValueChange = { editedEquipment = it },
+                    label = { Text("Equipment (e.g., DUMBBELL)") }
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Uses Bodyweight")
+                    Switch(checked = editedUsesBodyweight, onCheckedChange = { editedUsesBodyweight = it })
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val updatedExercise = exercise.copy(
+                    name = editedName,
+                    equipment = try { listOf(Equipment.valueOf(editedEquipment.uppercase().trim())) } catch (e: Exception) { exercise.equipment },
+                    usesBodyweight = editedUsesBodyweight
+                )
+                onConfirm(updatedExercise)
+            }) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+
+@Composable
+fun ExerciseItem(
+    exercise: Exercise,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = exercise.name, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Text(
-                text = "Equipment: ${exercise.equipment.joinToString()}",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        Row(
+            modifier = Modifier.padding(start = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f).padding(vertical = 8.dp)
+            ) {
+                Text(text = exercise.name, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = "Equipment: ${exercise.equipment.joinToString()}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                if (exercise.usesBodyweight) {
+                    Text(
+                        text = "Uses bodyweight",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontStyle = FontStyle.Italic
+                    )
+                }
+            }
+            IconButton(onClick = onEditClick) {
+                Icon(Icons.Filled.Edit, contentDescription = "Edit Exercise")
+            }
+            IconButton(onClick = onDeleteClick) {
+                Icon(Icons.Filled.Delete, contentDescription = "Delete Exercise")
+            }
         }
     }
 }

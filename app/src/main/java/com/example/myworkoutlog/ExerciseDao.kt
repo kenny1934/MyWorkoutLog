@@ -1,9 +1,11 @@
 package com.example.myworkoutlog // Your package name
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 // @Dao marks this as a Data Access Object
@@ -25,4 +27,12 @@ interface ExerciseDao {
 
     @Query("SELECT * FROM exercise_table")
     fun getAllExercisesSnapshot(): List<Exercise> // Non-Flow version for one-time fetches
+
+    // NEW function to update an existing exercise
+    @Update
+    fun update(exercise: Exercise): Int
+
+    // NEW function to delete an exercise
+    @Delete
+    fun delete(exercise: Exercise): Int
 }
