@@ -142,7 +142,7 @@ class WorkoutLoggerViewModelFactory(
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(WorkoutLoggerViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return WorkoutLoggerViewModel(templateDao, loggedWorkoutDao, personalRecordDao) as T
+            return WorkoutLoggerViewModel(templateDao, loggedWorkoutDao, personalRecordDao, exerciseDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

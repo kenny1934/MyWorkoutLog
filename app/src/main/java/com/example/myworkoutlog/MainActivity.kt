@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -1332,21 +1333,21 @@ fun PersonalRecordsScreen(
 
                                 // Display each PR type in its own row with an icon
                                 if (weightPRs.isNotEmpty()) {
-                                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                                     PRCategoryRow(icon = Icons.Filled.FitnessCenter, title = "Best Weight for Reps")
                                     weightPRs.forEach { pr ->
                                         PRDetailRow(pr = pr, onNavigateToWorkout = onNavigateToWorkout)
                                     }
                                 }
                                 if (repsPRs.isNotEmpty()) {
-                                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                                     PRCategoryRow(icon = Icons.Filled.Repeat, title = "Best Reps at Weight")
                                     repsPRs.forEach { pr ->
                                         PRDetailRow(pr = pr, onNavigateToWorkout = onNavigateToWorkout)
                                     }
                                 }
                                 if (durationPRs.isNotEmpty()) {
-                                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                                     PRCategoryRow(icon = Icons.Filled.Timer, title = "Best Duration")
                                     durationPRs.forEach { pr ->
                                         PRDetailRow(pr = pr, onNavigateToWorkout = onNavigateToWorkout)
