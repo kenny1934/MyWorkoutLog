@@ -21,13 +21,14 @@ class ExerciseViewModel(private val exerciseDao: ExerciseDao) : ViewModel() {
         )
 
     // This function will be called from our UI to add a new exercise.
-    fun insert(exerciseName: String, equipmentString: String) {
+    fun insert(exerciseName: String, equipmentString: String, usesBodyweight: Boolean) {
         // viewModelScope.launch runs this code in a background coroutine
         // so we don't block the UI thread with database operations.
         viewModelScope.launch(Dispatchers.IO) {
             val newExercise = Exercise(
                 id = UUID.randomUUID().toString(),
                 name = exerciseName,
+                usesBodyweight = usesBodyweight,
                 // A simple, but not very robust, way to handle equipment for now.
                 // We'll improve this later.
                 equipment = try {

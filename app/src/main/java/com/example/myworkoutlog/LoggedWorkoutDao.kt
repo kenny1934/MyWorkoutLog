@@ -19,4 +19,8 @@ interface LoggedWorkoutDao {
     // NEW function to get a single logged workout by its ID
     @Query("SELECT * FROM logged_workout_table WHERE id = :workoutId")
     fun getLoggedWorkoutById(workoutId: String): Flow<LoggedWorkout?>
+
+    // NEW: This query finds the single most recent workout that has a bodyweight recorded.
+    @Query("SELECT * FROM logged_workout_table WHERE bodyweight IS NOT NULL ORDER BY date DESC LIMIT 1")
+    fun getLatestLoggedWorkoutWithBodyweight(): LoggedWorkout?
 }

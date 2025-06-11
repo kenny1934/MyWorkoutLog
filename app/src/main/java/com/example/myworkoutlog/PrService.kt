@@ -10,14 +10,25 @@ object PrService {
     // and returns a list of new or updated PRs.
     fun detectNewPRs(
         workout: LoggedWorkout,
-        existingPRs: List<PersonalRecord>
+        existingPRs: List<PersonalRecord>,
+        allMasterExercises: List<Exercise>
     ): List<PersonalRecord> {
         val potentialPRs = mutableListOf<PersonalRecord>()
+        val userBodyweight = workout.bodyweight ?: 0.0
 
         workout.loggedExercises.forEach { loggedEx ->
+            val masterExercise = allMasterExercises.find { it.id == loggedEx.exerciseId }
+            val exerciseUsesBodyweight = masterExercise?.usesBodyweight ?: false
+
             loggedEx.sets.forEach { set ->
-                // Check for Max Weight for Reps PR
-                if (set.reps != null && set.weight != null && set.reps > 0 && set.weight > 0) {
+                if (set.reps != null && set.weight != null && set.reps > 0) {
+                    // Calculate the total effective weight
+                    val addedWeight = set.weight
+                    val totalEffectiveWeight = if (exerciseUsesBodyweight) {
+                        addedWeight + userBodyweight
+                    } else {
+                        addedWeight
+                    }
                     potentialPRs.add(
                         PersonalRecord(
                             id = "max_weight_for_reps_${loggedEx.exerciseId}_${set.reps}",
@@ -28,17 +39,14 @@ object PrService {
                             type = PRType.MAX_WEIGHT_FOR_REPS,
                             weightUnit = workout.performedWeightUnit,
                             reps = set.reps,
-                            weight = set.weight,
+                            weight = totalEffectiveWeight,
                             durationSecs = null
                         )
                     )
-                }
 
-                // Check for Max Reps at Weight PR
-                if (set.reps != null && set.weight != null && set.reps > 0 && set.weight > 0) {
                     potentialPRs.add(
                         PersonalRecord(
-                            id = "max_reps_at_weight_${loggedEx.exerciseId}_${set.weight}",
+                            id = "max_reps_at_weight_${loggedEx.exerciseId}_${totalEffectiveWeight}",
                             exerciseId = loggedEx.exerciseId,
                             exerciseName = loggedEx.exerciseName,
                             date = workout.date,
@@ -46,7 +54,7 @@ object PrService {
                             type = PRType.MAX_REPS_AT_WEIGHT,
                             weightUnit = workout.performedWeightUnit,
                             reps = set.reps,
-                            weight = set.weight,
+                            weight = totalEffectiveWeight,
                             durationSecs = null
                         )
                     )

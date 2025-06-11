@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -36,6 +37,7 @@ import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
 import com.patrykandpatrick.vico.core.entry.entryOf
 import com.patrykandpatrick.vico.core.axis.AxisPosition
 import com.patrykandpatrick.vico.core.axis.formatter.AxisValueFormatter
+import kotlin.math.roundToInt
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -55,7 +57,8 @@ class MainActivity : ComponentActivity() {
         WorkoutLoggerViewModelFactory(
             (application as WorkoutApplication).database.workoutTemplateDao(),
             (application as WorkoutApplication).database.loggedWorkoutDao(),
-            (application as WorkoutApplication).database.personalRecordDao()
+            (application as WorkoutApplication).database.personalRecordDao(),
+            (application as WorkoutApplication).database.exerciseDao()
         )
     }
 
@@ -1278,83 +1281,129 @@ fun TemplateDetailScreen(
     }
 }
 
+
+
 @Composable
 fun PersonalRecordsScreen(
     viewModel: PrViewModel,
     onNavigateToWorkout: (String) -> Unit
 ) {
-    val allPRs by viewModel.allPRs.collectAsStateWithLifecycle()
+    val searchText by viewModel.searchText.collectAsStateWithLifecycle()
+    val filteredPRs by viewModel.filteredPRs.collectAsStateWithLifecycle()
+    val prsByExercise = filteredPRs.groupBy { it.exerciseName }
 
-    // Group the PRs by exercise name for a clean, organized list
-    val prsByExercise = allPRs.groupBy { it.exerciseName }
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Text("Personal Records", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        }
+    Column(modifier = Modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = searchText,
+            onValueChange = viewModel::onSearchTextChanged,
+            label = { Text("Search Exercise...") },
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            singleLine = true,
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") }
+        )
 
         if (prsByExercise.isEmpty()) {
-            item {
-                Text(
-                    "No PRs recorded yet. Finish a workout to start tracking them!",
-                    modifier = Modifier.padding(top = 16.dp)
-                )
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("No PRs found.", style = MaterialTheme.typography.bodyLarge)
             }
         } else {
-            // Loop through each exercise that has PRs
-            prsByExercise.forEach { (exerciseName, prsForExercise) ->
-                item {
-                    Text(
-                        exerciseName,
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                    HorizontalDivider()
-                }
-                // List all the PRs for that exercise
-                items(prsForExercise) { pr ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onNavigateToWorkout(pr.loggedWorkoutId) }, // Make the whole card clickable
-                        elevation = CardDefaults.cardElevation(2.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+            LazyColumn(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                prsByExercise.forEach { (exerciseName, prsForExercise) ->
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            elevation = CardDefaults.cardElevation(2.dp)
                         ) {
-                            Column {
-                                val prText = when (pr.type) {
-                                    PRType.MAX_WEIGHT_FOR_REPS -> "${pr.reps} reps"
-                                    PRType.MAX_REPS_AT_WEIGHT -> "@ ${pr.weight} ${pr.weightUnit ?: "kg"}"
-                                    PRType.DURATION -> "Max Duration"
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    exerciseName,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                // Separate PRs by type for clarity
+                                val weightPRs = prsForExercise.filter { it.type == PRType.MAX_WEIGHT_FOR_REPS }.sortedBy { it.reps }
+                                val repsPRs = prsForExercise.filter { it.type == PRType.MAX_REPS_AT_WEIGHT }.sortedByDescending { it.weight }
+                                val durationPRs = prsForExercise.filter { it.type == PRType.DURATION }
+
+                                // Display each PR type in its own row with an icon
+                                if (weightPRs.isNotEmpty()) {
+                                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                    PRCategoryRow(icon = Icons.Filled.FitnessCenter, title = "Best Weight for Reps")
+                                    weightPRs.forEach { pr ->
+                                        PRDetailRow(pr = pr, onNavigateToWorkout = onNavigateToWorkout)
+                                    }
                                 }
-                                Text(prText, style = MaterialTheme.typography.bodyLarge)
-
-                                // NEW: Display the date of the PR
-                                Text(pr.date, style = MaterialTheme.typography.bodySmall)
+                                if (repsPRs.isNotEmpty()) {
+                                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                    PRCategoryRow(icon = Icons.Filled.Repeat, title = "Best Reps at Weight")
+                                    repsPRs.forEach { pr ->
+                                        PRDetailRow(pr = pr, onNavigateToWorkout = onNavigateToWorkout)
+                                    }
+                                }
+                                if (durationPRs.isNotEmpty()) {
+                                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                    PRCategoryRow(icon = Icons.Filled.Timer, title = "Best Duration")
+                                    durationPRs.forEach { pr ->
+                                        PRDetailRow(pr = pr, onNavigateToWorkout = onNavigateToWorkout)
+                                    }
+                                }
                             }
-
-                            val prValue = when (pr.type) {
-                                PRType.MAX_WEIGHT_FOR_REPS -> "${pr.weight} ${pr.weightUnit ?: "kg"}"
-                                PRType.MAX_REPS_AT_WEIGHT -> "${pr.reps} reps"
-                                PRType.DURATION -> "${pr.durationSecs}s"
-                            }
-                            Text(
-                                prValue,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+// NEW Helper Composable for Category Headers
+@Composable
+fun PRCategoryRow(icon: ImageVector, title: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Icon(imageVector = icon, contentDescription = title, tint = MaterialTheme.colorScheme.primary)
+        Text(text = title, style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+// NEW Helper Composable for PR Details
+@Composable
+fun PRDetailRow(pr: PersonalRecord, onNavigateToWorkout: (String) -> Unit) {
+    val weightUnit = pr.weightUnit ?: "kg"
+    val e1RM = if (pr.weight != null && pr.reps != null) {
+        StrengthAnalytics.calculateEpley1RM(pr.weight, pr.reps).roundToInt()
+    } else null
+
+    val prText = when (pr.type) {
+        PRType.MAX_WEIGHT_FOR_REPS -> "${pr.reps} reps"
+        PRType.MAX_REPS_AT_WEIGHT -> "@ ${pr.weight} $weightUnit"
+        PRType.DURATION -> "Max Duration"
+    }
+    val prValue = when (pr.type) {
+        PRType.MAX_WEIGHT_FOR_REPS -> "${pr.weight} $weightUnit"
+        PRType.MAX_REPS_AT_WEIGHT -> "${pr.reps} reps"
+        PRType.DURATION -> "${pr.durationSecs}s"
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onNavigateToWorkout(pr.loggedWorkoutId) }
+            .padding(top = 8.dp, bottom = 4.dp, start = 8.dp), // Indent PRs
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(prText, style = MaterialTheme.typography.bodyLarge)
+            Text(pr.date, style = MaterialTheme.typography.bodySmall, fontStyle = FontStyle.Italic)
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(prValue, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (e1RM != null && pr.type == PRType.MAX_WEIGHT_FOR_REPS) {
+                Text("e1RM: $e1RM $weightUnit", style = MaterialTheme.typography.bodySmall, fontStyle = FontStyle.Italic)
             }
         }
     }
@@ -1455,6 +1504,7 @@ fun ManageExercisesScreen(viewModel: ExerciseViewModel) {
     val exercises by viewModel.allExercises.collectAsStateWithLifecycle()
     var newExerciseName by remember { mutableStateOf("") }
     var newExerciseEquipment by remember { mutableStateOf("") }
+    var newExerciseUsesBodyweight by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.padding(16.dp)) {
         Text(text = "Manage Exercises", fontSize = 24.sp, modifier = Modifier.padding(bottom = 16.dp))
@@ -1472,18 +1522,29 @@ fun ManageExercisesScreen(viewModel: ExerciseViewModel) {
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable { newExerciseUsesBodyweight = !newExerciseUsesBodyweight },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Exercise uses bodyweight in total load")
+            Switch(checked = newExerciseUsesBodyweight, onCheckedChange = { newExerciseUsesBodyweight = it })
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = {
-                if (newExerciseName.isNotBlank() && newExerciseEquipment.isNotBlank()) {
-                    viewModel.insert(newExerciseName, newExerciseEquipment)
+                if (newExerciseName.isNotBlank()) {
+                    // Pass the new boolean to the ViewModel
+                    viewModel.insert(newExerciseName, newExerciseEquipment, newExerciseUsesBodyweight)
+                    // Reset states
                     newExerciseName = ""
                     newExerciseEquipment = ""
+                    newExerciseUsesBodyweight = false
                 }
             },
             modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Add Exercise")
-        }
+        ) { Text("Add Exercise") }
         Spacer(modifier = Modifier.height(24.dp))
         LazyColumn {
             items(exercises) { exercise ->

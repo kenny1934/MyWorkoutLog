@@ -16,7 +16,8 @@ import java.util.*
 class WorkoutLoggerViewModel(
     private val templateDao: WorkoutTemplateDao,
     private val loggedWorkoutDao: LoggedWorkoutDao,
-    private val personalRecordDao: PersonalRecordDao
+    private val personalRecordDao: PersonalRecordDao,
+    private val exerciseDao: ExerciseDao
 ) : ViewModel() {
 
     // A private mutable state flow to hold the in-progress workout
@@ -91,16 +92,30 @@ class WorkoutLoggerViewModel(
     // Saves the completed workout to the database
     fun finishWorkout(currentUnit: String) {
         activeWorkoutState.value?.let { workoutToSave ->
-            // Create a new copy of the workout that includes the unit
-            val finalWorkout = workoutToSave.copy(performedWeightUnit = currentUnit)
-
             viewModelScope.launch(Dispatchers.IO) {
-                loggedWorkoutDao.insert(finalWorkout) // Save the workout with the unit
+                var finalBodyweight = workoutToSave.bodyweight
+
+                // If the current session's bodyweight is null or zero...
+                if (finalBodyweight == null || finalBodyweight <= 0) {
+                    // ...try to find the last workout that had a bodyweight.
+                    val lastWorkoutWithBw = loggedWorkoutDao.getLatestLoggedWorkoutWithBodyweight()
+                    finalBodyweight = lastWorkoutWithBw?.bodyweight
+                }
+
+                // Create the final workout object to be saved, using the session's bodyweight
+                // or the fallback value we just found.
+                val finalWorkout = workoutToSave.copy(
+                    performedWeightUnit = currentUnit,
+                    bodyweight = finalBodyweight
+                )
+
+                loggedWorkoutDao.insert(finalWorkout)
 
                 val exerciseIds = finalWorkout.loggedExercises.map { it.exerciseId }
                 val existingPRs = exerciseIds.flatMap { personalRecordDao.getPRsForExercise(it) }
+                val allExercises = exerciseDao.getAllExercisesSnapshot()
                 // Pass the workout with the unit to the PR service
-                val newPRs = PrService.detectNewPRs(finalWorkout, existingPRs)
+                val newPRs = PrService.detectNewPRs(finalWorkout, existingPRs, allExercises)
                 newPRs.forEach { pr ->
                     personalRecordDao.upsert(pr)
                 }
@@ -121,7 +136,8 @@ class WorkoutLoggerViewModel(
 class WorkoutLoggerViewModelFactory(
     private val templateDao: WorkoutTemplateDao,
     private val loggedWorkoutDao: LoggedWorkoutDao,
-    private val personalRecordDao: PersonalRecordDao
+    private val personalRecordDao: PersonalRecordDao,
+    private val exerciseDao: ExerciseDao
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(WorkoutLoggerViewModel::class.java)) {

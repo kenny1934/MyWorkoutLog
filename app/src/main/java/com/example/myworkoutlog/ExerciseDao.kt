@@ -22,4 +22,7 @@ interface ExerciseDao {
     // database changes. Our UI will observe this Flow to stay up-to-date.
     @Query("SELECT * FROM exercise_table ORDER BY name ASC")
     fun getAllExercises(): Flow<List<Exercise>>
+
+    @Query("SELECT * FROM exercise_table")
+    fun getAllExercisesSnapshot(): List<Exercise> // Non-Flow version for one-time fetches
 }

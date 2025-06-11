@@ -107,6 +107,7 @@ data class Exercise(
     // @PrimaryKey tells Room that 'id' is the unique key for each row.
     @PrimaryKey val id: String,
     val name: String,
+    val usesBodyweight: Boolean = false,
     val targetMuscleGroups: List<MuscleGroup>,
     val equipment: List<Equipment>,
     val preferredRepRange: String? = null,
