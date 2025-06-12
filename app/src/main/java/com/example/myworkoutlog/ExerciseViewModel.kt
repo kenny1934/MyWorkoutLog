@@ -1,6 +1,7 @@
 package com.example.myworkoutlog // Your package name
 
 import androidx.lifecycle.*
+import com.example.myworkoutlog.MuscleGroup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +22,12 @@ class ExerciseViewModel(private val exerciseDao: ExerciseDao) : ViewModel() {
         )
 
     // This function will be called from our UI to add a new exercise.
-    fun insert(exerciseName: String, equipmentString: String, usesBodyweight: Boolean) {
+    fun insert(
+        exerciseName: String,
+        equipmentString: String,
+        usesBodyweight: Boolean,
+        muscleGroups: List<MuscleGroup> // New parameter
+    ) {
         // viewModelScope.launch runs this code in a background coroutine
         // so we don't block the UI thread with database operations.
         viewModelScope.launch(Dispatchers.IO) {
@@ -32,11 +38,12 @@ class ExerciseViewModel(private val exerciseDao: ExerciseDao) : ViewModel() {
                 // A simple, but not very robust, way to handle equipment for now.
                 // We'll improve this later.
                 equipment = try {
-                    listOf(Equipment.valueOf(equipmentString.uppercase().trim()))
-                } catch (e: IllegalArgumentException) {
+                    // This handles comma-separated equipment like "DUMBBELL, BANDS"
+                    equipmentString.split(",").map { Equipment.valueOf(it.trim().uppercase()) }
+                } catch (e: Exception) {
                     listOf(Equipment.OTHER)
                 },
-                targetMuscleGroups = listOf(MuscleGroup.OTHER)
+                targetMuscleGroups = muscleGroups
             )
             exerciseDao.insert(newExercise)
         }

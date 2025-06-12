@@ -5,10 +5,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
@@ -16,6 +18,7 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
@@ -1543,8 +1546,8 @@ fun ManageExercisesScreen(viewModel: ExerciseViewModel) {
     if (showAddDialog) {
         AddExerciseDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = { name, equipment, usesBodyweight ->
-                viewModel.insert(name, equipment, usesBodyweight)
+            onConfirm = { name, equipment, usesBodyweight, muscleGroups ->
+                viewModel.insert(name, equipment, usesBodyweight, muscleGroups)
                 showAddDialog = false
             }
         )
@@ -1589,11 +1592,25 @@ fun ManageExercisesScreen(viewModel: ExerciseViewModel) {
 @Composable
 fun AddExerciseDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String, Boolean) -> Unit
+    onConfirm: (String, String, Boolean, List<MuscleGroup>) -> Unit
 ) {
     var newExerciseName by remember { mutableStateOf("") }
     var newExerciseEquipment by remember { mutableStateOf("") }
     var newExerciseUsesBodyweight by remember { mutableStateOf(false) }
+    var selectedMuscleGroups by remember { mutableStateOf<List<MuscleGroup>>(emptyList()) }
+    var showMuscleGroupDialog by remember { mutableStateOf(false) }
+
+    if (showMuscleGroupDialog) {
+        MuscleGroupSelectionDialog(
+            allMuscleGroups = MuscleGroup.entries.toList(),
+            initialSelection = selectedMuscleGroups,
+            onDismiss = { showMuscleGroupDialog = false },
+            onConfirm = {
+                selectedMuscleGroups = it
+                showMuscleGroupDialog = false
+            }
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1618,12 +1635,16 @@ fun AddExerciseDialog(
                     Text("Uses Bodyweight")
                     Switch(checked = newExerciseUsesBodyweight, onCheckedChange = { newExerciseUsesBodyweight = it })
                 }
+                Text("Target Muscles: ${selectedMuscleGroups.joinToString { it.name }}")
+                Button(onClick = { showMuscleGroupDialog = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Select Muscle Groups")
+                }
             }
         },
         confirmButton = {
             Button(onClick = {
                 if (newExerciseName.isNotBlank()) {
-                    onConfirm(newExerciseName, newExerciseEquipment, newExerciseUsesBodyweight)
+                    onConfirm(newExerciseName, newExerciseEquipment, newExerciseUsesBodyweight, selectedMuscleGroups)
                 }
             }) { Text("Create") }
         },
@@ -1643,6 +1664,20 @@ fun EditExerciseDialog(
     var editedName by remember { mutableStateOf(exercise.name) }
     var editedEquipment by remember { mutableStateOf(exercise.equipment.joinToString()) }
     var editedUsesBodyweight by remember { mutableStateOf(exercise.usesBodyweight) }
+    var editedMuscleGroups by remember { mutableStateOf(exercise.targetMuscleGroups) }
+    var showMuscleGroupDialog by remember { mutableStateOf(false) }
+
+    if (showMuscleGroupDialog) {
+        MuscleGroupSelectionDialog(
+            allMuscleGroups = MuscleGroup.entries.toList(),
+            initialSelection = editedMuscleGroups,
+            onDismiss = { showMuscleGroupDialog = false },
+            onConfirm = {
+                editedMuscleGroups = it
+                showMuscleGroupDialog = false
+            }
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1667,6 +1702,10 @@ fun EditExerciseDialog(
                     Text("Uses Bodyweight")
                     Switch(checked = editedUsesBodyweight, onCheckedChange = { editedUsesBodyweight = it })
                 }
+                Text("Target Muscles: ${editedMuscleGroups.joinToString { it.name }}")
+                Button(onClick = { showMuscleGroupDialog = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Select Muscle Groups")
+                }
             }
         },
         confirmButton = {
@@ -1674,7 +1713,8 @@ fun EditExerciseDialog(
                 val updatedExercise = exercise.copy(
                     name = editedName,
                     equipment = try { listOf(Equipment.valueOf(editedEquipment.uppercase().trim())) } catch (e: Exception) { exercise.equipment },
-                    usesBodyweight = editedUsesBodyweight
+                    usesBodyweight = editedUsesBodyweight,
+                    targetMuscleGroups = editedMuscleGroups
                 )
                 onConfirm(updatedExercise)
             }) { Text("Save") }
@@ -1686,6 +1726,70 @@ fun EditExerciseDialog(
 }
 
 
+// In MainActivity.kt, add this new Composable function
+
+@Composable
+fun MuscleGroupSelectionDialog(
+    allMuscleGroups: List<MuscleGroup>,
+    initialSelection: List<MuscleGroup>,
+    onDismiss: () -> Unit,
+    onConfirm: (List<MuscleGroup>) -> Unit
+) {
+    var selectedMuscleGroups by remember { mutableStateOf(initialSelection.toSet()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Select Muscle Groups") },
+        text = {
+            LazyColumn {
+                items(allMuscleGroups) { muscleGroup ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val newSelection = selectedMuscleGroups.toMutableSet()
+                                if (selectedMuscleGroups.contains(muscleGroup)) {
+                                    newSelection.remove(muscleGroup)
+                                } else {
+                                    newSelection.add(muscleGroup)
+                                }
+                                selectedMuscleGroups = newSelection
+                            }
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Checkbox(
+                            checked = selectedMuscleGroups.contains(muscleGroup),
+                            onCheckedChange = { isChecked ->
+                                val newSelection = selectedMuscleGroups.toMutableSet()
+                                if (isChecked) {
+                                    newSelection.add(muscleGroup)
+                                } else {
+                                    newSelection.remove(muscleGroup)
+                                }
+                                selectedMuscleGroups = newSelection
+                            }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(muscleGroup.name.replace("_", " ").lowercase()
+                            .replaceFirstChar { it.titlecase() })
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(selectedMuscleGroups.toList()) }) {
+                Text("Confirm")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+
+@OptIn(ExperimentalLayoutApi::class) // Needed for FlowRow
 @Composable
 fun ExerciseItem(
     exercise: Exercise,
@@ -1696,31 +1800,43 @@ fun ExerciseItem(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(start = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(
-                modifier = Modifier.weight(1f).padding(vertical = 8.dp)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = exercise.name, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                // Exercise Name
                 Text(
-                    text = "Equipment: ${exercise.equipment.joinToString()}",
-                    style = MaterialTheme.typography.bodySmall
+                    text = exercise.name,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
                 )
-                if (exercise.usesBodyweight) {
-                    Text(
-                        text = "Uses bodyweight",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontStyle = FontStyle.Italic
-                    )
+                // Action Buttons
+                IconButton(onClick = onEditClick) {
+                    Icon(Icons.Filled.Edit, contentDescription = "Edit Exercise")
+                }
+                IconButton(onClick = onDeleteClick) {
+                    Icon(Icons.Filled.Delete, contentDescription = "Delete Exercise")
                 }
             }
-            IconButton(onClick = onEditClick) {
-                Icon(Icons.Filled.Edit, contentDescription = "Edit Exercise")
-            }
-            IconButton(onClick = onDeleteClick) {
-                Icon(Icons.Filled.Delete, contentDescription = "Delete Exercise")
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // NEW: Display Muscle Groups as wrapping tags
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                exercise.targetMuscleGroups.forEach { group ->
+                    Text(
+                        text = group.name.replace("_", " ").lowercase()
+                            .replaceFirstChar { it.titlecase() },
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.secondaryContainer)
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
             }
         }
     }
