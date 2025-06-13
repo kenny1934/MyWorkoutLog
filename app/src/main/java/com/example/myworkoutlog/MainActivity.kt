@@ -41,6 +41,7 @@ import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
 import com.patrykandpatrick.vico.core.entry.entryOf
 import com.patrykandpatrick.vico.core.axis.AxisPosition
 import com.patrykandpatrick.vico.core.axis.formatter.AxisValueFormatter
+import com.patrykandpatrick.vico.compose.chart.column.columnChart
 import kotlin.math.roundToInt
 import java.text.SimpleDateFormat
 import java.util.*
@@ -89,6 +90,13 @@ class MainActivity : ComponentActivity() {
         SettingsViewModelFactory((application as WorkoutApplication).appSettingsRepository)
     }
 
+    private val volumeViewModel: VolumeViewModel by viewModels {
+        VolumeViewModelFactory(
+            (application as WorkoutApplication).database.loggedWorkoutDao(),
+            (application as WorkoutApplication).database.exerciseDao()
+        )
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -102,7 +110,8 @@ class MainActivity : ComponentActivity() {
                     programViewModel = programViewModel,
                     activeCycleViewModel = activeCycleViewModel,
                     prViewModel = prViewModel,
-                    settingsViewModel = settingsViewModel
+                    settingsViewModel = settingsViewModel,
+                    volumeViewModel = volumeViewModel
                 )
             }
         }
@@ -117,7 +126,8 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             programViewModel: ProgramViewModel,
             activeCycleViewModel: ActiveCycleViewModel,
             prViewModel: PrViewModel,
-            settingsViewModel: SettingsViewModel
+            settingsViewModel: SettingsViewModel,
+            volumeViewModel: VolumeViewModel
 ) {
     val navController = rememberNavController()
     Scaffold(
@@ -133,6 +143,7 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             activeCycleViewModel = activeCycleViewModel,
             prViewModel = prViewModel,
             settingsViewModel = settingsViewModel,
+            volumeViewModel = volumeViewModel,
             modifier = Modifier.padding(innerPadding)
         )
     }
@@ -149,6 +160,7 @@ fun AppNavHost(
     activeCycleViewModel: ActiveCycleViewModel,
     prViewModel: PrViewModel,
     settingsViewModel: SettingsViewModel,
+    volumeViewModel: VolumeViewModel,
     modifier: Modifier = Modifier
 ) {
     val weightUnit by settingsViewModel.weightUnit.collectAsStateWithLifecycle()
@@ -247,6 +259,9 @@ fun AppNavHost(
         }
         composable(Screen.Settings.route) {
             SettingsScreen(viewModel = settingsViewModel)
+        }
+        composable(Screen.VolumeAnalysis.route) {
+            VolumeAnalysisScreen(viewModel = volumeViewModel)
         }
     }
 }
@@ -649,6 +664,14 @@ fun LibraryScreen(onNavigate: (String) -> Unit) {
             elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Text("Settings", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
+        }
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onNavigate(Screen.VolumeAnalysis.route) },
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Text("Volume Analysis", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
         }
 
     }
@@ -1837,6 +1860,49 @@ fun ExerciseItem(
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun VolumeAnalysisScreen(viewModel: VolumeViewModel) {
+    val weeklyVolume by viewModel.weeklyVolume.collectAsStateWithLifecycle()
+
+    // Vico chart setup
+    val chartEntryModelProducer = ChartEntryModelProducer()
+    val axisValueFormatter = AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, _ ->
+        // Use the map keys (MuscleGroup enums) as labels
+        weeklyVolume.keys.toList().getOrNull(value.toInt())?.name ?: ""
+    }
+
+    // Update the chart data whenever the volume map changes
+    LaunchedEffect(weeklyVolume) {
+        val entries = weeklyVolume.entries.mapIndexed { index, entry ->
+            entryOf(index.toFloat(), entry.value)
+        }
+        chartEntryModelProducer.setEntries(entries)
+    }
+
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text("Weekly Volume (Last 7 Days)", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (weeklyVolume.isEmpty()) {
+            Text("No workout data from the last 7 days to analyze.")
+        } else {
+            Card(elevation = CardDefaults.cardElevation(2.dp)) {
+                Chart(
+                    chart = columnChart(),
+                    chartModelProducer = chartModelProducer,
+                    startAxis = rememberStartAxis(title = "Total Sets"),
+                    bottomAxis = rememberBottomAxis(
+                        valueFormatter = axisValueFormatter,
+                        guideline = null
+                    ),
+                    modifier = Modifier.padding(16.dp).height(300.dp)
+                )
             }
         }
     }
