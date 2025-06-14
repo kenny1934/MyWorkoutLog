@@ -14,27 +14,33 @@ sealed class Screen(val route: String) {
         fun createRoute(templateId: String) = "template_detail/$templateId"
     }
 
-    // NEW: The route for the workout logger screen
-    data object WorkoutLogger : Screen("workout_logger/{templateId}") {
+    // The route for the workout logger screen
+    data object WorkoutLogger : Screen("workout_logger/{templateId}?cycleId={cycleId}&weekId={weekId}&sessionId={sessionId}") {
+        // This function is for starting an ad-hoc workout from a template
         fun createRoute(templateId: String) = "workout_logger/$templateId"
+
+        // This function is for starting a workout from a program cycle
+        fun createRoute(templateId: String, cycleId: String, weekId: String, sessionId: String): String {
+            return "workout_logger/$templateId?cycleId=$cycleId&weekId=$weekId&sessionId=$sessionId"
+        }
     }
 
     data object HistoryDetail : Screen("history_detail/{workoutId}") {
         fun createRoute(workoutId: String) = "history_detail/$workoutId"
     }
 
-    // NEW: The route for managing program blueprints
+    // The route for managing program blueprints
     data object ManagePrograms : Screen("manage_programs")
 
-    // NEW: Route for the program editor screen
+    // Route for the program editor screen
     data object ProgramEditor : Screen("program_editor/{programId}") {
         fun createRoute(programId: String) = "program_editor/$programId"
     }
 
-    // NEW: The route for viewing personal records
+    // The route for viewing personal records
     data object PersonalRecords : Screen("personal_records")
 
-    // NEW: The route for the settings screen
+    // The route for the settings screen
     data object Settings : Screen("settings")
 
     data object VolumeAnalysis : Screen("volume_analysis")

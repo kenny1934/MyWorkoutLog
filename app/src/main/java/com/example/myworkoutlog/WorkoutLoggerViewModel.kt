@@ -17,7 +17,8 @@ class WorkoutLoggerViewModel(
     private val templateDao: WorkoutTemplateDao,
     private val loggedWorkoutDao: LoggedWorkoutDao,
     private val personalRecordDao: PersonalRecordDao,
-    private val exerciseDao: ExerciseDao
+    private val exerciseDao: ExerciseDao,
+    private val activeCycleDao: ActiveCycleDao
 ) : ViewModel() {
 
     // A private mutable state flow to hold the in-progress workout
@@ -26,7 +27,12 @@ class WorkoutLoggerViewModel(
     val activeWorkoutState: StateFlow<LoggedWorkout?> = _activeWorkoutState.asStateFlow()
 
     // This function starts a new workout based on a template
-    fun startWorkoutFromTemplate(templateId: String) {
+    fun startWorkoutFromTemplate(
+        templateId: String,
+        cycleId: String?,
+        weekId: String?,
+        sessionId: String?
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
             templateDao.getTemplateById(templateId).collect { template ->
                 if (template != null) {
@@ -54,6 +60,10 @@ class WorkoutLoggerViewModel(
                         name = template.name,
                         date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
                         performedWeightUnit = null,
+                        bodyweight = null,
+                        activeProgramCycleId = cycleId, // Save the cycle context
+                        programWeekDefinitionId = weekId, // Save the week context
+                        programSessionDefinitionId = sessionId, // Save the session context
                         loggedExercises = loggedExercises,
                         workoutTemplateId = template.id
                     )
@@ -64,7 +74,7 @@ class WorkoutLoggerViewModel(
     }
 
     // Called when the user enters their performance for a set
-    fun updateSet(exerciseId: String, setId: String, reps: String, weight: String) {
+    fun updateSet(exerciseId: String, setId: String, reps: String, weight: Double?) {
         _activeWorkoutState.update { currentWorkout ->
             currentWorkout?.copy(
                 loggedExercises = currentWorkout.loggedExercises.map { exercise ->
@@ -74,7 +84,7 @@ class WorkoutLoggerViewModel(
                                 if (set.id == setId) {
                                     set.copy(
                                         reps = reps.toIntOrNull(),
-                                        weight = weight.toDoubleOrNull()
+                                        weight = weight
                                     )
                                 } else {
                                     set
@@ -90,7 +100,7 @@ class WorkoutLoggerViewModel(
     }
 
     // Saves the completed workout to the database
-    fun finishWorkout(currentUnit: String) {
+    fun finishWorkout(currentUnit: String, activeCycle: ActiveProgramCycle?) {
         activeWorkoutState.value?.let { workoutToSave ->
             viewModelScope.launch(Dispatchers.IO) {
                 var finalBodyweight = workoutToSave.bodyweight
@@ -110,6 +120,16 @@ class WorkoutLoggerViewModel(
                 )
 
                 loggedWorkoutDao.insert(finalWorkout)
+
+                //Update the Active Cycle if this workout was part of one
+                if (activeCycle != null && finalWorkout.programWeekDefinitionId != null && finalWorkout.programSessionDefinitionId != null) {
+                    val sessionKey = "${finalWorkout.programWeekDefinitionId}_${finalWorkout.programSessionDefinitionId}"
+                    val updatedCompletedSessions = activeCycle.completedSessions.toMutableMap()
+                    updatedCompletedSessions[sessionKey] = finalWorkout.id
+
+                    val updatedCycle = activeCycle.copy(completedSessions = updatedCompletedSessions)
+                    activeCycleDao.setActiveCycle(updatedCycle)
+                }
 
                 val exerciseIds = finalWorkout.loggedExercises.map { it.exerciseId }
                 val existingPRs = exerciseIds.flatMap { personalRecordDao.getPRsForExercise(it) }
@@ -137,12 +157,13 @@ class WorkoutLoggerViewModelFactory(
     private val templateDao: WorkoutTemplateDao,
     private val loggedWorkoutDao: LoggedWorkoutDao,
     private val personalRecordDao: PersonalRecordDao,
-    private val exerciseDao: ExerciseDao
+    private val exerciseDao: ExerciseDao,
+    private val activeCycleDao: ActiveCycleDao
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(WorkoutLoggerViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return WorkoutLoggerViewModel(templateDao, loggedWorkoutDao, personalRecordDao, exerciseDao) as T
+            return WorkoutLoggerViewModel(templateDao, loggedWorkoutDao, personalRecordDao, exerciseDao, activeCycleDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

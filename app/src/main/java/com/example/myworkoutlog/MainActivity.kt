@@ -23,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
@@ -75,7 +76,8 @@ class MainActivity : ComponentActivity() {
             (application as WorkoutApplication).database.workoutTemplateDao(),
             (application as WorkoutApplication).database.loggedWorkoutDao(),
             (application as WorkoutApplication).database.personalRecordDao(),
-            (application as WorkoutApplication).database.exerciseDao()
+            (application as WorkoutApplication).database.exerciseDao(),
+            (application as WorkoutApplication).database.activeCycleDao()
         )
     }
 
@@ -105,7 +107,9 @@ class MainActivity : ComponentActivity() {
     private val volumeViewModel: VolumeViewModel by viewModels {
         VolumeViewModelFactory(
             (application as WorkoutApplication).database.loggedWorkoutDao(),
-            (application as WorkoutApplication).database.exerciseDao()
+            (application as WorkoutApplication).database.exerciseDao(),
+            (application as WorkoutApplication).database.programTemplateDao(),
+            (application as WorkoutApplication).database.activeCycleDao()
         )
     }
 
@@ -187,7 +191,7 @@ fun AppNavHost(
                 historyViewModel = historyViewModel,
                 activeCycleViewModel = activeCycleViewModel,
                 programViewModel = programViewModel,
-                onNavigate = { route -> navController.navigate(route) }
+                navController = navController
             )
         }
         composable(Screen.History.route) {
@@ -234,9 +238,17 @@ fun AppNavHost(
         }
         composable(Screen.WorkoutLogger.route) { backStackEntry ->
             val templateId = backStackEntry.arguments?.getString("templateId") ?: ""
+            val cycleId = backStackEntry.arguments?.getString("cycleId")
+            val weekId = backStackEntry.arguments?.getString("weekId")
+            val sessionId = backStackEntry.arguments?.getString("sessionId")
+
             WorkoutLoggerScreen(
                 templateId = templateId,
+                cycleId = cycleId,
+                weekId = weekId,
+                sessionId = sessionId,
                 viewModel = loggerViewModel,
+                activeCycleViewModel = activeCycleViewModel,
                 weightUnit = weightUnit,
                 onNavigateUp = { navController.navigateUp() }
             )
@@ -325,20 +337,23 @@ fun AppBottomNavigationBar(navController: NavHostController) {
 fun DashboardScreen(
     historyViewModel: HistoryViewModel,
     activeCycleViewModel: ActiveCycleViewModel,
-    programViewModel: ProgramViewModel, // Needed for program details
-    onNavigate: (String) -> Unit
+    programViewModel: ProgramViewModel,
+    navController: NavHostController
 ) {
     val activeCycle by activeCycleViewModel.activeCycle.collectAsStateWithLifecycle()
 
     // Conditionally show the correct dashboard
     if (activeCycle == null) {
-        NoActiveCycleDashboard(historyViewModel = historyViewModel, onNavigate = onNavigate)
+        NoActiveCycleDashboard(
+            historyViewModel = historyViewModel,
+            onNavigate = { route -> navController.navigate(route) }
+        )
     } else {
         ActiveCycleDashboard(
             activeCycle = activeCycle!!,
             programViewModel = programViewModel,
             activeCycleViewModel = activeCycleViewModel,
-            onNavigate = onNavigate
+            navController = navController
         )
     }
 }
@@ -349,7 +364,7 @@ fun ActiveCycleDashboard(
     activeCycle: ActiveProgramCycle,
     programViewModel: ProgramViewModel,
     activeCycleViewModel: ActiveCycleViewModel,
-    onNavigate: (String) -> Unit
+    navController: NavHostController
 ) {
     // Get the details of the program blueprint for our active cycle
     val program by programViewModel.getProgramById(activeCycle.programTemplateId).collectAsState(initial = null)
@@ -375,19 +390,34 @@ fun ActiveCycleDashboard(
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
             }
             items(week.sessions.sortedBy { it.order }) { session ->
-                val isCompleted = activeCycle.completedSessions.containsKey("${week.id}_${session.id}")
+                val sessionKey = "${week.id}_${session.id}"
+                val isCompleted = activeCycle.completedSessions.containsKey(sessionKey)
+                val workoutId = activeCycle.completedSessions[sessionKey]
+
                 Card(elevation = CardDefaults.cardElevation(2.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(session.sessionName, modifier = Modifier.weight(1f))
-                        if (isCompleted) {
-                            Icon(Icons.Filled.CheckCircle, contentDescription = "Completed", tint = MaterialTheme.colorScheme.primary)
+                        if (isCompleted && workoutId != null) {
+                            Button(
+                                onClick = {
+                                    navController.navigate(Screen.HistoryDetail.createRoute(workoutId))
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary
+                                )
+                            ) { Text("View") }
                         } else {
                             Button(onClick = {
-                                val route = Screen.WorkoutLogger.createRoute(session.workoutTemplateId)
-                                onNavigate(route)
+                                val route = Screen.WorkoutLogger.createRoute(
+                                    templateId = session.workoutTemplateId,
+                                    cycleId = activeCycle.id.toString(),
+                                    weekId = week.id,
+                                    sessionId = session.id
+                                )
+                                navController.navigate(route)
                             }) {
                                 Text("Start")
                             }
@@ -1068,20 +1098,28 @@ fun ManageTemplatesScreen(
 @Composable
 fun WorkoutLoggerScreen(
     templateId: String,
+    cycleId: String?,
+    weekId: String?,
+    sessionId: String?,
     viewModel: WorkoutLoggerViewModel,
+    activeCycleViewModel: ActiveCycleViewModel,
     weightUnit: String,
     onNavigateUp: () -> Unit
 ) {
+    // Local state for the bodyweight text field
+    var bodyweightText by remember { mutableStateOf("") }
+
     // LaunchedEffect runs a coroutine when the composable first appears.
     // We use it to tell the ViewModel to load our template.
     // The 'key1 = templateId' means it will only re-run if the templateId changes.
     LaunchedEffect(key1 = templateId) {
-        viewModel.startWorkoutFromTemplate(templateId)
+        viewModel.startWorkoutFromTemplate(templateId, cycleId, weekId, sessionId)
     }
 
     // Collect the active workout state from the ViewModel.
     // The UI will automatically recompose whenever this state changes.
     val activeWorkout by viewModel.activeWorkoutState.collectAsStateWithLifecycle()
+    val activeCycle by activeCycleViewModel.activeCycle.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -1094,7 +1132,7 @@ fun WorkoutLoggerScreen(
                 },
                 actions = {
                     Button(onClick = {
-                        viewModel.finishWorkout(weightUnit)
+                        viewModel.finishWorkout(weightUnit, activeCycle)
                         onNavigateUp()
                     }) {
                         Text("Finish")
@@ -1119,12 +1157,20 @@ fun WorkoutLoggerScreen(
                 // NEW: Add a bodyweight input field as the first item in the list
                 item {
                     OutlinedTextField(
-                        value = activeWorkout!!.bodyweight?.toString() ?: "",
-                        onValueChange = { newBw ->
-                            viewModel.updateBodyweight(newBw)
+                        value = bodyweightText,
+                        onValueChange = { newText ->
+                            if (newText.matches(Regex("^\\d*\\.?\\d*\$"))) {
+                                bodyweightText = newText
+                            }
                         },
-                        label = { Text("Bodyweight") },
-                        modifier = Modifier.fillMaxWidth()
+                        label = { Text("Bodyweight ($weightUnit)") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { focusState ->
+                                if (!focusState.isFocused) {
+                                    viewModel.updateBodyweight(bodyweightText)
+                                }
+                            }
                     )
                 }
                 items(activeWorkout!!.loggedExercises) { exercise ->
@@ -1140,7 +1186,7 @@ fun WorkoutLoggerScreen(
                                     setNumber = index + 1,
                                     weightUnit = weightUnit,
                                     onRepsChange = { newReps ->
-                                        viewModel.updateSet(exercise.id, set.id, newReps, set.weight?.toString() ?: "")
+                                        viewModel.updateSet(exercise.id, set.id, newReps, set.weight)
                                     },
                                     onWeightChange = { newWeight ->
                                         viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", newWeight)
@@ -1507,8 +1553,26 @@ fun LoggedSetRow(
     setNumber: Int,
     weightUnit: String,
     onRepsChange: (String) -> Unit,
-    onWeightChange: (String) -> Unit
+    onWeightChange: (Double?) -> Unit
 ) {
+    // This local state holds the text as the user types it.
+    var weightText by remember { mutableStateOf(set.weight?.toString() ?: "") }
+    var repsText by remember { mutableStateOf(set.reps?.toString() ?: "") }
+
+    // This ensures if the underlying data changes from elsewhere, our text fields update.
+    LaunchedEffect(set.weight) {
+        val currentWeightString = set.weight?.toString() ?: ""
+        if (weightText != currentWeightString) {
+            weightText = currentWeightString
+        }
+    }
+    LaunchedEffect(set.reps) {
+        val currentRepsString = set.reps?.toString() ?: ""
+        if (repsText != currentRepsString) {
+            repsText = currentRepsString
+        }
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -1521,17 +1585,40 @@ fun LoggedSetRow(
         )
         // Text field for weight
         OutlinedTextField(
-            value = set.weight?.toString() ?: "",
-            onValueChange = onWeightChange,
+            value = weightText,
+            // onValueChange now just updates the local text state
+            onValueChange = { newText ->
+                // Allow only digits and one decimal point
+                if (newText.matches(Regex("^\\d*\\.?\\d*\$"))) {
+                    weightText = newText
+                }
+            },
             label = { Text("Weight ($weightUnit)") },
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                // This is the magic: when you tap away, it saves the value.
+                .onFocusChanged { focusState ->
+                    if (!focusState.isFocused) {
+                        onWeightChange(weightText.toDoubleOrNull())
+                    }
+                }
         )
         // Text field for reps
         OutlinedTextField(
-            value = set.reps?.toString() ?: "",
-            onValueChange = onRepsChange,
+            value = repsText,
+            onValueChange = { newText ->
+                if (newText.all { it.isDigit() }) {
+                    repsText = newText
+                }
+            },
             label = { Text("Reps") },
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .onFocusChanged { focusState ->
+                    if (!focusState.isFocused) {
+                        onRepsChange(repsText)
+                    }
+                }
         )
     }
 }
@@ -1877,15 +1964,24 @@ fun ExerciseItem(
 
 
 
-// In MainActivity.kt, replace the VolumeAnalysisScreen function
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun VolumeAnalysisScreen(viewModel: VolumeViewModel) {
-    val weeklyVolume by viewModel.volumeData.collectAsStateWithLifecycle()
-    val selectedTimeframe by viewModel.selectedTimeframe.collectAsStateWithLifecycle()
+    val volumeData by viewModel.volumeData.collectAsStateWithLifecycle()
+    val weeksInCycle by viewModel.weeksInActiveCycle.collectAsStateWithLifecycle()
+    val selectedWeek by viewModel.selectedWeek.collectAsStateWithLifecycle()
 
-    val sortedVolumeList = weeklyVolume.entries.toList().sortedByDescending { it.value }
+    var isDropdownExpanded by remember { mutableStateOf(false) }
+
+    // Automatically select the first week when the screen loads
+    LaunchedEffect(weeksInCycle) {
+        if (selectedWeek == null) {
+            viewModel.onWeekSelected(weeksInCycle.firstOrNull())
+        }
+    }
+
+    val sortedVolumeList = volumeData.entries.toList().sortedByDescending { it.value }
 
     val chartModelProducer = remember { ChartEntryModelProducer() }
     val chartScrollState = rememberChartScrollState()
@@ -1917,22 +2013,37 @@ fun VolumeAnalysisScreen(viewModel: VolumeViewModel) {
         Text("Volume Analysis", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
 
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        // NEW: Dropdown menu for selecting a training week
+        ExposedDropdownMenuBox(
+            expanded = isDropdownExpanded,
+            onExpandedChange = { isDropdownExpanded = !isDropdownExpanded }
         ) {
-            VolumeTimeframe.entries.forEach { timeframe ->
-                FilterChip(
-                    selected = selectedTimeframe == timeframe,
-                    onClick = { viewModel.onTimeframeSelected(timeframe) },
-                    label = { Text(timeframe.displayName) }
-                )
+            OutlinedTextField(
+                value = selectedWeek?.weekLabel ?: "Select a Week",
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDropdownExpanded) },
+                modifier = Modifier.menuAnchor().fillMaxWidth()
+            )
+            ExposedDropdownMenu(
+                expanded = isDropdownExpanded,
+                onDismissRequest = { isDropdownExpanded = false }
+            ) {
+                weeksInCycle.forEach { week ->
+                    DropdownMenuItem(
+                        text = { Text(week.weekLabel) },
+                        onClick = {
+                            viewModel.onWeekSelected(week)
+                            isDropdownExpanded = false
+                        }
+                    )
+                }
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (weeklyVolume.isEmpty()) {
-            Text("No workout data from the selected timeframe to analyze.")
+        if (volumeData.isEmpty()) {
+            Text("No workout data for the selected week to analyze.")
         } else {
             Card(elevation = CardDefaults.cardElevation(2.dp)) {
                 Column(
@@ -1964,7 +2075,7 @@ fun VolumeAnalysisScreen(viewModel: VolumeViewModel) {
                         chartScrollState = chartScrollState,
                         isZoomEnabled = false
                     )
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                     Text("Details", style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.height(8.dp))
 

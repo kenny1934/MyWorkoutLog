@@ -10,12 +10,11 @@ import com.google.gson.reflect.TypeToken
 // --- Enums are the same as before ---
 enum class MuscleGroup {
     CHEST, BACK, SHOULDERS, BICEPS, TRICEPS, QUADS, HAMSTRINGS, GLUTES,
-    CALVES, ABS, FOREARMS, TRAPS, LATS, FULL_BODY, UPPER_BODY,
-    LOWER_BODY, PUSH, PULL, LEGS, CORE, SKILL_STATIC, SKILL_DYNAMIC, OTHER
+    CALVES, ABS, FOREARMS, TRAPS, LATS, OTHER
 }
 
 enum class Equipment {
-    BARBELL, DUMBBELL, KETTLEBELL, MACHINE, CABLE, BANDS, BODYWEIGHT, RINGS, TRX, OTHER
+    BARBELL, DUMBBELL, KETTLEBELL, MACHINE, CABLE, BANDS, RINGS, PARALLETTES, OTHER
 }
 
 // --- Type Converters ---
@@ -172,7 +171,11 @@ data class LoggedWorkout(
     val durationMinutes: Int? = null,
     val bodyweight: Double? = null,
     val performedWeightUnit: String?,
-    // We will store this list as a single JSON string
+
+    val activeProgramCycleId: String? = null,
+    val programWeekDefinitionId: String? = null,
+    val programSessionDefinitionId: String? = null,
+
     val loggedExercises: List<LoggedExercise>,
     val workoutTemplateId: String? = null
 )
