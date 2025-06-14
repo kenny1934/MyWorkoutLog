@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.FilterChip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
@@ -19,6 +22,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
@@ -39,9 +43,17 @@ import com.patrykandpatrick.vico.compose.chart.Chart
 import com.patrykandpatrick.vico.compose.chart.line.lineChart
 import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
 import com.patrykandpatrick.vico.core.entry.entryOf
+import com.patrykandpatrick.vico.core.axis.Axis
+import com.patrykandpatrick.vico.core.axis.vertical.VerticalAxis
 import com.patrykandpatrick.vico.core.axis.AxisPosition
 import com.patrykandpatrick.vico.core.axis.formatter.AxisValueFormatter
 import com.patrykandpatrick.vico.compose.chart.column.columnChart
+import com.patrykandpatrick.vico.compose.chart.scroll.rememberChartScrollState
+import com.patrykandpatrick.vico.compose.component.shape.shader.verticalGradient
+import com.patrykandpatrick.vico.compose.component.lineComponent
+import com.patrykandpatrick.vico.core.component.text.TextComponent
+import com.patrykandpatrick.vico.core.component.shape.Shapes
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import kotlin.math.roundToInt
 import java.text.SimpleDateFormat
 import java.util.*
@@ -656,15 +668,6 @@ fun LibraryScreen(onNavigate: (String) -> Unit) {
         ) {
             Text("Personal Records", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
         }
-        // NEW BUTTON for Settings
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onNavigate(Screen.Settings.route) },
-            elevation = CardDefaults.cardElevation(2.dp)
-        ) {
-            Text("Settings", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
-        }
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -673,7 +676,14 @@ fun LibraryScreen(onNavigate: (String) -> Unit) {
         ) {
             Text("Volume Analysis", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
         }
-
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onNavigate(Screen.Settings.route) },
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Text("Settings", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
+        }
     }
 }
 
@@ -1866,43 +1876,115 @@ fun ExerciseItem(
 }
 
 
+
+// In MainActivity.kt, replace the VolumeAnalysisScreen function
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun VolumeAnalysisScreen(viewModel: VolumeViewModel) {
-    val weeklyVolume by viewModel.weeklyVolume.collectAsStateWithLifecycle()
+    val weeklyVolume by viewModel.volumeData.collectAsStateWithLifecycle()
+    val selectedTimeframe by viewModel.selectedTimeframe.collectAsStateWithLifecycle()
 
-    // Vico chart setup
-    val chartEntryModelProducer = ChartEntryModelProducer()
-    val axisValueFormatter = AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, _ ->
-        // Use the map keys (MuscleGroup enums) as labels
-        weeklyVolume.keys.toList().getOrNull(value.toInt())?.name ?: ""
+    val sortedVolumeList = weeklyVolume.entries.toList().sortedByDescending { it.value }
+
+    val chartModelProducer = remember { ChartEntryModelProducer() }
+    val chartScrollState = rememberChartScrollState()
+
+    val bottomAxisValueFormatter = AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, _ ->
+        sortedVolumeList.getOrNull(value.toInt())?.key?.name
+            ?.replace("_", " ")?.lowercase()
+            ?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+            ?: ""
     }
 
-    // Update the chart data whenever the volume map changes
-    LaunchedEffect(weeklyVolume) {
-        val entries = weeklyVolume.entries.mapIndexed { index, entry ->
+    val startAxisValueFormatter = AxisValueFormatter<AxisPosition.Vertical.Start> { value, _ ->
+        // Only display a label if the value is a whole number
+        if (value % 1 == 0f) {
+            value.toInt().toString()
+        } else {
+            "" // Return an empty string for decimal values
+        }
+    }
+
+    LaunchedEffect(sortedVolumeList) {
+        val entries = sortedVolumeList.mapIndexed { index, entry ->
             entryOf(index.toFloat(), entry.value)
         }
-        chartEntryModelProducer.setEntries(entries)
+        chartModelProducer.setEntries(entries)
     }
 
     Column(modifier = Modifier.padding(16.dp)) {
-        Text("Weekly Volume (Last 7 Days)", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text("Volume Analysis", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            VolumeTimeframe.entries.forEach { timeframe ->
+                FilterChip(
+                    selected = selectedTimeframe == timeframe,
+                    onClick = { viewModel.onTimeframeSelected(timeframe) },
+                    label = { Text(timeframe.displayName) }
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(16.dp))
 
         if (weeklyVolume.isEmpty()) {
-            Text("No workout data from the last 7 days to analyze.")
+            Text("No workout data from the selected timeframe to analyze.")
         } else {
             Card(elevation = CardDefaults.cardElevation(2.dp)) {
-                Chart(
-                    chart = columnChart(),
-                    chartModelProducer = chartModelProducer,
-                    startAxis = rememberStartAxis(title = "Total Sets"),
-                    bottomAxis = rememberBottomAxis(
-                        valueFormatter = axisValueFormatter,
-                        guideline = null
-                    ),
-                    modifier = Modifier.padding(16.dp).height(300.dp)
-                )
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Chart(
+                        chart = columnChart(
+                            columns = listOf(
+                                lineComponent(
+                                    color = MaterialTheme.colorScheme.primary,
+                                    thickness = 12.dp,
+                                    dynamicShader = verticalGradient(
+                                        arrayOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary),
+                                    )
+                                )
+                            ),
+                            spacing = 16.dp
+                        ),
+                        chartModelProducer = chartModelProducer,
+                        startAxis = rememberStartAxis(
+                            title = "Total Sets",
+                            valueFormatter = startAxisValueFormatter
+                        ),
+                        bottomAxis = rememberBottomAxis(
+                            valueFormatter = bottomAxisValueFormatter,
+                            guideline = null
+                        ),
+                        modifier = Modifier.height(300.dp),
+                        chartScrollState = chartScrollState,
+                        isZoomEnabled = false
+                    )
+                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    Text("Details", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
+                        items(sortedVolumeList) { (muscleGroup, setCount) ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    muscleGroup.name.replace("_", " ").lowercase()
+                                        .replaceFirstChar { it.titlecase() },
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                Text("$setCount sets", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+                    }
+                }
             }
         }
     }
