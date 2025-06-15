@@ -168,7 +168,8 @@ data class LoggedWorkout(
     val date: String,
     val name: String? = null,
     val overallComments: String? = null,
-    val durationMinutes: Int? = null,
+    val startTimestamp: Long?,
+    val endTimestamp: Long?,
     val bodyweight: Double? = null,
     val performedWeightUnit: String?,
 

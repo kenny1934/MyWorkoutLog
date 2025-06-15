@@ -31,34 +31,30 @@ class WorkoutLoggerViewModel(
     // A public, read-only state flow for the UI to observe
     val activeWorkoutState: StateFlow<LoggedWorkout?> = _activeWorkoutState.asStateFlow()
 
-    // --- NEW: Session Stopwatch State ---
-    private var sessionStopwatchJob: Job? = null
-    private val _sessionTimeSeconds = MutableStateFlow(0)
-    val sessionTimeSeconds: StateFlow<Int> = _sessionTimeSeconds.asStateFlow()
+    // --- REFACTORED TIMER/STOPWATCH LOGIC ---
+    private var workoutStartTimeMillis: Long = 0L
+
+    // This flow now calculates the elapsed time based on the start time
+    val sessionElapsedTime: StateFlow<Int> = flow {
+        while (true) {
+            if (workoutStartTimeMillis > 0) {
+                val elapsed = (System.currentTimeMillis() - workoutStartTimeMillis) / 1000
+                emit(elapsed.toInt())
+            } else {
+                emit(0)
+            }
+            delay(1000)
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     // --- UPDATED: Rest Timer State ---
     private var restTimerJob: Job? = null
     private val _timerValueSeconds = MutableStateFlow(0)
     val timerValueSeconds: StateFlow<Int> = _timerValueSeconds.asStateFlow()
-
     private val _timerIsRunning = MutableStateFlow(false)
     val timerIsRunning: StateFlow<Boolean> = _timerIsRunning.asStateFlow()
 
     // --- TIMER AND STOPWATCH CONTROLS ---
-
-    private fun startSessionStopwatch() {
-        sessionStopwatchJob?.cancel() // Ensure no previous job is running
-        sessionStopwatchJob = viewModelScope.launch {
-            while (true) {
-                delay(1000)
-                _sessionTimeSeconds.value++
-            }
-        }
-    }
-
-    fun stopSessionStopwatch() {
-        sessionStopwatchJob?.cancel()
-    }
 
     fun startRestTimer(durationSeconds: Int = 90) {
         restTimerJob?.cancel()
@@ -122,9 +118,8 @@ class WorkoutLoggerViewModel(
     ) {
         // When starting a new workout, ensure any old timer is stopped.
         stopRestTimer()
-        _sessionTimeSeconds.value = 0
-        startSessionStopwatch()
-        _timerValueSeconds.value = 0
+        workoutStartTimeMillis = System.currentTimeMillis()
+
         viewModelScope.launch(Dispatchers.IO) {
             templateDao.getTemplateById(templateId).collect { template ->
                 if (template != null) {
@@ -151,6 +146,8 @@ class WorkoutLoggerViewModel(
                         id = UUID.randomUUID().toString(),
                         name = template.name,
                         date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
+                        startTimestamp = workoutStartTimeMillis, // Save start time
+                        endTimestamp = null, // End time is null for now
                         performedWeightUnit = null,
                         bodyweight = null,
                         activeProgramCycleId = cycleId, // Save the cycle context
@@ -193,9 +190,8 @@ class WorkoutLoggerViewModel(
 
     // Saves the completed workout to the database
     fun finishWorkout(currentUnit: String, activeCycle: ActiveProgramCycle?) {
-        // Stop both timers and include duration in the saved workout
         stopRestTimer()
-        stopSessionStopwatch()
+        val endTimeMillis = System.currentTimeMillis() // Record end time
 
         activeWorkoutState.value?.let { workoutToSave ->
             viewModelScope.launch(Dispatchers.IO) {
@@ -211,7 +207,7 @@ class WorkoutLoggerViewModel(
                 // Create the final workout object to be saved, using the session's bodyweight
                 // or the fallback value we just found.
                 val finalWorkout = workoutToSave.copy(
-                    durationMinutes = (_sessionTimeSeconds.value / 60.0).roundToInt(),
+                    endTimestamp = endTimeMillis,
                     performedWeightUnit = currentUnit,
                     bodyweight = finalBodyweight
                 )

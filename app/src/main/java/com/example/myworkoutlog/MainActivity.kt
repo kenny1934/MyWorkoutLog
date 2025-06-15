@@ -60,6 +60,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import kotlin.math.roundToInt
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 
 class MainActivity : ComponentActivity() {
@@ -554,10 +555,18 @@ fun NoActiveCycleDashboard(
     }
 }
 
+
+
+private fun calculateDurationMinutes(start: Long?, end: Long?): Long? {
+    if (start == null || end == null) return null
+    val diff = end - start
+    return TimeUnit.MILLISECONDS.toMinutes(diff)
+}
+
 @Composable
 fun HistoryScreen(
     viewModel: HistoryViewModel,
-    onNavigateToWorkout: (String) -> Unit // New parameter for navigation
+    onNavigateToWorkout: (String) -> Unit
 ) {
     val loggedWorkouts by viewModel.allLoggedWorkouts.collectAsStateWithLifecycle()
 
@@ -582,12 +591,33 @@ fun HistoryScreen(
                         Column(Modifier.padding(16.dp)) {
                             Text(workout.name ?: "Workout", fontWeight = FontWeight.Bold)
                             Text(workout.date, style = MaterialTheme.typography.bodySmall)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            // NEW: Show time details directly in the list
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                val duration = calculateDurationMinutes(workout.startTimestamp, workout.endTimestamp)
+                                Text(
+                                    text = "Duration: ${duration?.let { "$it min" } ?: "--"}",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = workout.startTimestamp?.let { formatTimestampToTime(it) } ?: "",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     }
+}
+
+
+private fun formatTimestampToTime(timestamp: Long): String {
+    return SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(timestamp))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -611,7 +641,8 @@ fun HistoryDetailScreen(
             )
         }
     ) { paddingValues ->
-        if (workout == null) {
+        val currentWorkout = workout
+        if (currentWorkout == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
@@ -622,14 +653,58 @@ fun HistoryDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item {
-                    Text(workout!!.date, style = MaterialTheme.typography.headlineSmall)
-                    if (!workout!!.overallComments.isNullOrBlank()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(workout!!.overallComments!!, style = MaterialTheme.typography.bodyMedium)
+                    // Display the date prominently here
+                    Text(currentWorkout.date, style = MaterialTheme.typography.headlineSmall)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceAround
+                    ) {
+                        // Start Time
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Start Time", style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                text = currentWorkout.startTimestamp?.let { formatTimestampToTime(it) } ?: "--:--",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        // End Time
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("End Time", style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                text = currentWorkout.endTimestamp?.let { formatTimestampToTime(it) } ?: "--:--",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        // Duration
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Duration", style = MaterialTheme.typography.labelMedium)
+                            val durationMinutes = if (currentWorkout.startTimestamp != null && currentWorkout.endTimestamp != null) {
+                                val diff = currentWorkout.endTimestamp - currentWorkout.startTimestamp
+                                TimeUnit.MILLISECONDS.toMinutes(diff)
+                            } else null
+                            Text(
+                                text = durationMinutes?.let { "$it min" } ?: "- min",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(top = 16.dp))
+                }
+
+                // --- Overall Comments Section ---
+                if (!currentWorkout.overallComments.isNullOrBlank()) {
+                    item {
+                        Text("Notes:", style = MaterialTheme.typography.titleMedium)
+                        Text(currentWorkout.overallComments, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
 
-                items(workout!!.loggedExercises) { exercise ->
+                items(currentWorkout.loggedExercises) { exercise ->
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(exercise.exerciseName, fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -1126,7 +1201,7 @@ fun WorkoutLoggerScreen(
     // Get the timer state from the ViewModel
     val timerIsRunning by viewModel.timerIsRunning.collectAsStateWithLifecycle()
     val timerValue by viewModel.timerValueSeconds.collectAsStateWithLifecycle()
-    val sessionTime by viewModel.sessionTimeSeconds.collectAsStateWithLifecycle()
+    val sessionElapsedTime by viewModel.sessionElapsedTime.collectAsStateWithLifecycle()
 
 
     Scaffold(
@@ -1136,16 +1211,14 @@ fun WorkoutLoggerScreen(
                 navigationIcon = {
                     IconButton(onClick = {
                         viewModel.stopRestTimer()
-                        viewModel.stopSessionStopwatch()
                         onNavigateUp()
                     }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    // NEW: Display the session stopwatch
                     Text(
-                        text = formatTime(sessionTime),
+                        text = formatTime(sessionElapsedTime),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(end = 8.dp)
                     )
