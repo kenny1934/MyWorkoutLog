@@ -5,6 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -1121,16 +1123,32 @@ fun WorkoutLoggerScreen(
     val activeWorkout by viewModel.activeWorkoutState.collectAsStateWithLifecycle()
     val activeCycle by activeCycleViewModel.activeCycle.collectAsStateWithLifecycle()
 
+    // Get the timer state from the ViewModel
+    val timerIsRunning by viewModel.timerIsRunning.collectAsStateWithLifecycle()
+    val timerValue by viewModel.timerValueSeconds.collectAsStateWithLifecycle()
+    val sessionTime by viewModel.sessionTimeSeconds.collectAsStateWithLifecycle()
+
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(activeWorkout?.name ?: "Log Workout") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateUp) {
+                    IconButton(onClick = {
+                        viewModel.stopRestTimer()
+                        viewModel.stopSessionStopwatch()
+                        onNavigateUp()
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
+                    // NEW: Display the session stopwatch
+                    Text(
+                        text = formatTime(sessionTime),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
                     Button(onClick = {
                         viewModel.finishWorkout(weightUnit, activeCycle)
                         onNavigateUp()
@@ -1138,6 +1156,18 @@ fun WorkoutLoggerScreen(
                         Text("Finish")
                     }
                 }
+            )
+        },
+
+        bottomBar = {
+            TimerBar(
+                isRunning = timerIsRunning,
+                currentTime = timerValue,
+                onPause = { viewModel.pauseRestTimer() },
+                onResume = { viewModel.resumeRestTimer() },
+                onStop = { viewModel.stopRestTimer() },
+                onReset = { viewModel.resetRestTimer() },
+                onAddTime = { viewModel.addTimeToRestTimer(15) }
             )
         }
     ) { paddingValues ->
@@ -1190,7 +1220,9 @@ fun WorkoutLoggerScreen(
                                     },
                                     onWeightChange = { newWeight ->
                                         viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", newWeight)
-                                    }
+                                    },
+                                    // Pass the ViewModel function to the button
+                                    onStartRest = { viewModel.startRestTimer() }
                                 )
                             }
                         }
@@ -1553,7 +1585,8 @@ fun LoggedSetRow(
     setNumber: Int,
     weightUnit: String,
     onRepsChange: (String) -> Unit,
-    onWeightChange: (Double?) -> Unit
+    onWeightChange: (Double?) -> Unit,
+    onStartRest: () -> Unit
 ) {
     // This local state holds the text as the user types it.
     var weightText by remember { mutableStateOf(set.weight?.toString() ?: "") }
@@ -1620,6 +1653,14 @@ fun LoggedSetRow(
                     }
                 }
         )
+        if (set.reps != null && set.reps > 0) {
+            IconButton(onClick = onStartRest) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = "Start Rest Timer")
+            }
+        } else {
+            // Keep the layout consistent by adding a spacer
+            Spacer(modifier = Modifier.width(48.dp)) // Same width as an IconButton
+        }
     }
 }
 
@@ -2095,6 +2136,64 @@ fun VolumeAnalysisScreen(viewModel: VolumeViewModel) {
                             Spacer(modifier = Modifier.height(4.dp))
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+
+
+// A helper function to format seconds into MM:SS format
+private fun formatTime(seconds: Int): String {
+    val minutes = seconds / 60
+    val remainingSeconds = seconds % 60
+    return "%02d:%02d".format(minutes, remainingSeconds)
+}
+
+// The new UI component for the timer bar at the bottom of the screen
+@Composable
+fun TimerBar(
+    isRunning: Boolean,
+    currentTime: Int,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onStop: () -> Unit,
+    onReset: () -> Unit,
+    onAddTime: () -> Unit
+) {
+    AnimatedVisibility(visible = isRunning || currentTime > 0) {
+        BottomAppBar(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = formatTime(currentTime),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                // NEW: Dynamic Play/Pause Button
+                IconButton(onClick = { if (isRunning) onPause() else onResume() }) {
+                    Icon(
+                        imageVector = if (isRunning) Icons.Filled.PauseCircle else Icons.Filled.PlayArrow,
+                        contentDescription = if (isRunning) "Pause Timer" else "Resume Timer",
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+
+                Button(onClick = onAddTime) { Text("+15s") }
+
+                IconButton(onClick = onReset) {
+                    Icon(Icons.Filled.Replay, contentDescription = "Reset Timer")
+                }
+
+                IconButton(onClick = onStop) {
+                    Icon(Icons.Filled.Stop, contentDescription = "Stop Timer")
                 }
             }
         }
