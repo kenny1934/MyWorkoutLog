@@ -1289,10 +1289,13 @@ fun WorkoutLoggerScreen(
                                     setNumber = index + 1,
                                     weightUnit = weightUnit,
                                     onRepsChange = { newReps ->
-                                        viewModel.updateSet(exercise.id, set.id, newReps, set.weight)
+                                        viewModel.updateSet(exercise.id, set.id, newReps, set.weight, set.secs?.toString() ?: "")
                                     },
                                     onWeightChange = { newWeight ->
-                                        viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", newWeight)
+                                        viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", newWeight, set.secs?.toString() ?: "")
+                                    },
+                                    onSecsChange = { newSecs ->
+                                        viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, newSecs)
                                     },
                                     // Pass the ViewModel function to the button
                                     onStartRest = { viewModel.startRestTimer() }
@@ -1659,11 +1662,13 @@ fun LoggedSetRow(
     weightUnit: String,
     onRepsChange: (String) -> Unit,
     onWeightChange: (Double?) -> Unit,
+    onSecsChange: (String) -> Unit,
     onStartRest: () -> Unit
 ) {
     // This local state holds the text as the user types it.
     var weightText by remember { mutableStateOf(set.weight?.toString() ?: "") }
     var repsText by remember { mutableStateOf(set.reps?.toString() ?: "") }
+    var secsText by remember { mutableStateOf(set.secs?.toString() ?: "") }
 
     // This ensures if the underlying data changes from elsewhere, our text fields update.
     LaunchedEffect(set.weight) {
@@ -1676,6 +1681,12 @@ fun LoggedSetRow(
         val currentRepsString = set.reps?.toString() ?: ""
         if (repsText != currentRepsString) {
             repsText = currentRepsString
+        }
+    }
+    LaunchedEffect(set.secs) {
+        val currentSecsString = set.secs?.toString() ?: ""
+        if (secsText != currentSecsString) {
+            secsText = currentSecsString
         }
     }
 
@@ -1723,6 +1734,23 @@ fun LoggedSetRow(
                 .onFocusChanged { focusState ->
                     if (!focusState.isFocused) {
                         onRepsChange(repsText)
+                    }
+                }
+        )
+        OutlinedTextField(
+            value = secsText,
+            onValueChange = { newText ->
+                if (newText.all { it.isDigit() }) {
+                    secsText = newText
+                }
+            },
+            label = { Text("Secs") },
+            modifier = Modifier
+                .weight(1f)
+                .onFocusChanged { focusState ->
+                    if (!focusState.isFocused) {
+                        // Pass the new secs value up to the ViewModel
+                        onSecsChange(secsText)
                     }
                 }
         )

@@ -163,7 +163,7 @@ class WorkoutLoggerViewModel(
     }
 
     // Called when the user enters their performance for a set
-    fun updateSet(exerciseId: String, setId: String, reps: String, weight: Double?) {
+    fun updateSet(exerciseId: String, setId: String, reps: String, weight: Double?, secs: String) {
         _activeWorkoutState.update { currentWorkout ->
             currentWorkout?.copy(
                 loggedExercises = currentWorkout.loggedExercises.map { exercise ->
@@ -173,7 +173,8 @@ class WorkoutLoggerViewModel(
                                 if (set.id == setId) {
                                     set.copy(
                                         reps = reps.toIntOrNull(),
-                                        weight = weight
+                                        weight = weight,
+                                        secs = secs.toIntOrNull()
                                     )
                                 } else {
                                     set
