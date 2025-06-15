@@ -9,6 +9,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -26,6 +29,53 @@ class WorkoutLoggerViewModel(
     // A public, read-only state flow for the UI to observe
     val activeWorkoutState: StateFlow<LoggedWorkout?> = _activeWorkoutState.asStateFlow()
 
+    // --- NEW TIMER STATE ---
+    private var timerJob: Job? = null
+    private val _timerValueSeconds = MutableStateFlow(0)
+    val timerValueSeconds: StateFlow<Int> = _timerValueSeconds.asStateFlow()
+
+    private val _timerIsRunning = MutableStateFlow(false)
+    val timerIsRunning: StateFlow<Boolean> = _timerIsRunning.asStateFlow()
+
+    // --- PUBLIC TIMER FUNCTIONS FOR THE UI ---
+
+    fun startRestTimer(durationSeconds: Int = 90) {
+        // Cancel any existing timer before starting a new one
+        timerJob?.cancel()
+        _timerValueSeconds.value = durationSeconds
+        _timerIsRunning.value = true
+
+        timerJob = viewModelScope.launch {
+            // Create a flow that emits a value every second
+            flow {
+                for (i in durationSeconds downTo 0) {
+                    emit(i)
+                    delay(1000)
+                }
+            }.collect {
+                _timerValueSeconds.value = it
+                if (it == 0) {
+                    _timerIsRunning.value = false
+                }
+            }
+        }
+    }
+
+    fun stopTimer() {
+        timerJob?.cancel()
+        _timerIsRunning.value = false
+    }
+
+    fun resetTimer(durationSeconds: Int = 90) {
+        stopTimer()
+        startRestTimer(durationSeconds)
+    }
+
+    fun addTimeToTimer(secondsToAdd: Int) {
+        val newDuration = _timerValueSeconds.value + secondsToAdd
+        startRestTimer(newDuration)
+    }
+
     // This function starts a new workout based on a template
     fun startWorkoutFromTemplate(
         templateId: String,
@@ -33,6 +83,9 @@ class WorkoutLoggerViewModel(
         weekId: String?,
         sessionId: String?
     ) {
+        // When starting a new workout, ensure any old timer is stopped.
+        stopTimer()
+        _timerValueSeconds.value = 0
         viewModelScope.launch(Dispatchers.IO) {
             templateDao.getTemplateById(templateId).collect { template ->
                 if (template != null) {
@@ -101,6 +154,9 @@ class WorkoutLoggerViewModel(
 
     // Saves the completed workout to the database
     fun finishWorkout(currentUnit: String, activeCycle: ActiveProgramCycle?) {
+        // Also stop the timer when finishing a workout
+        stopTimer()
+        _timerValueSeconds.value = 0
         activeWorkoutState.value?.let { workoutToSave ->
             viewModelScope.launch(Dispatchers.IO) {
                 var finalBodyweight = workoutToSave.bodyweight
