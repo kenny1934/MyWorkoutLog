@@ -45,7 +45,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private val historyViewModel: HistoryViewModel by viewModels {
-        HistoryViewModelFactory((application as WorkoutApplication).database.loggedWorkoutDao())
+        HistoryViewModelFactory(
+            (application as WorkoutApplication).database.loggedWorkoutDao(),
+            (application as WorkoutApplication).database.activeCycleDao(),
+            (application as WorkoutApplication).database.programTemplateDao()
+        )
     }
 
     private val programViewModel: ProgramViewModel by viewModels {

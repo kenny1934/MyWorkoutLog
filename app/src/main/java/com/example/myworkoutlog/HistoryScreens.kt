@@ -142,75 +142,348 @@ fun HistoryScreen(
     viewModel: HistoryViewModel,
     onNavigateToWorkout: (String) -> Unit
 ) {
-    val loggedWorkouts by viewModel.allLoggedWorkouts.collectAsStateWithLifecycle()
-
+    var viewMode by remember { mutableStateOf(HistoryViewMode.MESOCYCLES) }
+    
     Column(modifier = Modifier.padding(16.dp)) {
-        Text("Workout History", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (loggedWorkouts.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No workouts logged yet.")
+        // Header with view mode toggle
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Workout History", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.weight(1f))
+            
+            // View mode toggle buttons
+            Row {
+                FilterChip(
+                    onClick = { viewMode = HistoryViewMode.MESOCYCLES },
+                    label = { Text("Cycles") },
+                    selected = viewMode == HistoryViewMode.MESOCYCLES
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                FilterChip(
+                    onClick = { viewMode = HistoryViewMode.CHRONOLOGICAL },
+                    label = { Text("All") },
+                    selected = viewMode == HistoryViewMode.CHRONOLOGICAL
+                )
             }
-        } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(loggedWorkouts) { workout ->
-                    Card(
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        when (viewMode) {
+            HistoryViewMode.MESOCYCLES -> MesocycleHistoryView(viewModel, onNavigateToWorkout)
+            HistoryViewMode.CHRONOLOGICAL -> ChronologicalHistoryView(viewModel, onNavigateToWorkout)
+            HistoryViewMode.EXERCISE_FOCUSED -> ChronologicalHistoryView(viewModel, onNavigateToWorkout) // Placeholder
+        }
+    }
+}
+
+@Composable
+fun MesocycleHistoryView(
+    viewModel: HistoryViewModel,
+    onNavigateToWorkout: (String) -> Unit
+) {
+    val activeCycle by viewModel.activeCycle.collectAsStateWithLifecycle()
+    val activeCycleWorkouts by viewModel.activeCycleWorkouts.collectAsStateWithLifecycle()
+    val completedCycles by viewModel.completedCycles.collectAsStateWithLifecycle()
+    val orphanedWorkouts by viewModel.orphanedWorkouts.collectAsStateWithLifecycle()
+    
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        // Active cycle section
+        if (activeCycle != null) {
+            item {
+                ActiveCycleSection(
+                    cycle = activeCycle!!,
+                    workouts = activeCycleWorkouts,
+                    onNavigateToWorkout = onNavigateToWorkout
+                )
+            }
+        }
+        
+        // Completed cycles
+        if (completedCycles.isNotEmpty()) {
+            item {
+                Text(
+                    text = "Completed Cycles",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+            
+            items(completedCycles) { cycleWithWorkouts ->
+                CycleCard(
+                    cycleWithWorkouts = cycleWithWorkouts,
+                    onNavigateToWorkout = onNavigateToWorkout
+                )
+            }
+        }
+        
+        // Orphaned workouts section
+        if (orphanedWorkouts.isNotEmpty()) {
+            item {
+                Text(
+                    text = "Individual Workouts",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+            
+            items(orphanedWorkouts) { workout ->
+                WorkoutCard(
+                    workout = workout,
+                    onNavigateToWorkout = onNavigateToWorkout,
+                    showCycleInfo = false
+                )
+            }
+        }
+        
+        // Empty state
+        if (activeCycle == null && completedCycles.isEmpty() && orphanedWorkouts.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("No workouts logged yet.")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ActiveCycleSection(
+    cycle: ActiveProgramCycle,
+    workouts: List<LoggedWorkout>,
+    onNavigateToWorkout: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
+                    contentDescription = "Active Cycle",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Active: ${cycle.userCycleName}",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = cycle.programTemplateName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            
+            Text(
+                text = "Started: ${cycle.startDate}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            
+            if (workouts.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "${workouts.size} workouts completed",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                
+                // Show recent workouts
+                workouts.takeLast(3).forEach { workout ->
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onNavigateToWorkout(workout.id) },
-                        elevation = CardDefaults.cardElevation(2.dp)
+                            .clickable { onNavigateToWorkout(workout.id) }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(Modifier.padding(16.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = workout.name ?: "Workout", 
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                
-                                // Show indicator if workout has detailed set data
-                                val hasDetailedData = workout.loggedExercises.any { exercise ->
-                                    exercise.sets.any { set ->
-                                        set.rir != null || 
-                                        !set.bands.isNullOrBlank() || 
-                                        !set.notes.isNullOrBlank()
-                                    }
-                                }
-                                
-                                if (hasDetailedData) {
-                                    Icon(
-                                        imageVector = Icons.Filled.DataUsage,
-                                        contentDescription = "Contains detailed set data",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                            
-                            Text(workout.date, style = MaterialTheme.typography.bodySmall)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            // Show time details directly in the list
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                val duration = calculateDurationMinutes(workout.startTimestamp, workout.endTimestamp)
-                                Text(
-                                    text = "Duration: ${duration?.let { "$it min" } ?: "--"}",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                Text(
-                                    text = workout.startTimestamp?.let { formatTimestampToTime(it) } ?: "",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
+                        Text(
+                            text = "• ${workout.name ?: "Workout"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = workout.date,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun CycleCard(
+    cycleWithWorkouts: CycleWithWorkouts,
+    onNavigateToWorkout: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = cycleWithWorkouts.userCycleName ?: "Cycle ${cycleWithWorkouts.cycleId}",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+            
+            if (cycleWithWorkouts.startDate != null) {
+                Text(
+                    text = "Started: ${cycleWithWorkouts.startDate}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "${cycleWithWorkouts.totalWorkouts} workouts",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "${(cycleWithWorkouts.completionRate * 100).toInt()}% complete",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            
+            // Show recent workouts from this cycle
+            if (cycleWithWorkouts.workouts.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                cycleWithWorkouts.workouts.takeLast(2).forEach { workout ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToWorkout(workout.id) }
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "• ${workout.name ?: "Workout"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = workout.date,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun WorkoutCard(
+    workout: LoggedWorkout,
+    onNavigateToWorkout: (String) -> Unit,
+    showCycleInfo: Boolean = true
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onNavigateToWorkout(workout.id) },
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = workout.name ?: "Workout", 
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                // Show indicator if workout has detailed set data
+                val hasDetailedData = workout.loggedExercises.any { exercise ->
+                    exercise.sets.any { set ->
+                        set.rir != null || 
+                        !set.bands.isNullOrBlank() || 
+                        !set.notes.isNullOrBlank()
+                    }
+                }
+                
+                if (hasDetailedData) {
+                    Icon(
+                        imageVector = Icons.Filled.DataUsage,
+                        contentDescription = "Contains detailed set data",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+            
+            Text(workout.date, style = MaterialTheme.typography.bodySmall)
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Show time details directly in the list
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                val duration = calculateDurationMinutes(workout.startTimestamp, workout.endTimestamp)
+                Text(
+                    text = "Duration: ${duration?.let { "$it min" } ?: "--"}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = workout.startTimestamp?.let { formatTimestampToTime(it) } ?: "",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ChronologicalHistoryView(
+    viewModel: HistoryViewModel,
+    onNavigateToWorkout: (String) -> Unit
+) {
+    val loggedWorkouts by viewModel.allLoggedWorkouts.collectAsStateWithLifecycle()
+
+    if (loggedWorkouts.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("No workouts logged yet.")
+        }
+    } else {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(loggedWorkouts) { workout ->
+                WorkoutCard(
+                    workout = workout,
+                    onNavigateToWorkout = onNavigateToWorkout,
+                    showCycleInfo = true
+                )
             }
         }
     }

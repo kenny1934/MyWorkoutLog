@@ -250,3 +250,9 @@ data class PersonalRecord(
     val weight: Double?,
     val durationSecs: Int?
 )
+
+// Data class for cycle workout count query results
+data class CycleWorkoutCount(
+    val activeProgramCycleId: String,
+    val workoutCount: Int
+)
