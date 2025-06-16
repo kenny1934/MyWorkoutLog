@@ -48,6 +48,14 @@ fun WorkoutLoggerScreen(
         // Note: Individual set data is automatically saved via DisposableEffect and debounced LaunchedEffect
     }
 
+    // Debounced auto-save for bodyweight field
+    LaunchedEffect(bodyweightText) {
+        if (bodyweightText.isNotBlank()) {
+            kotlinx.coroutines.delay(1000) // 1 second debounce
+            viewModel.updateBodyweight(bodyweightText)
+        }
+    }
+
     // LaunchedEffect runs a coroutine when the composable first appears.
     LaunchedEffect(key1 = templateId) {
         viewModel.startWorkoutFromTemplate(templateId, cycleId, weekId, sessionId)
@@ -227,6 +235,28 @@ fun LoggedSetRow(
         if (rirText != (set.rir?.toString() ?: "")) {
             kotlinx.coroutines.delay(1000) // 1 second debounce
             onRirChange(rirText)
+        }
+    }
+    
+    // Debounced auto-save for core fields as well
+    LaunchedEffect(weightText) {
+        if (weightText != (set.weight?.toString() ?: "")) {
+            kotlinx.coroutines.delay(1000) // 1 second debounce
+            onWeightChange(weightText.toDoubleOrNull())
+        }
+    }
+    
+    LaunchedEffect(repsText) {
+        if (repsText != (set.reps?.toString() ?: "")) {
+            kotlinx.coroutines.delay(1000) // 1 second debounce
+            onRepsChange(repsText)
+        }
+    }
+    
+    LaunchedEffect(secsText) {
+        if (secsText != (set.secs?.toString() ?: "")) {
+            kotlinx.coroutines.delay(1000) // 1 second debounce
+            onSecsChange(secsText)
         }
     }
 
