@@ -219,6 +219,7 @@ data class ProgramTemplate(
 @Entity(tableName = "active_program_cycle_table")
 data class ActiveProgramCycle(
     @PrimaryKey val id: Int = 1,
+    val cycleUuid: String, // Unique identifier for this specific cycle instance
     val programTemplateId: String,
     val programTemplateName: String,
     val userCycleName: String, // e.g., "My Hypertrophy Cycle"

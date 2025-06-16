@@ -105,7 +105,7 @@ fun ActiveCycleDashboard(
                             Button(onClick = {
                                 val route = Screen.WorkoutLogger.createRoute(
                                     templateId = session.workoutTemplateId,
-                                    cycleId = activeCycle.id.toString(),
+                                    cycleId = activeCycle.cycleUuid,
                                     weekId = week.id,
                                     sessionId = session.id
                                 )

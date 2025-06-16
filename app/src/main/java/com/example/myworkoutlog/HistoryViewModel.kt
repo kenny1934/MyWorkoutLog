@@ -62,7 +62,7 @@ class HistoryViewModel(
     val activeCycleWorkouts: StateFlow<List<LoggedWorkout>> = 
         combine(activeCycle, allLoggedWorkouts) { cycle, workouts ->
             if (cycle != null) {
-                workouts.filter { it.activeProgramCycleId == cycle.id.toString() }
+                workouts.filter { it.activeProgramCycleId == cycle.cycleUuid }
             } else {
                 emptyList()
             }
@@ -90,7 +90,7 @@ class HistoryViewModel(
     val completedCycles: StateFlow<List<CycleWithWorkouts>> = 
         combine(allCycleIds, allLoggedWorkouts, activeCycle) { cycleIds, workouts, currentCycle ->
             val completedCycleIds = cycleIds.filter { cycleId ->
-                currentCycle?.id?.toString() != cycleId
+                currentCycle?.cycleUuid != cycleId
             }
             
             completedCycleIds.map { cycleId ->
