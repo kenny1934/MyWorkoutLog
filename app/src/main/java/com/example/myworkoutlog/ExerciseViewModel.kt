@@ -26,7 +26,7 @@ class ExerciseViewModel(private val exerciseDao: ExerciseDao) : ViewModel() {
         exerciseName: String,
         equipmentString: String,
         usesBodyweight: Boolean,
-        muscleGroups: List<MuscleGroup> // New parameter
+        muscleGroups: List<MuscleGroup>
     ) {
         // viewModelScope.launch runs this code in a background coroutine
         // so we don't block the UI thread with database operations.

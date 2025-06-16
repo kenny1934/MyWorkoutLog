@@ -128,6 +128,8 @@ class WorkoutLoggerViewModel(
                             id = UUID.randomUUID().toString(),
                             exerciseId = templateExercise.exerciseId,
                             exerciseName = templateExercise.exerciseName,
+                            targetMuscleGroups = templateExercise.targetMuscleGroups,
+                            equipment = templateExercise.equipment,
                             sets = templateExercise.sets.map { templateSet ->
                                 // Create empty LoggedSet objects, but pre-fill targets from template
                                 LoggedSet(
@@ -135,10 +137,12 @@ class WorkoutLoggerViewModel(
                                     // Actual performance is null initially
                                     reps = null,
                                     weight = null,
-                                    // We can store the target in notes or dedicated fields later
-                                    notes = "Target: ${templateSet.targetReps}"
+                                    secs = null,
+                                    targetReps = templateSet.targetReps,
+                                    targetSecs = templateSet.targetSecs
                                 )
-                            }
+                            },
+                            isSubstitute = false
                         )
                     }
 

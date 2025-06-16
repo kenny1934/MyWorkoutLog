@@ -6,16 +6,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
@@ -24,12 +21,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,16 +43,12 @@ import com.patrykandpatrick.vico.compose.chart.Chart
 import com.patrykandpatrick.vico.compose.chart.line.lineChart
 import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
 import com.patrykandpatrick.vico.core.entry.entryOf
-import com.patrykandpatrick.vico.core.axis.Axis
-import com.patrykandpatrick.vico.core.axis.vertical.VerticalAxis
 import com.patrykandpatrick.vico.core.axis.AxisPosition
 import com.patrykandpatrick.vico.core.axis.formatter.AxisValueFormatter
 import com.patrykandpatrick.vico.compose.chart.column.columnChart
 import com.patrykandpatrick.vico.compose.chart.scroll.rememberChartScrollState
 import com.patrykandpatrick.vico.compose.component.shape.shader.verticalGradient
 import com.patrykandpatrick.vico.compose.component.lineComponent
-import com.patrykandpatrick.vico.core.component.text.TextComponent
-import com.patrykandpatrick.vico.core.component.shape.Shapes
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import kotlin.math.roundToInt
 import java.text.SimpleDateFormat
@@ -1281,6 +1274,7 @@ fun WorkoutLoggerScreen(
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(exercise.exerciseName, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(8.dp))
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                             // For each exercise, display its sets
                             exercise.sets.forEachIndexed { index, set ->
@@ -1328,8 +1322,11 @@ fun TemplateDetailScreen(
     // changes, and it updates the local, editable state.
     LaunchedEffect(templateFromDb) {
         templateFromDb?.let {
-            editedName = it.name
-            editedExercises = it.templateExercises
+            // This check prevents overwriting user's current edits when the DB updates
+            //if (it.templateExercises != editedExercises) {
+                editedName = it.name
+                editedExercises = it.templateExercises
+            //}
         }
     }
 
@@ -1378,60 +1375,47 @@ fun TemplateDetailScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // This LazyColumn now shows the exercises and their sets
             LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(editedExercises) { templateExercise ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                items(editedExercises, key = { it.id }) { templateExercise ->
+                    Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(templateExercise.exerciseName, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Spacer(Modifier.height(8.dp))
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                            // Display a row for each set of this exercise
+                            // Loop through each set and make its targets editable
                             templateExercise.sets.forEachIndexed { setIndex, set ->
-                                TemplateExerciseSetRow(
+                                TemplateSetEditorRow(
                                     set = set,
-                                    onRepsChange = { newReps ->
-                                        // Update the reps for this specific set
-                                        val updatedSets = templateExercise.sets.toMutableList()
-                                        updatedSets[setIndex] = set.copy(targetReps = newReps)
-                                        val updatedExercise = templateExercise.copy(sets = updatedSets)
-                                        editedExercises = editedExercises.map {
-                                            if (it.id == templateExercise.id) updatedExercise else it
-                                        }
+                                    setNumber = setIndex + 1,
+                                    onSetChange = { updatedSet ->
+                                        val newSets = templateExercise.sets.toMutableList()
+                                        newSets[setIndex] = updatedSet
+                                        val newExercise = templateExercise.copy(sets = newSets)
+                                        editedExercises = editedExercises.map { if (it.id == newExercise.id) newExercise else it }
                                     },
                                     onDelete = {
-                                        // Delete this specific set
-                                        val updatedSets = templateExercise.sets.toMutableList()
-                                        updatedSets.removeAt(setIndex)
-                                        val updatedExercise = templateExercise.copy(sets = updatedSets)
-                                        editedExercises = editedExercises.map {
-                                            if (it.id == templateExercise.id) updatedExercise else it
-                                        }
+                                        val newSets = templateExercise.sets.toMutableList()
+                                        newSets.removeAt(setIndex)
+                                        val newExercise = templateExercise.copy(sets = newSets)
+                                        editedExercises = editedExercises.map { if (it.id == newExercise.id) newExercise else it }
                                     }
                                 )
                             }
 
-                            // Button to add a new set to this exercise
                             TextButton(
                                 onClick = {
-                                    val newSet = TemplateExerciseSet(id = UUID.randomUUID().toString(), targetReps = "")
-                                    val updatedSets = templateExercise.sets + newSet
-                                    val updatedExercise = templateExercise.copy(sets = updatedSets)
-                                    editedExercises = editedExercises.map {
-                                        if (it.id == templateExercise.id) updatedExercise else it
-                                    }
+                                    val newSet = TemplateExerciseSet(id = UUID.randomUUID().toString(), targetReps = null, targetSecs = null)
+                                    val newExercise = templateExercise.copy(sets = templateExercise.sets + newSet)
+                                    editedExercises = editedExercises.map { if (it.id == newExercise.id) newExercise else it }
                                 },
                                 modifier = Modifier.align(Alignment.End)
-                            ) {
-                                Text("Add Set")
-                            }
+                            ) { Text("Add Set") }
                         }
                     }
                 }
             }
         }
 
-        // Dialog for adding an exercise (remains unchanged)
         if (showAddExerciseDialog) {
             AlertDialog(
                 onDismissRequest = { showAddExerciseDialog = false },
@@ -1448,13 +1432,10 @@ fun TemplateDetailScreen(
                                             id = UUID.randomUUID().toString(),
                                             exerciseId = exercise.id,
                                             exerciseName = exercise.name,
+                                            targetMuscleGroups = exercise.targetMuscleGroups,
+                                            equipment = exercise.equipment,
                                             order = (editedExercises.maxOfOrNull { it.order } ?: 0) + 1,
-                                            sets = listOf(
-                                                TemplateExerciseSet(
-                                                    id = UUID.randomUUID().toString(),
-                                                    targetReps = "8-12"
-                                                )
-                                            )
+                                            sets = listOf(TemplateExerciseSet(id = UUID.randomUUID().toString()))
                                         )
                                         editedExercises = editedExercises + newTemplateExercise
                                         showAddExerciseDialog = false
@@ -1464,14 +1445,44 @@ fun TemplateDetailScreen(
                         }
                     }
                 },
-                confirmButton = {
-                    TextButton(onClick = { showAddExerciseDialog = false }) { Text("Cancel") }
-                }
+                confirmButton = { TextButton(onClick = { showAddExerciseDialog = false }) { Text("Cancel") } }
             )
         }
     }
 }
 
+
+// NEW HELPER COMPOSABLE for editing a set in a template
+@Composable
+fun TemplateSetEditorRow(
+    set: TemplateExerciseSet,
+    setNumber: Int,
+    onSetChange: (TemplateExerciseSet) -> Unit,
+    onDelete: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text("Set $setNumber", modifier = Modifier.width(60.dp))
+        OutlinedTextField(
+            value = set.targetReps ?: "",
+            onValueChange = { onSetChange(set.copy(targetReps = it, targetSecs = null)) },
+            label = { Text("Reps") },
+            modifier = Modifier.weight(1f)
+        )
+        OutlinedTextField(
+            value = set.targetSecs ?: "",
+            onValueChange = { onSetChange(set.copy(targetSecs = it, targetReps = null)) },
+            label = { Text("Secs") },
+            modifier = Modifier.weight(1f)
+        )
+        IconButton(onClick = onDelete) {
+            Icon(Icons.Default.Delete, contentDescription = "Delete Set")
+        }
+    }
+}
 
 
 @Composable
@@ -1633,29 +1644,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
 
 
 @Composable
-fun TemplateExerciseSetRow(
-    set: TemplateExerciseSet,
-    onRepsChange: (String) -> Unit,
-    onDelete: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        OutlinedTextField(
-            value = set.targetReps ?: "",
-            onValueChange = onRepsChange,
-            label = { Text("Reps / Secs") },
-            modifier = Modifier.weight(1f)
-        )
-        IconButton(onClick = onDelete) {
-            Icon(Icons.Filled.Delete, contentDescription = "Delete Set")
-        }
-    }
-}
-
-@Composable
 fun LoggedSetRow(
     set: LoggedSet,
     setNumber: Int,
@@ -1665,6 +1653,10 @@ fun LoggedSetRow(
     onSecsChange: (String) -> Unit,
     onStartRest: () -> Unit
 ) {
+    // Determine which fields to show based on the template's targets for this set
+    val showWeightReps = !set.targetReps.isNullOrBlank()
+    val showSecs = !set.targetSecs.isNullOrBlank()
+
     // This local state holds the text as the user types it.
     var weightText by remember { mutableStateOf(set.weight?.toString() ?: "") }
     var repsText by remember { mutableStateOf(set.reps?.toString() ?: "") }
@@ -1690,77 +1682,92 @@ fun LoggedSetRow(
         }
     }
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = "Set $setNumber",
-            modifier = Modifier.width(60.dp),
-            fontWeight = FontWeight.Bold
-        )
-        // Text field for weight
-        OutlinedTextField(
-            value = weightText,
-            // onValueChange now just updates the local text state
-            onValueChange = { newText ->
-                // Allow only digits and one decimal point
-                if (newText.matches(Regex("^\\d*\\.?\\d*\$"))) {
-                    weightText = newText
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Set $setNumber",
+                modifier = Modifier.width(60.dp),
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            if (set.reps != null || set.secs != null) {
+                IconButton(onClick = onStartRest) {
+                    Icon(Icons.Filled.PlayArrow, contentDescription = "Start Rest Timer")
                 }
-            },
-            label = { Text("Weight ($weightUnit)") },
-            modifier = Modifier
-                .weight(1f)
-                // This is the magic: when you tap away, it saves the value.
-                .onFocusChanged { focusState ->
-                    if (!focusState.isFocused) {
-                        onWeightChange(weightText.toDoubleOrNull())
-                    }
-                }
-        )
-        // Text field for reps
-        OutlinedTextField(
-            value = repsText,
-            onValueChange = { newText ->
-                if (newText.all { it.isDigit() }) {
-                    repsText = newText
-                }
-            },
-            label = { Text("Reps") },
-            modifier = Modifier
-                .weight(1f)
-                .onFocusChanged { focusState ->
-                    if (!focusState.isFocused) {
-                        onRepsChange(repsText)
-                    }
-                }
-        )
-        OutlinedTextField(
-            value = secsText,
-            onValueChange = { newText ->
-                if (newText.all { it.isDigit() }) {
-                    secsText = newText
-                }
-            },
-            label = { Text("Secs") },
-            modifier = Modifier
-                .weight(1f)
-                .onFocusChanged { focusState ->
-                    if (!focusState.isFocused) {
-                        // Pass the new secs value up to the ViewModel
-                        onSecsChange(secsText)
-                    }
-                }
-        )
-        if (set.reps != null && set.reps > 0) {
-            IconButton(onClick = onStartRest) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = "Start Rest Timer")
             }
-        } else {
-            // Keep the layout consistent by adding a spacer
-            Spacer(modifier = Modifier.width(48.dp)) // Same width as an IconButton
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Text field for weight
+            OutlinedTextField(
+                value = weightText,
+                // onValueChange now just updates the local text state
+                onValueChange = { newText ->
+                    // Allow only digits and one decimal point
+                    if (newText.matches(Regex("^\\d*\\.?\\d*\$"))) {
+                        weightText = newText
+                    }
+                },
+                label = { Text("Weight ($weightUnit)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier
+                    .weight(1f)
+                    // This is the magic: when you tap away, it saves the value.
+                    .onFocusChanged { focusState ->
+                        if (!focusState.isFocused) {
+                            onWeightChange(weightText.toDoubleOrNull())
+                        }
+                    }
+            )
+
+            if (showWeightReps) {
+                // Text field for reps
+                OutlinedTextField(
+                    value = repsText,
+                    onValueChange = { newText ->
+                        if (newText.all { it.isDigit() }) {
+                            repsText = newText
+                        }
+                    },
+                    label = { Text("Reps") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier
+                        .weight(1f)
+                        .onFocusChanged { focusState ->
+                            if (!focusState.isFocused) {
+                                onRepsChange(repsText)
+                            }
+                        }
+                )
+            }
+
+            // This TextField will only appear for time-based exercises
+            if (showSecs) {
+                OutlinedTextField(
+                    value = secsText,
+                    onValueChange = { newText ->
+                        if (newText.all { it.isDigit() }) {
+                            secsText = newText
+                        }
+                    },
+                    label = { Text("Secs") },
+                    modifier = Modifier
+                        .weight(1f)
+                        .onFocusChanged { focusState ->
+                            if (!focusState.isFocused) {
+                                // Pass the new secs value up to the ViewModel
+                                onSecsChange(secsText)
+                            }
+                        }
+                )
+            }
         }
     }
 }

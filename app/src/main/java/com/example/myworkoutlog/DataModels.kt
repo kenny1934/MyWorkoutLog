@@ -109,7 +109,6 @@ data class Exercise(
     val usesBodyweight: Boolean = false,
     val targetMuscleGroups: List<MuscleGroup>,
     val equipment: List<Equipment>,
-    val preferredRepRange: String? = null,
     val notes: String? = null,
     val videoLink: String? = null
 )
@@ -129,6 +128,8 @@ data class TemplateExercise(
     val id: String,
     val exerciseId: String, // The ID of the exercise from our master exercise_table
     val exerciseName: String, // Stored for easy display
+    val targetMuscleGroups: List<MuscleGroup>,
+    val equipment: List<Equipment>,
     val sets: List<TemplateExerciseSet>,
     val order: Int,
     val notes: String? = null
@@ -151,14 +152,20 @@ data class LoggedSet(
     val secs: Int? = null,
     val weight: Double? = null,
     val rir: Int? = null,
-    val notes: String? = null
+    val notes: String? = null,
+    // ADD THESE TWO PROPERTIES TO SNAPSHOT THE TARGETS
+    val targetReps: String? = null,
+    val targetSecs: String? = null
 )
 
 data class LoggedExercise(
     val id: String,
     val exerciseId: String,
     val exerciseName: String,
+    val targetMuscleGroups: List<MuscleGroup>,
+    val equipment: List<Equipment>,
     val sets: List<LoggedSet>,
+    val isSubstitute: Boolean? = false,
     val notes: String? = null
 )
 
