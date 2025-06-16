@@ -135,15 +135,23 @@ fun WorkoutLoggerScreen(
                                     setNumber = index + 1,
                                     weightUnit = weightUnit,
                                     onRepsChange = { newReps ->
-                                        viewModel.updateSet(exercise.id, set.id, newReps, set.weight, set.secs?.toString() ?: "")
+                                        viewModel.updateSet(exercise.id, set.id, newReps, set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes)
                                     },
                                     onWeightChange = { newWeight ->
-                                        viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", newWeight, set.secs?.toString() ?: "")
+                                        viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", newWeight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes)
                                     },
                                     onSecsChange = { newSecs ->
-                                        viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, newSecs)
+                                        viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, newSecs, set.rir?.toString(), set.bands, set.notes)
                                     },
-                                    // Pass the ViewModel function to the button
+                                    onRirChange = { newRir ->
+                                        viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", newRir, set.bands, set.notes)
+                                    },
+                                    onBandsChange = { newBands ->
+                                        viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), newBands, set.notes)
+                                    },
+                                    onNotesChange = { newNotes ->
+                                        viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, newNotes)
+                                    },
                                     onStartRest = { viewModel.startRestTimer() }
                                 )
                             }
@@ -163,6 +171,9 @@ fun LoggedSetRow(
     onRepsChange: (String) -> Unit,
     onWeightChange: (Double?) -> Unit,
     onSecsChange: (String) -> Unit,
+    onRirChange: (String) -> Unit = {},
+    onBandsChange: (String) -> Unit = {},
+    onNotesChange: (String) -> Unit = {},
     onStartRest: () -> Unit
 ) {
     // Determine which fields to show based on the template's targets for this set
@@ -173,6 +184,10 @@ fun LoggedSetRow(
     var weightText by remember { mutableStateOf(set.weight?.toString() ?: "") }
     var repsText by remember { mutableStateOf(set.reps?.toString() ?: "") }
     var secsText by remember { mutableStateOf(set.secs?.toString() ?: "") }
+    var rirText by remember { mutableStateOf(set.rir?.toString() ?: "") }
+    var bandsText by remember { mutableStateOf(set.bands ?: "") }
+    var notesText by remember { mutableStateOf(set.notes ?: "") }
+    var showNotes by remember { mutableStateOf(false) }
 
     // This ensures if the underlying data changes from elsewhere, our text fields update.
     LaunchedEffect(set.weight) {
@@ -191,6 +206,24 @@ fun LoggedSetRow(
         val currentSecsString = set.secs?.toString() ?: ""
         if (secsText != currentSecsString) {
             secsText = currentSecsString
+        }
+    }
+    LaunchedEffect(set.rir) {
+        val currentRirString = set.rir?.toString() ?: ""
+        if (rirText != currentRirString) {
+            rirText = currentRirString
+        }
+    }
+    LaunchedEffect(set.bands) {
+        val currentBandsString = set.bands ?: ""
+        if (bandsText != currentBandsString) {
+            bandsText = currentBandsString
+        }
+    }
+    LaunchedEffect(set.notes) {
+        val currentNotesString = set.notes ?: ""
+        if (notesText != currentNotesString) {
+            notesText = currentNotesString
         }
     }
 
@@ -278,6 +311,74 @@ fun LoggedSetRow(
                         }
                 )
             }
+        }
+
+        // Second row for RIR and Bands
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // RIR field (0-10)
+            OutlinedTextField(
+                value = rirText,
+                onValueChange = { newText ->
+                    if (newText.isEmpty() || (newText.all { it.isDigit() } && newText.toIntOrNull()?.let { it <= 10 } == true)) {
+                        rirText = newText
+                    }
+                },
+                label = { Text("RIR") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier
+                    .weight(1f)
+                    .onFocusChanged { focusState ->
+                        if (!focusState.isFocused) {
+                            onRirChange(rirText)
+                        }
+                    }
+            )
+
+            // Bands field
+            OutlinedTextField(
+                value = bandsText,
+                onValueChange = { bandsText = it },
+                label = { Text("Bands") },
+                modifier = Modifier
+                    .weight(1f)
+                    .onFocusChanged { focusState ->
+                        if (!focusState.isFocused) {
+                            onBandsChange(bandsText)
+                        }
+                    }
+            )
+
+            // Notes toggle button
+            IconButton(
+                onClick = { showNotes = !showNotes }
+            ) {
+                Icon(
+                    imageVector = if (showNotes) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = if (showNotes) "Hide Notes" else "Show Notes"
+                )
+            }
+        }
+
+        // Expandable notes field
+        AnimatedVisibility(visible = showNotes) {
+            OutlinedTextField(
+                value = notesText,
+                onValueChange = { notesText = it },
+                label = { Text("Notes") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .onFocusChanged { focusState ->
+                        if (!focusState.isFocused) {
+                            onNotesChange(notesText)
+                        }
+                    },
+                minLines = 2
+            )
         }
     }
 }

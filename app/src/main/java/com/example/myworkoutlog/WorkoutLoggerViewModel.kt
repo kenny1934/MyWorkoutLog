@@ -167,7 +167,16 @@ class WorkoutLoggerViewModel(
     }
 
     // Called when the user enters their performance for a set
-    fun updateSet(exerciseId: String, setId: String, reps: String, weight: Double?, secs: String) {
+    fun updateSet(
+        exerciseId: String, 
+        setId: String, 
+        reps: String, 
+        weight: Double?, 
+        secs: String, 
+        rir: String? = null, 
+        bands: String? = null, 
+        notes: String? = null
+    ) {
         _activeWorkoutState.update { currentWorkout ->
             currentWorkout?.copy(
                 loggedExercises = currentWorkout.loggedExercises.map { exercise ->
@@ -178,7 +187,10 @@ class WorkoutLoggerViewModel(
                                     set.copy(
                                         reps = reps.toIntOrNull(),
                                         weight = weight,
-                                        secs = secs.toIntOrNull()
+                                        secs = secs.toIntOrNull(),
+                                        rir = rir?.toIntOrNull(),
+                                        bands = bands?.takeIf { it.isNotBlank() },
+                                        notes = notes?.takeIf { it.isNotBlank() }
                                     )
                                 } else {
                                     set
@@ -191,6 +203,11 @@ class WorkoutLoggerViewModel(
                 }
             )
         }
+    }
+
+    // Overloaded function to maintain backward compatibility
+    fun updateSet(exerciseId: String, setId: String, reps: String, weight: Double?, secs: String) {
+        updateSet(exerciseId, setId, reps, weight, secs, null, null, null)
     }
 
     // Saves the completed workout to the database

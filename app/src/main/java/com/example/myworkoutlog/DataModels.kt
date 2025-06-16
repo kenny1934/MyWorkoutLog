@@ -152,6 +152,7 @@ data class LoggedSet(
     val secs: Int? = null,
     val weight: Double? = null,
     val rir: Int? = null,
+    val bands: String? = null,
     val notes: String? = null,
     // ADD THESE TWO PROPERTIES TO SNAPSHOT THE TARGETS
     val targetReps: String? = null,
