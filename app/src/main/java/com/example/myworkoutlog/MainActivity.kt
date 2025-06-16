@@ -1758,11 +1758,11 @@ fun LoggedSetRow(
                         }
                     },
                     label = { Text("Secs") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier
                         .weight(1f)
                         .onFocusChanged { focusState ->
                             if (!focusState.isFocused) {
-                                // Pass the new secs value up to the ViewModel
                                 onSecsChange(secsText)
                             }
                         }
