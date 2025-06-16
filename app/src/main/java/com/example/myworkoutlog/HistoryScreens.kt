@@ -2,12 +2,14 @@
 
 package com.example.myworkoutlog
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +21,118 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
+
+@Composable
+fun HistorySetRow(
+    set: LoggedSet,
+    setNumber: Int,
+    weightUnit: String
+) {
+    // Determine what data is available for this set
+    val hasWeightReps = set.weight != null || set.reps != null
+    val hasSecs = set.secs != null
+    val hasAdditionalData = set.rir != null || !set.bands.isNullOrBlank() || !set.notes.isNullOrBlank()
+    
+    var isExpanded by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.padding(vertical = 2.dp)) {
+        // Primary row - always visible
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Set number
+            Text(
+                text = setNumber.toString(),
+                modifier = Modifier.width(40.dp),
+                fontWeight = FontWeight.Medium
+            )
+            
+            // Weight
+            Text(
+                text = set.weight?.toString() ?: "--",
+                modifier = Modifier.weight(1f)
+            )
+            
+            // Reps or Secs (based on what's available)
+            if (hasWeightReps) {
+                Text(
+                    text = set.reps?.toString() ?: "--",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            
+            if (hasSecs) {
+                Text(
+                    text = "${set.secs ?: "--"}s",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            
+            // Expand/collapse button for additional data
+            if (hasAdditionalData) {
+                IconButton(
+                    onClick = { isExpanded = !isExpanded },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = if (isExpanded) "Hide Details" else "Show Details",
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            } else {
+                Spacer(modifier = Modifier.width(32.dp))
+            }
+        }
+        
+        // Expandable section for additional data
+        AnimatedVisibility(visible = isExpanded && hasAdditionalData) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 40.dp, top = 8.dp)
+            ) {
+                // RIR and Bands row
+                if (set.rir != null || !set.bands.isNullOrBlank()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        if (set.rir != null) {
+                            Text(
+                                text = "RIR: ${set.rir}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        if (!set.bands.isNullOrBlank()) {
+                            Text(
+                                text = "Bands: ${set.bands}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+                
+                // Notes section
+                if (!set.notes.isNullOrBlank()) {
+                    Text(
+                        text = "Notes: ${set.notes}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = if (set.rir != null || !set.bands.isNullOrBlank()) 4.dp else 0.dp)
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
 fun HistoryScreen(
@@ -160,21 +274,30 @@ fun HistoryDetailScreen(
                             Text(exercise.exerciseName, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(8.dp))
 
-                            // Display the header for the sets table
+                            // Dynamic header based on what data is available
+                            val hasReps = exercise.sets.any { it.reps != null }
+                            val hasSecs = exercise.sets.any { it.secs != null }
+                            
                             Row(modifier = Modifier.fillMaxWidth()) {
-                                Text("Set", modifier = Modifier.width(60.dp), style = MaterialTheme.typography.labelSmall)
+                                Text("Set", modifier = Modifier.width(40.dp), style = MaterialTheme.typography.labelSmall)
                                 Text("Weight (${workout!!.performedWeightUnit ?: "kg"})", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
-                                Text("Reps", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
+                                if (hasReps) {
+                                    Text("Reps", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
+                                }
+                                if (hasSecs) {
+                                    Text("Duration", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
+                                }
+                                Spacer(modifier = Modifier.width(32.dp)) // Space for expand button
                             }
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-                            // Display each logged set
+                            // Display each logged set using the new component
                             exercise.sets.forEachIndexed { index, set ->
-                                Row(modifier = Modifier.fillMaxWidth()) {
-                                    Text((index + 1).toString(), modifier = Modifier.width(60.dp))
-                                    Text(set.weight?.toString() ?: "--", modifier = Modifier.weight(1f))
-                                    Text(set.reps?.toString() ?: "--", modifier = Modifier.weight(1f))
-                                }
+                                HistorySetRow(
+                                    set = set,
+                                    setNumber = index + 1,
+                                    weightUnit = workout!!.performedWeightUnit ?: "kg"
+                                )
                             }
                         }
                     }
