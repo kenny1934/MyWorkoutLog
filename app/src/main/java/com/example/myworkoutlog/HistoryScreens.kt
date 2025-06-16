@@ -31,7 +31,10 @@ fun HistorySetRow(
     // Determine what data is available for this set
     val hasWeightReps = set.weight != null || set.reps != null
     val hasSecs = set.secs != null
-    val hasAdditionalData = set.rir != null || !set.bands.isNullOrBlank() || !set.notes.isNullOrBlank()
+    val hasRir = set.rir != null
+    val hasBands = !set.bands.isNullOrBlank()
+    val hasNotes = !set.notes.isNullOrBlank()
+    val hasAdditionalData = hasRir || hasBands || hasNotes
     
     var isExpanded by remember { mutableStateOf(false) }
 
@@ -94,12 +97,12 @@ fun HistorySetRow(
                     .padding(start = 40.dp, top = 8.dp)
             ) {
                 // RIR and Bands row
-                if (set.rir != null || !set.bands.isNullOrBlank()) {
+                if (hasRir || hasBands) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        if (set.rir != null) {
+                        if (hasRir) {
                             Text(
                                 text = "RIR: ${set.rir}",
                                 style = MaterialTheme.typography.bodySmall,
@@ -107,7 +110,7 @@ fun HistorySetRow(
                                 modifier = Modifier.weight(1f)
                             )
                         }
-                        if (!set.bands.isNullOrBlank()) {
+                        if (hasBands) {
                             Text(
                                 text = "Bands: ${set.bands}",
                                 style = MaterialTheme.typography.bodySmall,
@@ -119,14 +122,14 @@ fun HistorySetRow(
                 }
                 
                 // Notes section
-                if (!set.notes.isNullOrBlank()) {
+                if (hasNotes) {
                     Text(
                         text = "Notes: ${set.notes}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = if (set.rir != null || !set.bands.isNullOrBlank()) 4.dp else 0.dp)
+                            .padding(top = if (hasRir || hasBands) 4.dp else 0.dp)
                     )
                 }
             }
@@ -172,7 +175,9 @@ fun HistoryScreen(
                                 // Show indicator if workout has detailed set data
                                 val hasDetailedData = workout.loggedExercises.any { exercise ->
                                     exercise.sets.any { set ->
-                                        set.rir != null || !set.bands.isNullOrBlank() || !set.notes.isNullOrBlank()
+                                        set.rir != null || 
+                                        !set.bands.isNullOrBlank() || 
+                                        !set.notes.isNullOrBlank()
                                     }
                                 }
                                 

@@ -13,7 +13,7 @@ interface LoggedWorkoutDao {
     fun insert(loggedWorkout: LoggedWorkout)
 
     // We'll use this function later for the History screen
-    @Query("SELECT * FROM logged_workout_table ORDER BY date DESC")
+    @Query("SELECT * FROM logged_workout_table ORDER BY startTimestamp DESC, date DESC")
     fun getAllLoggedWorkouts(): Flow<List<LoggedWorkout>>
 
     // NEW function to get a single logged workout by its ID

@@ -20,6 +20,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 
 @Composable
 fun WorkoutLoggerScreen(
@@ -34,6 +35,18 @@ fun WorkoutLoggerScreen(
 ) {
     // Local state for the bodyweight text field
     var bodyweightText by remember { mutableStateOf("") }
+    
+    // Coroutine scope for handling async save operations
+    val coroutineScope = rememberCoroutineScope()
+    
+    // Function to save all pending field data before navigation/completion
+    suspend fun saveAllPendingData() {
+        // Save bodyweight if changed
+        viewModel.updateBodyweight(bodyweightText)
+        // Give a brief moment for any active typing to be captured by debounced saves
+        kotlinx.coroutines.delay(100)
+        // Note: Individual set data is automatically saved via DisposableEffect and debounced LaunchedEffect
+    }
 
     // LaunchedEffect runs a coroutine when the composable first appears.
     LaunchedEffect(key1 = templateId) {
@@ -55,8 +68,11 @@ fun WorkoutLoggerScreen(
                 title = { Text(activeWorkout?.name ?: "Log Workout") },
                 navigationIcon = {
                     IconButton(onClick = {
-                        viewModel.stopRestTimer()
-                        onNavigateUp()
+                        coroutineScope.launch {
+                            saveAllPendingData()
+                            viewModel.stopRestTimer()
+                            onNavigateUp()
+                        }
                     }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
@@ -68,8 +84,11 @@ fun WorkoutLoggerScreen(
                         modifier = Modifier.padding(end = 8.dp)
                     )
                     Button(onClick = {
-                        viewModel.finishWorkout(weightUnit, activeCycle)
-                        onNavigateUp()
+                        coroutineScope.launch {
+                            saveAllPendingData()
+                            viewModel.finishWorkout(weightUnit, activeCycle)
+                            onNavigateUp()
+                        }
                     }) {
                         Text("Finish")
                     }
@@ -188,6 +207,45 @@ fun LoggedSetRow(
     var bandsText by remember { mutableStateOf(set.bands ?: "") }
     var notesText by remember { mutableStateOf(set.notes ?: "") }
     var showNotes by remember { mutableStateOf(false) }
+    
+    // Debounced auto-save for critical fields to handle active typing scenario
+    LaunchedEffect(notesText) {
+        if (notesText != (set.notes ?: "")) {
+            kotlinx.coroutines.delay(1000) // 1 second debounce
+            onNotesChange(notesText)
+        }
+    }
+    
+    LaunchedEffect(bandsText) {
+        if (bandsText != (set.bands ?: "")) {
+            kotlinx.coroutines.delay(1000) // 1 second debounce
+            onBandsChange(bandsText)
+        }
+    }
+    
+    LaunchedEffect(rirText) {
+        if (rirText != (set.rir?.toString() ?: "")) {
+            kotlinx.coroutines.delay(1000) // 1 second debounce
+            onRirChange(rirText)
+        }
+    }
+
+    // Function to save all current field values
+    fun saveAllCurrentValues() {
+        onRepsChange(repsText)
+        onWeightChange(weightText.toDoubleOrNull())
+        onSecsChange(secsText)
+        onRirChange(rirText)
+        onBandsChange(bandsText)
+        onNotesChange(notesText)
+    }
+
+    // Save current values when component is disposed (e.g., when navigating away)
+    DisposableEffect(Unit) {
+        onDispose {
+            saveAllCurrentValues()
+        }
+    }
 
     // This ensures if the underlying data changes from elsewhere, our text fields update.
     LaunchedEffect(set.weight) {
@@ -239,7 +297,11 @@ fun LoggedSetRow(
             )
             Spacer(modifier = Modifier.weight(1f))
             if (set.reps != null || set.secs != null) {
-                IconButton(onClick = onStartRest) {
+                IconButton(onClick = { 
+                    // Save current values when starting rest timer
+                    saveAllCurrentValues()
+                    onStartRest() 
+                }) {
                     Icon(Icons.Filled.PlayArrow, contentDescription = "Start Rest Timer")
                 }
             }
@@ -354,7 +416,14 @@ fun LoggedSetRow(
 
             // Notes toggle button
             IconButton(
-                onClick = { showNotes = !showNotes }
+                onClick = { 
+                    // Save current values when toggling notes visibility
+                    if (showNotes) {
+                        // If collapsing notes, save all current data
+                        saveAllCurrentValues()
+                    }
+                    showNotes = !showNotes 
+                }
             ) {
                 Icon(
                     imageVector = if (showNotes) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
