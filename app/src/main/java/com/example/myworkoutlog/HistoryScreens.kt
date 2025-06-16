@@ -159,7 +159,33 @@ fun HistoryScreen(
                         elevation = CardDefaults.cardElevation(2.dp)
                     ) {
                         Column(Modifier.padding(16.dp)) {
-                            Text(workout.name ?: "Workout", fontWeight = FontWeight.Bold)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = workout.name ?: "Workout", 
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                
+                                // Show indicator if workout has detailed set data
+                                val hasDetailedData = workout.loggedExercises.any { exercise ->
+                                    exercise.sets.any { set ->
+                                        set.rir != null || !set.bands.isNullOrBlank() || !set.notes.isNullOrBlank()
+                                    }
+                                }
+                                
+                                if (hasDetailedData) {
+                                    Icon(
+                                        imageVector = Icons.Filled.DataUsage,
+                                        contentDescription = "Contains detailed set data",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                            
                             Text(workout.date, style = MaterialTheme.typography.bodySmall)
                             Spacer(modifier = Modifier.height(8.dp))
                             // Show time details directly in the list
