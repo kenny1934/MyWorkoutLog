@@ -184,6 +184,7 @@ data class LoggedWorkout(
     val activeProgramCycleId: String? = null,
     val programWeekDefinitionId: String? = null,
     val programSessionDefinitionId: String? = null,
+    val userCycleName: String? = null,
 
     val loggedExercises: List<LoggedExercise>,
     val workoutTemplateId: String? = null

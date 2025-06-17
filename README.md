@@ -14,7 +14,8 @@ The application is in a highly functional state, with a complete end-to-end user
 - **Intelligent Execution:**
   - Start and manage an "Active Program Cycle" from a blueprint.
   - A dynamic dashboard shows the current week and session progress, with shortcuts to start or review workouts.
-  - Log live workout sessions, recording reps, weight, and daily bodyweight with a unit-aware system.
+  - Log live workout sessions with comprehensive set tracking: reps, weight, duration, RIR (Reps in Reserve), resistance bands, and notes.
+  - Unit-aware system for weight and bodyweight tracking.
   - An integrated **rest timer** with pause/resume/add-time controls and a **total session stopwatch**.
 - **In-Depth Review & Analysis:**
   - Browse a complete, clickable history of all logged workouts with detailed session timings.
@@ -32,7 +33,7 @@ This section outlines the planned enhancements and new features for the applicat
 
 ### Tier 1: Core Logger Experience
 - [x] **Workout Timers:** Implement a rest timer between sets and a stopwatch for timed exercises.
-- [ ] **Detailed Set Logging:** Add fields for Duration (secs), RIR, Bands, and Notes to each set in the logger.
+- [x] **Detailed Set Logging:** Add fields for Duration (secs), RIR, Bands, and Notes to each set in the logger.
 - [ ] **In-Session Flexibility:**
   - [ ] Add ad-hoc exercises to a workout on the fly.
   - [ ] Substitute exercises during a session.

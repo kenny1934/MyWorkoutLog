@@ -157,6 +157,7 @@ class WorkoutLoggerViewModel(
                         activeProgramCycleId = cycleId, // Save the cycle context
                         programWeekDefinitionId = weekId, // Save the week context
                         programSessionDefinitionId = sessionId, // Save the session context
+                        userCycleName = null, // Will be set when workout is finished
                         loggedExercises = loggedExercises,
                         workoutTemplateId = template.id
                     )
@@ -231,7 +232,8 @@ class WorkoutLoggerViewModel(
                 val finalWorkout = workoutToSave.copy(
                     endTimestamp = endTimeMillis,
                     performedWeightUnit = currentUnit,
-                    bodyweight = finalBodyweight
+                    bodyweight = finalBodyweight,
+                    userCycleName = activeCycle?.userCycleName
                 )
 
                 loggedWorkoutDao.insert(finalWorkout)

@@ -106,7 +106,7 @@ class HistoryViewModel(
                     completionRate = completionRate,
                     totalWorkouts = totalWorkouts,
                     startDate = cycleWorkouts.minByOrNull { it.date }?.date,
-                    userCycleName = "Cycle $cycleId" // Simplified for now
+                    userCycleName = cycleWorkouts.firstOrNull()?.userCycleName ?: "Cycle $cycleId"
                 )
             }.sortedByDescending { it.startDate }
         }.stateIn(
