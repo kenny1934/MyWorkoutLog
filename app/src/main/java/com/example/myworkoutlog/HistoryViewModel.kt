@@ -86,34 +86,88 @@ class HistoryViewModel(
             initialValue = emptyList()
         )
 
+    // Get all program templates for lookup
+    val allPrograms: StateFlow<List<ProgramTemplate>> = programDao.getAllPrograms()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
     // Computed property: Completed cycles with their workouts
     val completedCycles: StateFlow<List<CycleWithWorkouts>> = 
-        combine(allCycleIds, allLoggedWorkouts, activeCycle) { cycleIds, workouts, currentCycle ->
+        combine(allCycleIds, allLoggedWorkouts, activeCycle, allPrograms) { cycleIds, workouts, currentCycle, programs ->
             val completedCycleIds = cycleIds.filter { cycleId ->
                 currentCycle?.cycleUuid != cycleId
             }
             
-            completedCycleIds.map { cycleId ->
+            completedCycleIds.mapNotNull { cycleId ->
                 val cycleWorkouts = workouts.filter { it.activeProgramCycleId == cycleId }
-                val totalWorkouts = cycleWorkouts.size
-                val completionRate = if (totalWorkouts > 0) 1.0 else 0.0 // Simplified for now
+                val actualWorkouts = cycleWorkouts.size
                 
-                CycleWithWorkouts(
-                    cycleId = cycleId,
-                    cycle = null, // Will be populated when we have access to cycle history
-                    program = null, // Will be populated when we have access to program data
-                    workouts = cycleWorkouts,
-                    completionRate = completionRate,
-                    totalWorkouts = totalWorkouts,
-                    startDate = cycleWorkouts.minByOrNull { it.date }?.date,
-                    userCycleName = cycleWorkouts.firstOrNull()?.userCycleName ?: "Cycle $cycleId"
-                )
+                // Get the program template for accurate calculation
+                val firstWorkout = cycleWorkouts.firstOrNull()
+                val programTemplate = firstWorkout?.workoutTemplateId?.let { templateId ->
+                    programs.find { program ->
+                        program.weeks.any { week ->
+                            week.sessions.any { session ->
+                                session.workoutTemplateId == templateId
+                            }
+                        }
+                    }
+                }
+                
+                // Calculate total planned sessions from the program template
+                val totalPlannedSessions = programTemplate?.let { program ->
+                    program.weeks.sumOf { it.sessions.size }
+                } ?: calculateEstimatedTotalSessions(cycleWorkouts)
+                
+                // Calculate accurate completion rate
+                val completionRate = if (totalPlannedSessions > 0) {
+                    (actualWorkouts.toDouble() / totalPlannedSessions.toDouble()).coerceAtMost(1.0)
+                } else {
+                    if (actualWorkouts > 0) 1.0 else 0.0
+                }
+                
+                if (cycleWorkouts.isNotEmpty()) {
+                    CycleWithWorkouts(
+                        cycleId = cycleId,
+                        cycle = null,
+                        program = programTemplate,
+                        workouts = cycleWorkouts,
+                        completionRate = completionRate,
+                        totalWorkouts = totalPlannedSessions,
+                        startDate = cycleWorkouts.minByOrNull { it.date }?.date,
+                        userCycleName = cycleWorkouts.firstOrNull()?.userCycleName ?: "Cycle $cycleId"
+                    )
+                } else null
             }.sortedByDescending { it.startDate }
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+    
+    // Helper function to estimate total sessions for a cycle
+    private fun calculateEstimatedTotalSessions(cycleWorkouts: List<LoggedWorkout>): Int {
+        if (cycleWorkouts.isEmpty()) return 0
+        
+        // Group workouts by program template and week to estimate cycle structure
+        val workoutsByTemplate = cycleWorkouts.groupBy { it.workoutTemplateId }
+        val uniqueWeeks = cycleWorkouts.mapNotNull { it.programWeekDefinitionId }.distinct().size
+        val uniqueSessions = cycleWorkouts.mapNotNull { it.programSessionDefinitionId }.distinct().size
+        
+        // If we have program structure data, use it
+        if (uniqueWeeks > 0 && uniqueSessions > 0) {
+            // Estimate based on program structure: weeks * sessions per week
+            val estimatedSessionsPerWeek = (uniqueSessions.toDouble() / uniqueWeeks.toDouble()).toInt().coerceAtLeast(1)
+            return uniqueWeeks * estimatedSessionsPerWeek
+        }
+        
+        // Fallback: if no program structure, assume they completed what they logged
+        // This is a conservative approach for legacy data
+        return cycleWorkouts.size
+    }
 
     // Existing functions
     fun getLoggedWorkoutById(id: String): Flow<LoggedWorkout?> {
