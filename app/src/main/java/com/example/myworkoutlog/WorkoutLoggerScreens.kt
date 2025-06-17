@@ -2,6 +2,7 @@
 
 package com.example.myworkoutlog
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,6 +40,7 @@ fun WorkoutLoggerScreen(
     // State for exit confirmation dialog
     var showExitConfirmation by remember { mutableStateOf(false) }
     var exitAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var isFinishAction by remember { mutableStateOf(false) }
     
     // Coroutine scope for handling async save operations
     val coroutineScope = rememberCoroutineScope()
@@ -53,8 +55,9 @@ fun WorkoutLoggerScreen(
     }
     
     // Function to show exit confirmation dialog
-    fun showExitConfirmationDialog(action: () -> Unit) {
+    fun showExitConfirmationDialog(action: () -> Unit, isFinish: Boolean = false) {
         exitAction = action
+        isFinishAction = isFinish
         showExitConfirmation = true
     }
 
@@ -80,19 +83,30 @@ fun WorkoutLoggerScreen(
     val timerValue by viewModel.timerValueSeconds.collectAsStateWithLifecycle()
     val sessionElapsedTime by viewModel.sessionElapsedTime.collectAsStateWithLifecycle()
 
+    // Handle system back gesture
+    BackHandler {
+        showExitConfirmationDialog({
+            coroutineScope.launch {
+                saveAllPendingData()
+                viewModel.stopRestTimer()
+                onNavigateUp()
+            }
+        })
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(activeWorkout?.name ?: "Log Workout") },
                 navigationIcon = {
                     IconButton(onClick = {
-                        showExitConfirmationDialog {
+                        showExitConfirmationDialog({
                             coroutineScope.launch {
                                 saveAllPendingData()
                                 viewModel.stopRestTimer()
                                 onNavigateUp()
                             }
-                        }
+                        })
                     }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
@@ -104,13 +118,13 @@ fun WorkoutLoggerScreen(
                         modifier = Modifier.padding(end = 8.dp)
                     )
                     Button(onClick = {
-                        showExitConfirmationDialog {
+                        showExitConfirmationDialog({
                             coroutineScope.launch {
                                 saveAllPendingData()
                                 viewModel.finishWorkout(weightUnit, activeCycle)
                                 onNavigateUp()
                             }
-                        }
+                        }, isFinish = true)
                     }) {
                         Text("Finish")
                     }
@@ -207,8 +221,16 @@ fun WorkoutLoggerScreen(
     if (showExitConfirmation) {
         AlertDialog(
             onDismissRequest = { showExitConfirmation = false },
-            title = { Text("Confirm Exit") },
-            text = { Text("Are you sure you want to exit this workout? All progress will be saved.") },
+            title = { 
+                Text(if (isFinishAction) "Confirm Finish" else "Confirm Exit") 
+            },
+            text = { 
+                Text(if (isFinishAction) 
+                    "Are you sure you want to finish this workout? All progress will be saved." 
+                else 
+                    "Are you sure you want to exit this workout? All progress will be saved."
+                ) 
+            },
             confirmButton = {
                 Button(
                     onClick = {
@@ -216,7 +238,7 @@ fun WorkoutLoggerScreen(
                         exitAction?.invoke()
                     }
                 ) {
-                    Text("Exit")
+                    Text(if (isFinishAction) "Finish" else "Exit")
                 }
             },
             dismissButton = {

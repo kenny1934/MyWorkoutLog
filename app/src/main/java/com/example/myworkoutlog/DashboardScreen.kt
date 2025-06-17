@@ -60,6 +60,9 @@ fun ActiveCycleDashboard(
 ) {
     // Get the details of the program blueprint for our active cycle
     val program by programViewModel.getProgramById(activeCycle.programTemplateId).collectAsState(initial = null)
+    
+    // State for end cycle confirmation dialog
+    var showEndCycleConfirmation by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier
@@ -71,7 +74,7 @@ fun ActiveCycleDashboard(
             Text(activeCycle.userCycleName, fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Text(activeCycle.programTemplateName, style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
-            Button(onClick = { activeCycleViewModel.endCycle() }, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = { showEndCycleConfirmation = true }, modifier = Modifier.fillMaxWidth()) {
                 Text("End Current Cycle")
             }
         }
@@ -118,6 +121,32 @@ fun ActiveCycleDashboard(
                 }
             }
         }
+    }
+    
+    // End cycle confirmation dialog
+    if (showEndCycleConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showEndCycleConfirmation = false },
+            title = { Text("End Cycle") },
+            text = { Text("Are you sure you want to end the current cycle '${activeCycle.userCycleName}'? This action cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showEndCycleConfirmation = false
+                        activeCycleViewModel.endCycle()
+                    }
+                ) {
+                    Text("End Cycle")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showEndCycleConfirmation = false }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
