@@ -2,36 +2,54 @@
 
 ## Current Status
 - Branch: `feature/enhanced-history-display`
-- Last commit: `feat: Replace cycle UUID display with user-defined cycle names`
-- Ready to fix two critical bugs in the enhanced history display
+- Last commit: `feat: Implement cycle data independence from program blueprints`
+- ✅ **COMPLETED:** History display + UX improvements + Cycle independence architecture
 
-## Active Bug Fixes (High Priority)
+## Completed Bug Fixes ✅
 
-### Bug 1: Workout Count Discrepancy
-**Issue:** Completed cycles view shows only 2 workouts when 3 were actually logged (verified in "All" tab)
-**Investigation needed:**
-- Check query/logic in `HistoryViewModel.kt` that counts workouts for completed cycles
-- Compare with "All" tab logic to identify filtering differences
-- Look for conditions excluding one workout from the count
+### ✅ Bug 1: Workout Count Discrepancy - FIXED
+**Issue:** Completed cycles view showed incorrect workout counts and percentages
+**Root Cause:** Hardcoded completion rate calculation always showing 100%
+**Solution:** 
+- Enhanced `HistoryViewModel.kt` with proper program template lookup
+- Implemented accurate completion percentage calculation based on actual vs planned sessions
+- Added fallback estimation for cycles without program template data
+- **Result:** Now shows accurate percentages (e.g., 75% for 3/4 workouts)
 
-### Bug 2: Incorrect Completion Percentage
-**Issue:** Cycle shows "100% Complete" despite missing sessions (3/4 workouts logged)
-**Investigation needed:**
-- Examine completion percentage calculation logic
-- Verify if it's properly counting actual vs planned sessions
-- Check cycle completion status determination logic
+### ✅ Bug 2: Incomplete Workout List Display - FIXED  
+**Issue:** Cycle cards showed correct totals but only listed 2 workouts instead of all completed workouts
+**Root Cause:** `CycleCard` component in `HistoryScreens.kt` used `.takeLast(2)` limiting display
+**Solution:**
+- Removed `.takeLast(2)` limitation in CycleCard component
+- Now displays ALL completed workouts matching header totals
+- **Result:** Workout list now shows all actual completed workouts consistently
 
-### Investigation Areas
-1. `HistoryViewModel.kt` - completion percentage and workout counting logic
-2. `ActiveCycleDao.kt` - cycle completion queries and data access
-3. `DataModels.kt` - cycle completion properties and calculations
-4. History display components - where values are rendered
+## Technical Fixes Implemented
+1. **HistoryViewModel.kt**: Enhanced completion calculation with program template data
+2. **HistoryScreens.kt**: Removed artificial workout display limitations
+3. **Data Consistency**: All views now show matching workout counts and percentages
 
-### Fix Strategy
-1. Identify root cause through code analysis of counting/calculation logic
-2. Fix workout counting to match "All" tab behavior consistently
-3. Fix completion percentage to accurately reflect missing sessions
-4. Test both fixes together for proper integration
+## ✅ UX Improvements Added
+
+### Confirmation Dialog System
+**Comprehensive data loss prevention with context-aware messaging:**
+- **Workout Logger Exit**: Confirmation for back button, back gesture, and finish action
+- **Dashboard Cycle End**: Confirmation when ending active cycles
+- **Context-Aware Text**: Different dialog messages for Exit vs Finish vs End Cycle actions
+- **Technical Implementation**: BackHandler for system gesture, AlertDialog with Material 3 styling
+
+## ✅ Architectural Improvements Added
+
+### Cycle Data Independence (Critical Foundation)
+**Problem Solved**: Cycles now independent of program blueprint changes
+- **Issue**: Active cycles were dynamically referencing blueprints, causing retroactive changes
+- **Solution**: Embedded program snapshots in `ActiveProgramCycle` at creation time
+- **Implementation**: 
+  - Added `cycleProgram: ProgramTemplate` field with JSON serialization
+  - Snapshot blueprint data when cycle starts (`activeCycleViewModel.startCycle()`)
+  - Dashboard uses embedded data instead of dynamic lookups
+  - Database version incremented to 18 for schema migration
+- **Result**: Each cycle preserves its program structure independently, enabling future in-session modifications
 
 ## Development Commands
 ```bash
@@ -43,8 +61,35 @@
 ./gradlew installDebug
 ```
 
-## Next Steps
-1. Investigate both bugs by examining the identified files
-2. Implement fixes for accurate workout counting and completion percentage
-3. Test thoroughly before committing changes
-4. Continue with roadmap items after bug fixes are complete
+## Next Development Priorities - Tier 1 Core Logger
+
+**Current Focus**: Resume original development plan with enhanced data protection foundation in place.
+
+### Immediate Tier 1 Priorities (In Order):
+1. **In-Session Flexibility** (Priority: High | Est: 14-21 days)
+   - Add ad-hoc exercises to workouts on the fly
+   - Exercise substitution during active sessions
+   - Dynamic workout modification capabilities
+
+2. **Smart Pre-fill** (Priority: High | Est: 7 days)
+   - Auto-populate sets with previous performance data
+   - Intelligent weight/rep suggestions based on history
+   - Reduce manual data entry and improve workout flow
+
+3. **Edit Historical Workouts** (Priority: High | Est: 7 days)
+   - Add "Edit" button to HistoryDetailScreen
+   - Open past workouts in logger for corrections
+   - Complete Tier 1 core logger experience
+
+### Foundation Status ✅
+- ✅ **History Display**: Stable mesocycle-centric view with accurate data
+- ✅ **Data Protection**: Comprehensive confirmation dialogs prevent accidental loss
+- ✅ **UX Flow**: Smooth navigation and cycle management
+- ✅ **Cycle Independence**: Proper architectural foundation for workout modifications
+- **🎯 Ready for In-Session Flexibility**: All prerequisite systems stable and tested
+
+### Next Session Priorities
+**Immediate Focus**: Begin In-Session Flexibility implementation with solid foundation in place
+1. **Architecture Planning**: Design add/substitute exercise workflows
+2. **UI Components**: Modify WorkoutLoggerScreens for dynamic exercise management
+3. **Data Layer**: Update ViewModel to handle cycle-specific modifications
