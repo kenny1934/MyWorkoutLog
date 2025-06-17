@@ -1,0 +1,46 @@
+# MyWorkoutLog - Android Workout Tracking App
+
+## Project Overview
+Native Android app for tracking structured workout programs with comprehensive planning, execution, and analysis features.
+
+## Tech Stack
+- Language: Kotlin
+- UI: Jetpack Compose & Material 3
+- Architecture: MVVM
+- Database: Room
+- Async: Coroutines & Flow
+- Preferences: DataStore
+
+## Key Files Structure
+- `MainActivity.kt` - All UI screens and navigation
+- `DataModels.kt` - All data classes and Room entities
+- `*ViewModel.kt` - Business logic for each feature
+- `*Dao.kt` - Database access objects
+- `WorkoutDatabase.kt` - Room database configuration
+
+## Current Development Focus
+Enhancing workout logging experience (Tier 1 features):
+1. ✅ Detailed set logging (RIR, bands, notes) - COMPLETED
+2. In-session flexibility (add/substitute exercises)
+3. Smart pre-fill from previous workouts
+4. Historical workout editing
+
+## Recently Added Features
+- **Detailed Set Logging**: RIR (0-10), resistance bands, and expandable notes fields
+- **Enhanced UI Components**: LoggedSetRow with expandable sections and proper validation
+- **Backward Compatibility**: All new fields nullable, existing workouts unaffected
+
+## Important Conventions
+- All database operations use Dispatchers.IO
+- Composable functions start with capital letters
+- Use StateFlow for reactive data
+- Maintain immutability (val over var)
+- Follow Material 3 design guidelines
+
+## Testing Considerations
+- Test with different weight units (kg/lb)
+- Verify PR calculations with bodyweight exercises
+- Ensure timer survives configuration changes
+- Maintain backward compatibility with existing data
+
+Refer to /docs/claude-code/instructions.md for detailed guidelines.
