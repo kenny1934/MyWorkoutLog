@@ -374,10 +374,10 @@ fun CycleCard(
                 )
             }
             
-            // Show recent workouts from this cycle
+            // Show all workouts from this cycle
             if (cycleWithWorkouts.workouts.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
-                cycleWithWorkouts.workouts.takeLast(2).forEach { workout ->
+                cycleWithWorkouts.workouts.forEach { workout ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
