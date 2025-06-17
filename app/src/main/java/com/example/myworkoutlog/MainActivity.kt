@@ -225,6 +225,11 @@ fun AppNavHost(
                 activeCycleViewModel = activeCycleViewModel,
                 onNavigateToProgram = { programId ->
                     navController.navigate(Screen.ProgramEditor.createRoute(programId))
+                },
+                onNavigateToDashboard = {
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Dashboard.route) { inclusive = true }
+                    }
                 }
             )
         }

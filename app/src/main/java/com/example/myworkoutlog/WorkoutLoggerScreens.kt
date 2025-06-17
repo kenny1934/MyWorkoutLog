@@ -36,6 +36,10 @@ fun WorkoutLoggerScreen(
     // Local state for the bodyweight text field
     var bodyweightText by remember { mutableStateOf("") }
     
+    // State for exit confirmation dialog
+    var showExitConfirmation by remember { mutableStateOf(false) }
+    var exitAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    
     // Coroutine scope for handling async save operations
     val coroutineScope = rememberCoroutineScope()
     
@@ -46,6 +50,12 @@ fun WorkoutLoggerScreen(
         // Give a brief moment for any active typing to be captured by debounced saves
         kotlinx.coroutines.delay(100)
         // Note: Individual set data is automatically saved via DisposableEffect and debounced LaunchedEffect
+    }
+    
+    // Function to show exit confirmation dialog
+    fun showExitConfirmationDialog(action: () -> Unit) {
+        exitAction = action
+        showExitConfirmation = true
     }
 
     // Debounced auto-save for bodyweight field
@@ -76,10 +86,12 @@ fun WorkoutLoggerScreen(
                 title = { Text(activeWorkout?.name ?: "Log Workout") },
                 navigationIcon = {
                     IconButton(onClick = {
-                        coroutineScope.launch {
-                            saveAllPendingData()
-                            viewModel.stopRestTimer()
-                            onNavigateUp()
+                        showExitConfirmationDialog {
+                            coroutineScope.launch {
+                                saveAllPendingData()
+                                viewModel.stopRestTimer()
+                                onNavigateUp()
+                            }
                         }
                     }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -92,10 +104,12 @@ fun WorkoutLoggerScreen(
                         modifier = Modifier.padding(end = 8.dp)
                     )
                     Button(onClick = {
-                        coroutineScope.launch {
-                            saveAllPendingData()
-                            viewModel.finishWorkout(weightUnit, activeCycle)
-                            onNavigateUp()
+                        showExitConfirmationDialog {
+                            coroutineScope.launch {
+                                saveAllPendingData()
+                                viewModel.finishWorkout(weightUnit, activeCycle)
+                                onNavigateUp()
+                            }
                         }
                     }) {
                         Text("Finish")
@@ -187,6 +201,32 @@ fun WorkoutLoggerScreen(
                 }
             }
         }
+    }
+    
+    // Exit confirmation dialog
+    if (showExitConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showExitConfirmation = false },
+            title = { Text("Confirm Exit") },
+            text = { Text("Are you sure you want to exit this workout? All progress will be saved.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showExitConfirmation = false
+                        exitAction?.invoke()
+                    }
+                ) {
+                    Text("Exit")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showExitConfirmation = false }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
