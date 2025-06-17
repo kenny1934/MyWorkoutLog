@@ -95,6 +95,16 @@ class Converters {
 
     @TypeConverter
     fun toPRType(value: String): PRType = PRType.valueOf(value)
+
+    @TypeConverter
+    fun fromProgramTemplate(value: ProgramTemplate): String {
+        return gson.toJson(value)
+    }
+
+    @TypeConverter
+    fun toProgramTemplate(value: String): ProgramTemplate {
+        return gson.fromJson(value, ProgramTemplate::class.java)
+    }
 }
 
 
@@ -218,15 +228,18 @@ data class ProgramTemplate(
 
 // Using a simple ID for the primary key, since we'll only have one row.
 @Entity(tableName = "active_program_cycle_table")
+@TypeConverters(Converters::class)
 data class ActiveProgramCycle(
     @PrimaryKey val id: Int = 1,
     val cycleUuid: String, // Unique identifier for this specific cycle instance
-    val programTemplateId: String,
+    val programTemplateId: String, // Keep for reference
     val programTemplateName: String,
     val userCycleName: String, // e.g., "My Hypertrophy Cycle"
     val startDate: String,
     // Map of "weekId_sessionId" to "loggedWorkoutId"
-    val completedSessions: Map<String, String>
+    val completedSessions: Map<String, String>,
+    // Snapshot of the program template at cycle creation time
+    val cycleProgram: ProgramTemplate
 )
 
 // An enum to define the type of PR

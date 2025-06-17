@@ -58,8 +58,8 @@ fun ActiveCycleDashboard(
     activeCycleViewModel: ActiveCycleViewModel,
     navController: NavHostController
 ) {
-    // Get the details of the program blueprint for our active cycle
-    val program by programViewModel.getProgramById(activeCycle.programTemplateId).collectAsState(initial = null)
+    // Use the embedded program data (snapshot) instead of dynamic lookup
+    val program = activeCycle.cycleProgram
     
     // State for end cycle confirmation dialog
     var showEndCycleConfirmation by remember { mutableStateOf(false) }
@@ -79,7 +79,7 @@ fun ActiveCycleDashboard(
             }
         }
 
-        program?.weeks?.sortedBy { it.order }?.forEach { week ->
+        program.weeks.sortedBy { it.order }.forEach { week ->
             item {
                 Text(week.weekLabel, style = MaterialTheme.typography.titleLarge)
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))

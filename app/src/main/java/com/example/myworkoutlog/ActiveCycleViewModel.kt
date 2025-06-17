@@ -28,7 +28,8 @@ class ActiveCycleViewModel(private val activeCycleDao: ActiveCycleDao) : ViewMod
                 programTemplateName = program.name,
                 userCycleName = cycleName,
                 startDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
-                completedSessions = emptyMap()
+                completedSessions = emptyMap(),
+                cycleProgram = program // Snapshot the program template
             )
             activeCycleDao.setActiveCycle(newCycle)
         }
