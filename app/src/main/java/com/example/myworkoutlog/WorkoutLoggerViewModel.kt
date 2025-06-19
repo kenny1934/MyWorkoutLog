@@ -30,6 +30,10 @@ class WorkoutLoggerViewModel(
     private val _activeWorkoutState = MutableStateFlow<LoggedWorkout?>(null)
     // A public, read-only state flow for the UI to observe
     val activeWorkoutState: StateFlow<LoggedWorkout?> = _activeWorkoutState.asStateFlow()
+    
+    // StateFlow for all exercises (for exercise selection dialog)
+    val allExercises: StateFlow<List<Exercise>> = exerciseDao.getAllExercises()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- REFACTORED TIMER/STOPWATCH LOGIC ---
     private var workoutStartTimeMillis: Long = 0L
@@ -265,6 +269,48 @@ class WorkoutLoggerViewModel(
     fun updateBodyweight(bodyweight: String) {
         _activeWorkoutState.update { currentWorkout ->
             currentWorkout?.copy(bodyweight = bodyweight.toDoubleOrNull())
+        }
+    }
+    
+    // Add exercise to the current workout
+    fun addExerciseToWorkout(exerciseId: String, numberOfSets: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            // Get the exercise details from the database
+            val exercise = exerciseDao.getExerciseById(exerciseId)
+            if (exercise != null) {
+                // Create the LoggedExercise with empty sets
+                val loggedSets = (1..numberOfSets).map {
+                    LoggedSet(
+                        id = UUID.randomUUID().toString(),
+                        reps = null,
+                        secs = null,
+                        weight = null,
+                        rir = null,
+                        bands = null,
+                        notes = null,
+                        targetReps = "8-12", // Default target reps for ad-hoc exercises
+                        targetSecs = null
+                    )
+                }
+                
+                val loggedExercise = LoggedExercise(
+                    id = UUID.randomUUID().toString(),
+                    exerciseId = exercise.id,
+                    exerciseName = exercise.name,
+                    targetMuscleGroups = exercise.targetMuscleGroups,
+                    equipment = exercise.equipment,
+                    sets = loggedSets,
+                    isSubstitute = false, // This is an addition, not a substitution
+                    notes = null
+                )
+                
+                // Add the exercise to the current workout
+                _activeWorkoutState.update { currentWorkout ->
+                    currentWorkout?.copy(
+                        loggedExercises = currentWorkout.loggedExercises + loggedExercise
+                    )
+                }
+            }
         }
     }
 }

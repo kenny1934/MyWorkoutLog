@@ -2,8 +2,8 @@
 
 ## Current Status
 - Branch: `feature/enhanced-history-display`
-- Last commit: `feat: Implement cycle data independence from program blueprints`
-- ✅ **COMPLETED:** History display + UX improvements + Cycle independence architecture
+- Last commit: `feat: Add in-session exercise addition capability`
+- ✅ **COMPLETED:** History display + UX improvements + Cycle independence architecture + In-session exercise addition
 
 ## Completed Bug Fixes ✅
 
@@ -88,8 +88,29 @@
 - ✅ **Cycle Independence**: Proper architectural foundation for workout modifications
 - **🎯 Ready for In-Session Flexibility**: All prerequisite systems stable and tested
 
+## ✅ In-Session Flexibility Implementation (Phase 3A Complete)
+
+### Add Exercise Functionality ✅
+**Problem Solved**: Users can now add exercises during active workout sessions
+- **UI Enhancement**: FloatingActionButton with `+` icon in workout logger
+- **Exercise Selection**: Two-step dialog with searchable exercise list and set configuration
+- **Implementation**: 
+  - Added `AddExerciseToWorkoutDialog` and `ExerciseSelectorContent` components
+  - Implemented `addExerciseToWorkout()` function in `WorkoutLoggerViewModel`
+  - Added `getExerciseById()` method to `ExerciseDao` for exercise lookup
+  - Added `allExercises` StateFlow for reactive exercise data
+- **Data Flow**: FAB → Exercise Search → Set Configuration → Add to Workout
+- **Default Configuration**: New exercises get 3 sets with 8-12 rep targets
+- **Result**: Users can dynamically add any exercise from the database during workouts
+
+### Technical Implementation Details
+1. **WorkoutLoggerScreens.kt**: Added FAB, exercise selection dialogs, search functionality
+2. **WorkoutLoggerViewModel.kt**: Added exercise addition logic with proper data handling
+3. **ExerciseDao.kt**: Extended with single exercise lookup capability
+4. **Data Integrity**: Maintains cycle independence for in-session modifications
+
 ### Next Session Priorities
-**Immediate Focus**: Begin In-Session Flexibility implementation with solid foundation in place
-1. **Architecture Planning**: Design add/substitute exercise workflows
-2. **UI Components**: Modify WorkoutLoggerScreens for dynamic exercise management
-3. **Data Layer**: Update ViewModel to handle cycle-specific modifications
+**Immediate Focus**: Continue In-Session Flexibility implementation
+1. **Exercise Substitution**: Long-press exercise → substitute workflow  
+2. **Set Management**: Add/remove sets from existing exercises
+3. **Exercise Removal**: Remove exercises from active workouts

@@ -4,6 +4,7 @@ package com.example.myworkoutlog
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -41,6 +42,9 @@ fun WorkoutLoggerScreen(
     var showExitConfirmation by remember { mutableStateOf(false) }
     var exitAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var isFinishAction by remember { mutableStateOf(false) }
+    
+    // State for exercise addition dialog
+    var showAddExerciseDialog by remember { mutableStateOf(false) }
     
     // Coroutine scope for handling async save operations
     val coroutineScope = rememberCoroutineScope()
@@ -130,6 +134,14 @@ fun WorkoutLoggerScreen(
                     }
                 }
             )
+        },
+        
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showAddExerciseDialog = true }
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = "Add Exercise")
+            }
         },
 
         bottomBar = {
@@ -248,6 +260,15 @@ fun WorkoutLoggerScreen(
                     Text("Cancel")
                 }
             }
+        )
+    }
+    
+    // Add Exercise Dialog
+    if (showAddExerciseDialog) {
+        AddExerciseToWorkoutDialog(
+            viewModel = viewModel,
+            onDismiss = { showAddExerciseDialog = false },
+            onExerciseAdded = { showAddExerciseDialog = false }
         )
     }
 }
@@ -586,6 +607,135 @@ fun TimerBar(
 
                 IconButton(onClick = onStop) {
                     Icon(Icons.Filled.Stop, contentDescription = "Stop Timer")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AddExerciseToWorkoutDialog(
+    viewModel: WorkoutLoggerViewModel,
+    onDismiss: () -> Unit,
+    onExerciseAdded: () -> Unit
+) {
+    // State for exercise selection
+    var selectedExercise by remember { mutableStateOf<Exercise?>(null) }
+    var numberOfSets by remember { mutableStateOf("3") }
+    var showExerciseSelector by remember { mutableStateOf(true) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Text(if (showExerciseSelector) "Select Exercise" else "Configure Sets")
+        },
+        text = {
+            if (showExerciseSelector) {
+                ExerciseSelectorContent(
+                    viewModel = viewModel,
+                    onExerciseSelected = { exercise ->
+                        selectedExercise = exercise
+                        showExerciseSelector = false
+                    }
+                )
+            } else {
+                Column {
+                    Text("Exercise: ${selectedExercise?.name}")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = numberOfSets,
+                        onValueChange = { newValue ->
+                            if (newValue.all { it.isDigit() } && newValue.isNotEmpty()) {
+                                numberOfSets = newValue
+                            }
+                        },
+                        label = { Text("Number of Sets") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (showExerciseSelector) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            } else {
+                Button(
+                    onClick = {
+                        selectedExercise?.let { exercise ->
+                            val sets = numberOfSets.toIntOrNull() ?: 3
+                            viewModel.addExerciseToWorkout(exercise.id, sets)
+                            onExerciseAdded()
+                        }
+                    },
+                    enabled = selectedExercise != null
+                ) {
+                    Text("Add Exercise")
+                }
+            }
+        },
+        dismissButton = {
+            if (!showExerciseSelector) {
+                TextButton(
+                    onClick = { 
+                        showExerciseSelector = true
+                        selectedExercise = null
+                    }
+                ) {
+                    Text("Back")
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun ExerciseSelectorContent(
+    viewModel: WorkoutLoggerViewModel,
+    onExerciseSelected: (Exercise) -> Unit
+) {
+    val exercises by viewModel.allExercises.collectAsStateWithLifecycle()
+    var searchText by remember { mutableStateOf("") }
+    
+    Column {
+        OutlinedTextField(
+            value = searchText,
+            onValueChange = { searchText = it },
+            label = { Text("Search exercises...") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        LazyColumn(
+            modifier = Modifier.height(300.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            val filteredExercises = exercises.filter { exercise ->
+                exercise.name.contains(searchText, ignoreCase = true)
+            }
+            
+            items(filteredExercises) { exercise ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onExerciseSelected(exercise) }
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Text(
+                            text = exercise.name,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = exercise.targetMuscleGroups.joinToString(", "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
