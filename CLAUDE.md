@@ -109,8 +109,30 @@
 3. **ExerciseDao.kt**: Extended with single exercise lookup capability
 4. **Data Integrity**: Maintains cycle independence for in-session modifications
 
+## ✅ In-Session Flexibility Implementation (Phase 3B Complete)
+
+### Exercise Substitution & Set Management ✅
+**Problem Solved**: Users can now modify workouts comprehensively during active sessions
+- **Exercise Substitution**: Long-press exercise → context menu → substitute with any exercise
+- **Exercise Removal**: Context menu option with confirmation dialog for data protection
+- **Set Management**: Add/remove sets with visual controls and confirmation dialogs
+- **Implementation**: 
+  - Added long-press gesture detection with `combinedClickable`
+  - Implemented `ExerciseContextMenuDialog` with substitute/remove options
+  - Created `SubstituteExerciseDialog` reusing exercise selection components
+  - Added `+` button to exercise headers for adding sets
+  - Added `-` button to individual sets (only when >1 set exists)
+  - Implemented confirmation dialogs for all destructive actions
+- **Data Flow**: Long-press → Context Menu → Action → Confirmation → State Update
+- **Visual Indicators**: SwapHoriz icon for substituted exercises, error-colored delete buttons
+- **Result**: Complete in-session workout modification capabilities with data safety
+
+### Technical Implementation Details
+1. **WorkoutLoggerScreens.kt**: Added gesture detection, context menus, set management UI
+2. **WorkoutLoggerViewModel.kt**: Added `substituteExercise()`, `removeExerciseFromWorkout()`, `addSetToExercise()`, `removeSetFromExercise()`
+3. **Data Safety**: Confirmation dialogs prevent accidental deletions, minimum 1 set enforcement
+4. **UX Polish**: Visual indicators, proper button placement, intuitive workflows
+
 ### Next Session Priorities
-**Immediate Focus**: Continue In-Session Flexibility implementation
-1. **Exercise Substitution**: Long-press exercise → substitute workflow  
-2. **Set Management**: Add/remove sets from existing exercises
-3. **Exercise Removal**: Remove exercises from active workouts
+**Phase 3 Complete**: Core in-session flexibility fully implemented
+**Ready for Phase 4**: Smart Pre-fill functionality (auto-populate with previous performance data)

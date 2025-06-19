@@ -313,6 +313,89 @@ class WorkoutLoggerViewModel(
             }
         }
     }
+    
+    // Substitute an exercise in the current workout
+    fun substituteExercise(currentExerciseId: String, newExerciseId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            // Get the new exercise details from the database
+            val newExercise = exerciseDao.getExerciseById(newExerciseId)
+            if (newExercise != null) {
+                _activeWorkoutState.update { currentWorkout ->
+                    currentWorkout?.copy(
+                        loggedExercises = currentWorkout.loggedExercises.map { exercise ->
+                            if (exercise.id == currentExerciseId) {
+                                // Replace the exercise but keep all the sets data
+                                exercise.copy(
+                                    exerciseId = newExercise.id,
+                                    exerciseName = newExercise.name,
+                                    targetMuscleGroups = newExercise.targetMuscleGroups,
+                                    equipment = newExercise.equipment,
+                                    isSubstitute = true // Mark as substituted
+                                )
+                            } else {
+                                exercise
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
+    
+    // Remove an exercise from the current workout
+    fun removeExerciseFromWorkout(exerciseId: String) {
+        _activeWorkoutState.update { currentWorkout ->
+            currentWorkout?.copy(
+                loggedExercises = currentWorkout.loggedExercises.filter { exercise ->
+                    exercise.id != exerciseId
+                }
+            )
+        }
+    }
+    
+    // Add a set to an existing exercise
+    fun addSetToExercise(exerciseId: String) {
+        _activeWorkoutState.update { currentWorkout ->
+            currentWorkout?.copy(
+                loggedExercises = currentWorkout.loggedExercises.map { exercise ->
+                    if (exercise.id == exerciseId) {
+                        // Create a new empty set
+                        val newSet = LoggedSet(
+                            id = UUID.randomUUID().toString(),
+                            reps = null,
+                            secs = null,
+                            weight = null,
+                            rir = null,
+                            bands = null,
+                            notes = null,
+                            targetReps = "8-12", // Default target for added sets
+                            targetSecs = null
+                        )
+                        exercise.copy(sets = exercise.sets + newSet)
+                    } else {
+                        exercise
+                    }
+                }
+            )
+        }
+    }
+    
+    // Remove a set from an exercise
+    fun removeSetFromExercise(exerciseId: String, setId: String) {
+        _activeWorkoutState.update { currentWorkout ->
+            currentWorkout?.copy(
+                loggedExercises = currentWorkout.loggedExercises.map { exercise ->
+                    if (exercise.id == exerciseId) {
+                        exercise.copy(
+                            sets = exercise.sets.filter { set -> set.id != setId }
+                        )
+                    } else {
+                        exercise
+                    }
+                }
+            )
+        }
+    }
 }
 
 // The factory for creating our new ViewModel

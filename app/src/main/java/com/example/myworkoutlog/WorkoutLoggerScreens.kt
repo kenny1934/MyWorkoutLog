@@ -1,10 +1,12 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 
 package com.example.myworkoutlog
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -45,6 +47,20 @@ fun WorkoutLoggerScreen(
     
     // State for exercise addition dialog
     var showAddExerciseDialog by remember { mutableStateOf(false) }
+    
+    // State for exercise context menu
+    var showExerciseContextMenu by remember { mutableStateOf(false) }
+    var selectedExerciseForMenu by remember { mutableStateOf<LoggedExercise?>(null) }
+    
+    // State for exercise substitution dialog
+    var showSubstituteExerciseDialog by remember { mutableStateOf(false) }
+    
+    // State for exercise removal confirmation
+    var showRemoveExerciseConfirmation by remember { mutableStateOf(false) }
+    
+    // State for set removal confirmation
+    var showRemoveSetConfirmation by remember { mutableStateOf(false) }
+    var selectedSetForRemoval by remember { mutableStateOf<Pair<String, String>?>(null) } // exerciseId, setId
     
     // Coroutine scope for handling async save operations
     val coroutineScope = rememberCoroutineScope()
@@ -189,9 +205,51 @@ fun WorkoutLoggerScreen(
                     )
                 }
                 items(activeWorkout!!.loggedExercises) { exercise ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .combinedClickable(
+                                onClick = { /* Regular click - no action needed */ },
+                                onLongClick = {
+                                    selectedExerciseForMenu = exercise
+                                    showExerciseContextMenu = true
+                                }
+                            )
+                    ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text(exercise.exerciseName, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = exercise.exerciseName, 
+                                    fontSize = 18.sp, 
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    // Add Set button
+                                    IconButton(
+                                        onClick = { viewModel.addSetToExercise(exercise.id) }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Add,
+                                            contentDescription = "Add Set",
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    // Show substitution indicator if exercise is substituted
+                                    if (exercise.isSubstitute == true) {
+                                        Icon(
+                                            imageVector = Icons.Filled.SwapHoriz,
+                                            contentDescription = "Substituted Exercise",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
                             Spacer(Modifier.height(8.dp))
                             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
@@ -201,6 +259,7 @@ fun WorkoutLoggerScreen(
                                     set = set,
                                     setNumber = index + 1,
                                     weightUnit = weightUnit,
+                                    showDeleteButton = exercise.sets.size > 1, // Only show delete if more than 1 set
                                     onRepsChange = { newReps ->
                                         viewModel.updateSet(exercise.id, set.id, newReps, set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes)
                                     },
@@ -219,7 +278,11 @@ fun WorkoutLoggerScreen(
                                     onNotesChange = { newNotes ->
                                         viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, newNotes)
                                     },
-                                    onStartRest = { viewModel.startRestTimer() }
+                                    onStartRest = { viewModel.startRestTimer() },
+                                    onDeleteSet = {
+                                        selectedSetForRemoval = Pair(exercise.id, set.id)
+                                        showRemoveSetConfirmation = true
+                                    }
                                 )
                             }
                         }
@@ -271,6 +334,119 @@ fun WorkoutLoggerScreen(
             onExerciseAdded = { showAddExerciseDialog = false }
         )
     }
+    
+    // Exercise Context Menu Dialog
+    if (showExerciseContextMenu && selectedExerciseForMenu != null) {
+        ExerciseContextMenuDialog(
+            exercise = selectedExerciseForMenu!!,
+            onDismiss = { 
+                showExerciseContextMenu = false
+                selectedExerciseForMenu = null
+            },
+            onSubstitute = {
+                showExerciseContextMenu = false
+                showSubstituteExerciseDialog = true
+            },
+            onRemove = {
+                showExerciseContextMenu = false
+                showRemoveExerciseConfirmation = true
+            }
+        )
+    }
+    
+    // Substitute Exercise Dialog
+    if (showSubstituteExerciseDialog && selectedExerciseForMenu != null) {
+        SubstituteExerciseDialog(
+            viewModel = viewModel,
+            currentExercise = selectedExerciseForMenu!!,
+            onDismiss = { 
+                showSubstituteExerciseDialog = false
+                selectedExerciseForMenu = null
+            },
+            onExerciseSubstituted = { 
+                showSubstituteExerciseDialog = false
+                selectedExerciseForMenu = null
+            }
+        )
+    }
+    
+    // Remove Exercise Confirmation Dialog
+    if (showRemoveExerciseConfirmation && selectedExerciseForMenu != null) {
+        AlertDialog(
+            onDismissRequest = { 
+                showRemoveExerciseConfirmation = false
+                selectedExerciseForMenu = null
+            },
+            title = { Text("Remove Exercise") },
+            text = { 
+                Text("Are you sure you want to remove \"${selectedExerciseForMenu!!.exerciseName}\" from this workout? This action cannot be undone.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.removeExerciseFromWorkout(selectedExerciseForMenu!!.id)
+                        showRemoveExerciseConfirmation = false
+                        selectedExerciseForMenu = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Remove")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showRemoveExerciseConfirmation = false
+                        selectedExerciseForMenu = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+    
+    // Remove Set Confirmation Dialog
+    if (showRemoveSetConfirmation && selectedSetForRemoval != null) {
+        AlertDialog(
+            onDismissRequest = { 
+                showRemoveSetConfirmation = false
+                selectedSetForRemoval = null
+            },
+            title = { Text("Remove Set") },
+            text = { 
+                Text("Are you sure you want to remove this set? This action cannot be undone.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        selectedSetForRemoval?.let { (exerciseId, setId) ->
+                            viewModel.removeSetFromExercise(exerciseId, setId)
+                        }
+                        showRemoveSetConfirmation = false
+                        selectedSetForRemoval = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Remove")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showRemoveSetConfirmation = false
+                        selectedSetForRemoval = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -278,13 +454,15 @@ fun LoggedSetRow(
     set: LoggedSet,
     setNumber: Int,
     weightUnit: String,
+    showDeleteButton: Boolean = false,
     onRepsChange: (String) -> Unit,
     onWeightChange: (Double?) -> Unit,
     onSecsChange: (String) -> Unit,
     onRirChange: (String) -> Unit = {},
     onBandsChange: (String) -> Unit = {},
     onNotesChange: (String) -> Unit = {},
-    onStartRest: () -> Unit
+    onStartRest: () -> Unit,
+    onDeleteSet: () -> Unit = {}
 ) {
     // Determine which fields to show based on the template's targets for this set
     val showWeightReps = !set.targetReps.isNullOrBlank()
@@ -409,13 +587,26 @@ fun LoggedSetRow(
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.weight(1f))
-            if (set.reps != null || set.secs != null) {
-                IconButton(onClick = { 
-                    // Save current values when starting rest timer
-                    saveAllCurrentValues()
-                    onStartRest() 
-                }) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = "Start Rest Timer")
+            Row {
+                // Delete button (only show if more than 1 set)
+                if (showDeleteButton) {
+                    IconButton(onClick = onDeleteSet) {
+                        Icon(
+                            Icons.Filled.Remove, 
+                            contentDescription = "Remove Set",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+                // Start rest timer button
+                if (set.reps != null || set.secs != null) {
+                    IconButton(onClick = { 
+                        // Save current values when starting rest timer
+                        saveAllCurrentValues()
+                        onStartRest() 
+                    }) {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = "Start Rest Timer")
+                    }
                 }
             }
         }
@@ -740,6 +931,130 @@ fun ExerciseSelectorContent(
             }
         }
     }
+}
+
+@Composable
+fun ExerciseContextMenuDialog(
+    exercise: LoggedExercise,
+    onDismiss: () -> Unit,
+    onSubstitute: () -> Unit,
+    onRemove: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Exercise Options") },
+        text = { 
+            Column {
+                Text("Choose an action for \"${exercise.exerciseName}\"")
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Button(
+                    onClick = onSubstitute,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.SwapHoriz, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Substitute Exercise")
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Button(
+                    onClick = onRemove,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(Icons.Filled.Delete, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Remove Exercise")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        dismissButton = null
+    )
+}
+
+@Composable
+fun SubstituteExerciseDialog(
+    viewModel: WorkoutLoggerViewModel,
+    currentExercise: LoggedExercise,
+    onDismiss: () -> Unit,
+    onExerciseSubstituted: () -> Unit
+) {
+    // State for exercise selection
+    var selectedExercise by remember { mutableStateOf<Exercise?>(null) }
+    var showExerciseSelector by remember { mutableStateOf(true) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Text(if (showExerciseSelector) "Select Substitute" else "Confirm Substitution")
+        },
+        text = {
+            if (showExerciseSelector) {
+                Column {
+                    Text("Substituting: ${currentExercise.exerciseName}")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    ExerciseSelectorContent(
+                        viewModel = viewModel,
+                        onExerciseSelected = { exercise ->
+                            selectedExercise = exercise
+                            showExerciseSelector = false
+                        }
+                    )
+                }
+            } else {
+                Column {
+                    Text("Current: ${currentExercise.exerciseName}")
+                    Text("Substitute with: ${selectedExercise?.name}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "This will replace the exercise while keeping all current set data.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (showExerciseSelector) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            } else {
+                Button(
+                    onClick = {
+                        selectedExercise?.let { newExercise ->
+                            viewModel.substituteExercise(currentExercise.id, newExercise.id)
+                            onExerciseSubstituted()
+                        }
+                    },
+                    enabled = selectedExercise != null
+                ) {
+                    Text("Substitute")
+                }
+            }
+        },
+        dismissButton = {
+            if (!showExerciseSelector) {
+                TextButton(
+                    onClick = { 
+                        showExerciseSelector = true
+                        selectedExercise = null
+                    }
+                ) {
+                    Text("Back")
+                }
+            }
+        }
+    )
 }
 
 // A helper function to format seconds into MM:SS format
