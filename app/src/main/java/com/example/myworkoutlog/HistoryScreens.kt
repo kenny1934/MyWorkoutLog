@@ -493,7 +493,8 @@ fun ChronologicalHistoryView(
 fun HistoryDetailScreen(
     workoutId: String,
     viewModel: HistoryViewModel,
-    onNavigateUp: () -> Unit
+    onNavigateUp: () -> Unit,
+    onNavigateToEdit: (String) -> Unit
 ) {
     val workout by viewModel.getLoggedWorkoutById(workoutId).collectAsState(initial = null)
 
@@ -504,6 +505,11 @@ fun HistoryDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateUp) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { onNavigateToEdit(workoutId) }) {
+                        Icon(Icons.Filled.Edit, contentDescription = "Edit Workout")
                     }
                 }
             )

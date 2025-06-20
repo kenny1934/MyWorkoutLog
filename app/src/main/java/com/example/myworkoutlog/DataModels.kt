@@ -271,3 +271,20 @@ data class CycleWorkoutCount(
     val activeProgramCycleId: String,
     val workoutCount: Int
 )
+
+// Data class for smart pre-fill suggestions
+data class PerformanceSuggestion(
+    val suggestedWeight: Double? = null,
+    val suggestedReps: Int? = null,
+    val suggestedRir: Int? = null,
+    val confidence: Float = 0f, // 0.0 to 1.0 confidence level
+    val basedonLastWorkout: Boolean = false,
+    val daysAgo: Int? = null,
+    val progressionType: ProgressionType = ProgressionType.MAINTAIN
+)
+
+enum class ProgressionType {
+    INCREASE, // Suggest slight increase from last performance
+    MAINTAIN, // Suggest same as last performance
+    DECREASE  // Suggest slight decrease (deload/recovery)
+}

@@ -27,6 +27,29 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 
 @Composable
+fun EditWorkoutScreen(
+    workoutId: String,
+    viewModel: WorkoutLoggerViewModel,
+    activeCycleViewModel: ActiveCycleViewModel,
+    weightUnit: String,
+    onNavigateUp: () -> Unit
+) {
+    // LaunchedEffect to load workout for editing when the composable first appears
+    LaunchedEffect(key1 = workoutId) {
+        viewModel.loadWorkoutForEdit(workoutId)
+    }
+
+    // Reuse the WorkoutLoggerScreen UI but with edit mode context
+    WorkoutLoggerScreenContent(
+        viewModel = viewModel,
+        activeCycleViewModel = activeCycleViewModel,
+        weightUnit = weightUnit,
+        onNavigateUp = onNavigateUp,
+        isEditMode = true
+    )
+}
+
+@Composable
 fun WorkoutLoggerScreen(
     templateId: String,
     cycleId: String?,
@@ -36,6 +59,29 @@ fun WorkoutLoggerScreen(
     activeCycleViewModel: ActiveCycleViewModel,
     weightUnit: String,
     onNavigateUp: () -> Unit
+) {
+    // LaunchedEffect runs a coroutine when the composable first appears.
+    LaunchedEffect(key1 = templateId) {
+        viewModel.startWorkoutFromTemplate(templateId, cycleId, weekId, sessionId)
+    }
+
+    // Reuse the shared content with normal mode
+    WorkoutLoggerScreenContent(
+        viewModel = viewModel,
+        activeCycleViewModel = activeCycleViewModel,
+        weightUnit = weightUnit,
+        onNavigateUp = onNavigateUp,
+        isEditMode = false
+    )
+}
+
+@Composable
+private fun WorkoutLoggerScreenContent(
+    viewModel: WorkoutLoggerViewModel,
+    activeCycleViewModel: ActiveCycleViewModel,
+    weightUnit: String,
+    onNavigateUp: () -> Unit,
+    isEditMode: Boolean
 ) {
     // Local state for the bodyweight text field
     var bodyweightText by remember { mutableStateOf("") }
@@ -89,11 +135,6 @@ fun WorkoutLoggerScreen(
         }
     }
 
-    // LaunchedEffect runs a coroutine when the composable first appears.
-    LaunchedEffect(key1 = templateId) {
-        viewModel.startWorkoutFromTemplate(templateId, cycleId, weekId, sessionId)
-    }
-
     // Collect the active workout state from the ViewModel.
     val activeWorkout by viewModel.activeWorkoutState.collectAsStateWithLifecycle()
     val activeCycle by activeCycleViewModel.activeCycle.collectAsStateWithLifecycle()
@@ -117,7 +158,9 @@ fun WorkoutLoggerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(activeWorkout?.name ?: "Log Workout") },
+                title = { 
+                    Text(if (isEditMode) "Edit: ${activeWorkout?.name ?: "Workout"}" else activeWorkout?.name ?: "Log Workout") 
+                },
                 navigationIcon = {
                     IconButton(onClick = {
                         showExitConfirmationDialog({
@@ -132,11 +175,13 @@ fun WorkoutLoggerScreen(
                     }
                 },
                 actions = {
-                    Text(
-                        text = formatTime(sessionElapsedTime),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
+                    if (!isEditMode) {
+                        Text(
+                            text = formatTime(sessionElapsedTime),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                    }
                     Button(onClick = {
                         showExitConfirmationDialog({
                             coroutineScope.launch {
@@ -146,7 +191,7 @@ fun WorkoutLoggerScreen(
                             }
                         }, isFinish = true)
                     }) {
-                        Text("Finish")
+                        Text(if (isEditMode) "Save Changes" else "Finish")
                     }
                 }
             )
@@ -302,14 +347,20 @@ fun WorkoutLoggerScreen(
         AlertDialog(
             onDismissRequest = { showExitConfirmation = false },
             title = { 
-                Text(if (isFinishAction) "Confirm Finish" else "Confirm Exit") 
+                Text(if (isFinishAction) {
+                    if (isEditMode) "Confirm Save Changes" else "Confirm Finish"
+                } else {
+                    if (isEditMode) "Confirm Exit" else "Confirm Exit"
+                }) 
             },
             text = { 
-                Text(if (isFinishAction) 
-                    "Are you sure you want to finish this workout? All progress will be saved." 
-                else 
-                    "Are you sure you want to exit this workout? All progress will be saved."
-                ) 
+                Text(if (isFinishAction) {
+                    if (isEditMode) "Are you sure you want to save these changes to the workout?"
+                    else "Are you sure you want to finish this workout? All progress will be saved."
+                } else {
+                    if (isEditMode) "Are you sure you want to exit without saving your changes?"
+                    else "Are you sure you want to exit this workout? All progress will be saved."
+                }) 
             },
             confirmButton = {
                 Button(
@@ -318,7 +369,11 @@ fun WorkoutLoggerScreen(
                         exitAction?.invoke()
                     }
                 ) {
-                    Text(if (isFinishAction) "Finish" else "Exit")
+                    Text(if (isFinishAction) {
+                        if (isEditMode) "Save Changes" else "Finish"
+                    } else {
+                        "Exit"
+                    })
                 }
             },
             dismissButton = {

@@ -12,6 +12,9 @@ interface LoggedWorkoutDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(loggedWorkout: LoggedWorkout)
 
+    @androidx.room.Update
+    fun updateLoggedWorkout(loggedWorkout: LoggedWorkout)
+
     // We'll use this function later for the History screen
     @Query("SELECT * FROM logged_workout_table ORDER BY startTimestamp DESC, date DESC")
     fun getAllLoggedWorkouts(): Flow<List<LoggedWorkout>>
@@ -55,4 +58,43 @@ interface LoggedWorkoutDao {
         GROUP BY activeProgramCycleId
     """)
     fun getCycleWorkoutCounts(): Flow<List<CycleWorkoutCount>>
+    
+    // EXERCISE-SPECIFIC QUERIES FOR SMART PRE-FILL
+    
+    // Get recent workouts containing a specific exercise (for pre-fill suggestions)
+    @Query("""
+        SELECT * FROM logged_workout_table 
+        WHERE loggedExercises LIKE '%"exerciseId":"' || :exerciseId || '"%' 
+        ORDER BY date DESC, startTimestamp DESC 
+        LIMIT :limit
+    """)
+    fun getRecentWorkoutsWithExercise(exerciseId: String, limit: Int = 5): Flow<List<LoggedWorkout>>
+    
+    // Get the most recent workout containing a specific exercise
+    @Query("""
+        SELECT * FROM logged_workout_table 
+        WHERE loggedExercises LIKE '%"exerciseId":"' || :exerciseId || '"%' 
+        ORDER BY date DESC, startTimestamp DESC 
+        LIMIT 1
+    """)
+    fun getLatestWorkoutWithExercise(exerciseId: String): LoggedWorkout?
+    
+    // Get the most recent workout with same template containing a specific exercise
+    @Query("""
+        SELECT * FROM logged_workout_table 
+        WHERE workoutTemplateId = :templateId 
+        AND loggedExercises LIKE '%"exerciseId":"' || :exerciseId || '"%' 
+        ORDER BY date DESC, startTimestamp DESC 
+        LIMIT 1
+    """)
+    fun getLatestWorkoutWithExerciseInTemplate(exerciseId: String, templateId: String): LoggedWorkout?
+    
+    // Get recent workouts with same template (for session-based context)
+    @Query("""
+        SELECT * FROM logged_workout_table 
+        WHERE workoutTemplateId = :templateId 
+        ORDER BY date DESC, startTimestamp DESC 
+        LIMIT :limit
+    """)
+    fun getRecentWorkoutsByTemplate(templateId: String, limit: Int = 5): Flow<List<LoggedWorkout>>
 }

@@ -174,7 +174,10 @@ fun AppNavHost(
             HistoryDetailScreen(
                 workoutId = workoutId,
                 viewModel = historyViewModel,
-                onNavigateUp = { navController.navigateUp() }
+                onNavigateUp = { navController.navigateUp() },
+                onNavigateToEdit = { editWorkoutId ->
+                    navController.navigate(Screen.EditWorkout.createRoute(editWorkoutId))
+                }
             )
         }
         composable(Screen.Library.route) {
@@ -213,6 +216,16 @@ fun AppNavHost(
                 cycleId = cycleId,
                 weekId = weekId,
                 sessionId = sessionId,
+                viewModel = loggerViewModel,
+                activeCycleViewModel = activeCycleViewModel,
+                weightUnit = weightUnit,
+                onNavigateUp = { navController.navigateUp() }
+            )
+        }
+        composable(Screen.EditWorkout.route) { backStackEntry ->
+            val workoutId = backStackEntry.arguments?.getString("workoutId") ?: ""
+            EditWorkoutScreen(
+                workoutId = workoutId,
                 viewModel = loggerViewModel,
                 activeCycleViewModel = activeCycleViewModel,
                 weightUnit = weightUnit,

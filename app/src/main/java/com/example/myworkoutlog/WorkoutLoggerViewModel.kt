@@ -34,6 +34,16 @@ class WorkoutLoggerViewModel(
     // StateFlow for all exercises (for exercise selection dialog)
     val allExercises: StateFlow<List<Exercise>> = exerciseDao.getAllExercises()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    
+    // Cache for performance suggestions to avoid repeated calculations
+    private val _performanceSuggestions = MutableStateFlow<Map<String, PerformanceSuggestion>>(emptyMap())
+    
+    // Track if we're in edit mode for an existing workout
+    private var isEditMode = false
+    private var originalWorkoutId: String? = null
+    
+    // Public getter for edit mode state
+    fun isInEditMode(): Boolean = isEditMode
 
     // --- REFACTORED TIMER/STOPWATCH LOGIC ---
     private var workoutStartTimeMillis: Long = 0L
@@ -113,6 +123,28 @@ class WorkoutLoggerViewModel(
         startRestTimer(newDuration)
     }
 
+    // Load an existing workout for editing
+    fun loadWorkoutForEdit(workoutId: String) {
+        isEditMode = true
+        originalWorkoutId = workoutId
+        
+        viewModelScope.launch(Dispatchers.IO) {
+            // Get the existing workout from database
+            loggedWorkoutDao.getLoggedWorkoutById(workoutId).collect { existingWorkout ->
+                if (existingWorkout != null) {
+                    // Set the workout start time to preserve timing context
+                    workoutStartTimeMillis = existingWorkout.startTimestamp ?: System.currentTimeMillis()
+                    
+                    // Load the workout into active state for editing
+                    _activeWorkoutState.value = existingWorkout
+                    
+                    // Initialize performance suggestions for editing context
+                    initializePerformanceSuggestions()
+                }
+            }
+        }
+    }
+
     // This function starts a new workout based on a template
     fun startWorkoutFromTemplate(
         templateId: String,
@@ -166,6 +198,9 @@ class WorkoutLoggerViewModel(
                         workoutTemplateId = template.id
                     )
                     _activeWorkoutState.value = newLoggedWorkout
+                    
+                    // Initialize performance suggestions after workout is loaded
+                    initializePerformanceSuggestions()
                 }
             }
         }
@@ -233,17 +268,35 @@ class WorkoutLoggerViewModel(
 
                 // Create the final workout object to be saved, using the session's bodyweight
                 // or the fallback value we just found.
-                val finalWorkout = workoutToSave.copy(
-                    endTimestamp = endTimeMillis,
-                    performedWeightUnit = currentUnit,
-                    bodyweight = finalBodyweight,
-                    userCycleName = activeCycle?.userCycleName
-                )
+                val finalWorkout = if (isEditMode && originalWorkoutId != null) {
+                    // For edit mode, preserve original timestamps and ID
+                    workoutToSave.copy(
+                        id = originalWorkoutId!!, // Keep original ID
+                        performedWeightUnit = currentUnit,
+                        bodyweight = finalBodyweight,
+                        userCycleName = activeCycle?.userCycleName
+                        // Note: We don't update endTimestamp in edit mode to preserve original workout timing
+                    )
+                } else {
+                    // For new workouts, use normal flow
+                    workoutToSave.copy(
+                        endTimestamp = endTimeMillis,
+                        performedWeightUnit = currentUnit,
+                        bodyweight = finalBodyweight,
+                        userCycleName = activeCycle?.userCycleName
+                    )
+                }
 
-                loggedWorkoutDao.insert(finalWorkout)
+                if (isEditMode) {
+                    // Update existing workout
+                    loggedWorkoutDao.updateLoggedWorkout(finalWorkout)
+                } else {
+                    // Insert new workout
+                    loggedWorkoutDao.insert(finalWorkout)
+                }
 
-                //Update the Active Cycle if this workout was part of one
-                if (activeCycle != null && finalWorkout.programWeekDefinitionId != null && finalWorkout.programSessionDefinitionId != null) {
+                //Update the Active Cycle if this workout was part of one (only for new workouts)
+                if (!isEditMode && activeCycle != null && finalWorkout.programWeekDefinitionId != null && finalWorkout.programSessionDefinitionId != null) {
                     val sessionKey = "${finalWorkout.programWeekDefinitionId}_${finalWorkout.programSessionDefinitionId}"
                     val updatedCompletedSessions = activeCycle.completedSessions.toMutableMap()
                     updatedCompletedSessions[sessionKey] = finalWorkout.id
@@ -252,6 +305,7 @@ class WorkoutLoggerViewModel(
                     activeCycleDao.setActiveCycle(updatedCycle)
                 }
 
+                // Process PRs (for both new and edited workouts)
                 val exerciseIds = finalWorkout.loggedExercises.map { it.exerciseId }
                 val existingPRs = exerciseIds.flatMap { personalRecordDao.getPRsForExercise(it) }
                 val allExercises = exerciseDao.getAllExercisesSnapshot()
@@ -261,6 +315,9 @@ class WorkoutLoggerViewModel(
                     personalRecordDao.upsert(pr)
                 }
 
+                // Reset edit mode state
+                isEditMode = false
+                originalWorkoutId = null
                 _activeWorkoutState.value = null
             }
         }
@@ -310,6 +367,9 @@ class WorkoutLoggerViewModel(
                         loggedExercises = currentWorkout.loggedExercises + loggedExercise
                     )
                 }
+                
+                // Recalculate suggestions for the new exercise
+                calculatePerformanceSuggestions()
             }
         }
     }
@@ -395,6 +455,318 @@ class WorkoutLoggerViewModel(
                 }
             )
         }
+    }
+    
+    // SMART PRE-FILL FUNCTIONALITY
+    
+    // Get performance suggestion for a specific exercise
+    fun getPerformanceSuggestion(exerciseId: String): PerformanceSuggestion? {
+        return _performanceSuggestions.value[exerciseId]
+    }
+    
+    // Calculate and cache performance suggestions for all exercises in current workout
+    private fun calculatePerformanceSuggestions() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val currentWorkout = _activeWorkoutState.value ?: return@launch
+            val suggestions = mutableMapOf<String, PerformanceSuggestion>()
+            
+            for (exercise in currentWorkout.loggedExercises) {
+                val suggestion = calculateSuggestionForExercise(exercise.exerciseId)
+                if (suggestion != null) {
+                    suggestions[exercise.exerciseId] = suggestion
+                }
+            }
+            
+            _performanceSuggestions.value = suggestions
+        }
+    }
+    
+    // Calculate performance suggestion for a single exercise
+    private suspend fun calculateSuggestionForExercise(exerciseId: String): PerformanceSuggestion? {
+        val currentWorkout = _activeWorkoutState.value ?: return null
+        val currentTemplateId = currentWorkout.workoutTemplateId ?: return null
+        
+        // First, try to find same exercise in same template (session-based matching)
+        var recentWorkout = loggedWorkoutDao.getLatestWorkoutWithExerciseInTemplate(exerciseId, currentTemplateId)
+        var isFromSameSession = true
+        
+        // Fallback to any recent workout with this exercise if no template match
+        if (recentWorkout == null) {
+            recentWorkout = loggedWorkoutDao.getLatestWorkoutWithExercise(exerciseId)
+            isFromSameSession = false
+        }
+        
+        if (recentWorkout == null) return null
+        
+        // Find the exercise in that workout
+        val recentExercise = recentWorkout.loggedExercises.find { it.exerciseId == exerciseId }
+            ?: return null
+        
+        // Get working sets (exclude obvious warm-up sets and failed sets)
+        val workingSets = recentExercise.sets
+            .filter { it.reps != null && it.reps > 0 } // Only completed sets
+            .filter { set -> 
+                // Exclude obvious warm-up sets (very light weight or very high reps)
+                when {
+                    set.weight != null && set.weight > 0 -> {
+                        val maxWeight = recentExercise.sets.mapNotNull { it.weight }.maxOrNull() ?: 0.0
+                        set.weight >= maxWeight * 0.8 // Only sets within 80% of max weight
+                    }
+                    else -> (set.reps ?: 0) <= 20 // For bodyweight, exclude very high rep sets
+                }
+            }
+        
+        if (workingSets.isEmpty()) return null
+        
+        // Use the most representative working set (highest weight OR most common weight)
+        val representativeSet = workingSets
+            .groupBy { it.weight }
+            .maxByOrNull { (_, sets) -> sets.size }?.value?.first() // Most frequently used weight
+            ?: workingSets.maxByOrNull { it.weight ?: 0.0 } // Fallback to heaviest
+            ?: return null
+        
+        // Calculate days since last workout
+        val daysAgo = calculateDaysSince(recentWorkout.date)
+        
+        // Get current cycle context for better RIR interpretation
+        val currentCycleWeek = getCurrentCycleWeek()
+        
+        // Determine progression type based on session context and performance
+        val progressionType = determineProgressionTypeImproved(
+            daysAgo, representativeSet, isFromSameSession, currentCycleWeek
+        )
+        
+        // Calculate suggested values with realistic increments
+        val (suggestedWeight, suggestedReps, suggestedRir) = calculateProgressedValuesImproved(
+            representativeSet, progressionType
+        )
+        
+        // Calculate confidence based on session context
+        val confidence = calculateConfidenceImproved(daysAgo, workingSets.size, isFromSameSession)
+        
+        return PerformanceSuggestion(
+            suggestedWeight = suggestedWeight,
+            suggestedReps = suggestedReps,
+            suggestedRir = suggestedRir,
+            confidence = confidence,
+            basedonLastWorkout = true,
+            daysAgo = daysAgo,
+            progressionType = progressionType
+        )
+    }
+    
+    private fun calculateDaysSince(dateString: String): Int {
+        return try {
+            val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val lastDate = format.parse(dateString)
+            val currentDate = Date()
+            val diffInMillis = currentDate.time - (lastDate?.time ?: 0)
+            (diffInMillis / (1000 * 60 * 60 * 24)).toInt()
+        } catch (e: Exception) {
+            Int.MAX_VALUE // Very old if we can't parse
+        }
+    }
+    
+    // Get current cycle week for context-aware RIR interpretation
+    private fun getCurrentCycleWeek(): Int? {
+        val currentWorkout = _activeWorkoutState.value ?: return null
+        return currentWorkout.programWeekDefinitionId?.let { weekId ->
+            // Extract week number from week definition ID if possible
+            // This is a simplified approach - might need adjustment based on your ID format
+            weekId.takeLast(1).toIntOrNull()
+        }
+    }
+    
+    // Improved progression logic based on session context and cycle position
+    private fun determineProgressionTypeImproved(
+        daysAgo: Int, 
+        representativeSet: LoggedSet, 
+        isFromSameSession: Boolean,
+        currentCycleWeek: Int?
+    ): ProgressionType {
+        return when {
+            // Same session type from last week (ideal scenario)
+            isFromSameSession && daysAgo in 5..10 -> {
+                // Use cycle-aware RIR interpretation
+                val rirThreshold = when (currentCycleWeek) {
+                    1, 2 -> 3    // Early cycle: conservative, need RIR 3+ to progress
+                    3, 4 -> 2    // Mid cycle: moderate, need RIR 2+ to progress  
+                    5, 6 -> 1    // Late cycle: aggressive, need RIR 1+ to progress
+                    else -> 2    // Unknown cycle position: moderate approach
+                }
+                
+                when {
+                    (representativeSet.rir ?: 3) >= rirThreshold -> ProgressionType.INCREASE
+                    else -> ProgressionType.MAINTAIN
+                }
+            }
+            
+            // Same session but from 2+ weeks ago
+            isFromSameSession && daysAgo > 14 -> ProgressionType.DECREASE
+            
+            // Different session type but recent
+            !isFromSameSession && daysAgo <= 7 -> ProgressionType.MAINTAIN
+            
+            // Old data from different session
+            !isFromSameSession && daysAgo > 14 -> ProgressionType.DECREASE
+            
+            // Default case
+            else -> ProgressionType.MAINTAIN
+        }
+    }
+    
+    // Keep original function for compatibility
+    private fun determineProgressionType(daysAgo: Int, bestSet: LoggedSet): ProgressionType {
+        return when {
+            daysAgo <= 3 -> {
+                // Recent workout - check RIR for progression potential
+                when (bestSet.rir) {
+                    in 0..2 -> ProgressionType.MAINTAIN // Low RIR - maintain weight
+                    in 3..4 -> ProgressionType.INCREASE // Moderate RIR - small increase
+                    else -> ProgressionType.INCREASE // High/unknown RIR - progress
+                }
+            }
+            daysAgo <= 7 -> ProgressionType.MAINTAIN // Week old - maintain
+            daysAgo <= 14 -> ProgressionType.DECREASE // 2+ weeks - slight deload
+            else -> ProgressionType.DECREASE // Very old - significant deload
+        }
+    }
+    
+    // Improved weight calculation with realistic 1.25kg increments
+    private fun calculateProgressedValuesImproved(
+        representativeSet: LoggedSet, 
+        progressionType: ProgressionType
+    ): Triple<Double?, Int?, Int?> {
+        val baseWeight = representativeSet.weight
+        val baseReps = representativeSet.reps
+        val baseRir = representativeSet.rir
+        
+        when (progressionType) {
+            ProgressionType.INCREASE -> {
+                val newWeight = baseWeight?.let { weight ->
+                    // Standard 1.25kg increment (realistic small plates)
+                    weight + 1.25
+                }
+                val newReps = baseReps // Keep same reps when increasing weight
+                val newRir = (baseRir ?: 2) + 1 // Slightly higher RIR target for progression
+                
+                return Triple(newWeight, newReps, newRir)
+            }
+            
+            ProgressionType.MAINTAIN -> {
+                return Triple(baseWeight, baseReps, baseRir)
+            }
+            
+            ProgressionType.DECREASE -> {
+                val newWeight = baseWeight?.let { weight ->
+                    // Conservative deload: -1.25kg or 5% reduction, whichever is smaller
+                    val smallDecrease = weight - 1.25
+                    val percentageDecrease = weight * 0.95
+                    minOf(smallDecrease, percentageDecrease)
+                }
+                val newReps = baseReps // Keep same reps
+                val newRir = (baseRir ?: 2) + 1 // Higher RIR for recovery
+                
+                return Triple(newWeight, newReps, newRir)
+            }
+        }
+    }
+    
+    // Keep original function for compatibility
+    private fun calculateProgressedValues(
+        bestSet: LoggedSet, 
+        progressionType: ProgressionType
+    ): Triple<Double?, Int?, Int?> {
+        val baseWeight = bestSet.weight
+        val baseReps = bestSet.reps
+        val baseRir = bestSet.rir
+        
+        when (progressionType) {
+            ProgressionType.INCREASE -> {
+                val newWeight = baseWeight?.let { 
+                    // Increase by 2.5-5% for weights
+                    val increment = when {
+                        it < 50 -> 2.5 // Small weights: 2.5kg increment
+                        it < 100 -> 5.0 // Medium weights: 5kg increment  
+                        else -> (it * 0.025).let { inc -> // Large weights: 2.5% increment
+                            (inc / 2.5).roundToInt() * 2.5 // Round to nearest 2.5kg
+                        }
+                    }
+                    it + increment
+                }
+                val newReps = baseReps // Keep same reps when increasing weight
+                val newRir = (baseRir ?: 2) + 1 // Slightly higher RIR target
+                
+                return Triple(newWeight, newReps, newRir)
+            }
+            
+            ProgressionType.MAINTAIN -> {
+                return Triple(baseWeight, baseReps, baseRir)
+            }
+            
+            ProgressionType.DECREASE -> {
+                val newWeight = baseWeight?.let { 
+                    // Decrease by 5-10% for deload
+                    it * 0.9
+                }
+                val newReps = baseReps // Keep same reps
+                val newRir = (baseRir ?: 2) + 1 // Higher RIR for recovery
+                
+                return Triple(newWeight, newReps, newRir)
+            }
+        }
+    }
+    
+    // Improved confidence calculation considering session context
+    private fun calculateConfidenceImproved(
+        daysAgo: Int, 
+        setCount: Int, 
+        isFromSameSession: Boolean
+    ): Float {
+        val recencyFactor = when {
+            isFromSameSession && daysAgo in 5..10 -> 1.0f // Perfect: same session last week
+            isFromSameSession && daysAgo <= 14 -> 0.9f    // Good: same session within 2 weeks
+            !isFromSameSession && daysAgo <= 7 -> 0.7f    // OK: different session but recent
+            daysAgo <= 14 -> 0.5f                          // Moderate: somewhat old
+            daysAgo <= 30 -> 0.3f                          // Low: getting old
+            else -> 0.1f                                   // Very low: very old
+        }
+        
+        val setCountFactor = when {
+            setCount >= 3 -> 1.0f     // Multiple working sets = reliable
+            setCount == 2 -> 0.9f     // Two sets = good sample
+            setCount == 1 -> 0.7f     // Single set = less reliable
+            else -> 0.3f              // Very limited data
+        }
+        
+        val sessionBonus = if (isFromSameSession) 0.1f else 0f // Bonus for same session type
+        
+        return ((recencyFactor * setCountFactor) + sessionBonus).coerceIn(0f, 1f)
+    }
+    
+    // Keep original function for compatibility
+    private fun calculateConfidence(daysAgo: Int, setCount: Int): Float {
+        val recencyFactor = when {
+            daysAgo <= 3 -> 1.0f
+            daysAgo <= 7 -> 0.8f
+            daysAgo <= 14 -> 0.6f
+            daysAgo <= 30 -> 0.4f
+            else -> 0.2f
+        }
+        
+        val setCountFactor = when {
+            setCount >= 3 -> 1.0f
+            setCount == 2 -> 0.8f
+            setCount == 1 -> 0.6f
+            else -> 0.3f
+        }
+        
+        return (recencyFactor * setCountFactor).coerceIn(0f, 1f)
+    }
+    
+    // Call this when starting a workout to pre-calculate suggestions
+    private fun initializePerformanceSuggestions() {
+        calculatePerformanceSuggestions()
     }
 }
 
