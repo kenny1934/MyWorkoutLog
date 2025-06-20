@@ -260,6 +260,8 @@ fun WorkoutLoggerScreen(
                                     setNumber = index + 1,
                                     weightUnit = weightUnit,
                                     showDeleteButton = exercise.sets.size > 1, // Only show delete if more than 1 set
+                                    exerciseId = exercise.exerciseId,
+                                    viewModel = viewModel,
                                     onRepsChange = { newReps ->
                                         viewModel.updateSet(exercise.id, set.id, newReps, set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes)
                                     },
@@ -282,6 +284,9 @@ fun WorkoutLoggerScreen(
                                     onDeleteSet = {
                                         selectedSetForRemoval = Pair(exercise.id, set.id)
                                         showRemoveSetConfirmation = true
+                                    },
+                                    onSetUpdate = { newReps, newWeight, newSecs, newRir, newBands, newNotes ->
+                                        viewModel.updateSet(exercise.id, set.id, newReps, newWeight, newSecs, newRir, newBands, newNotes)
                                     }
                                 )
                             }
@@ -455,6 +460,8 @@ fun LoggedSetRow(
     setNumber: Int,
     weightUnit: String,
     showDeleteButton: Boolean = false,
+    exerciseId: String,
+    viewModel: WorkoutLoggerViewModel,
     onRepsChange: (String) -> Unit,
     onWeightChange: (Double?) -> Unit,
     onSecsChange: (String) -> Unit,
@@ -462,11 +469,15 @@ fun LoggedSetRow(
     onBandsChange: (String) -> Unit = {},
     onNotesChange: (String) -> Unit = {},
     onStartRest: () -> Unit,
-    onDeleteSet: () -> Unit = {}
+    onDeleteSet: () -> Unit = {},
+    onSetUpdate: (String, Double?, String, String, String, String) -> Unit
 ) {
     // Determine which fields to show based on the template's targets for this set
     val showWeightReps = !set.targetReps.isNullOrBlank()
     val showSecs = !set.targetSecs.isNullOrBlank()
+    
+    // Get performance suggestion for this exercise
+    val performanceSuggestion = viewModel.getPerformanceSuggestion(exerciseId)
 
     // Local state holds the text as the user types it.
     var weightText by remember { mutableStateOf(set.weight?.toString() ?: "") }
@@ -523,12 +534,7 @@ fun LoggedSetRow(
 
     // Function to save all current field values
     fun saveAllCurrentValues() {
-        onRepsChange(repsText)
-        onWeightChange(weightText.toDoubleOrNull())
-        onSecsChange(secsText)
-        onRirChange(rirText)
-        onBandsChange(bandsText)
-        onNotesChange(notesText)
+        onSetUpdate(repsText, weightText.toDoubleOrNull(), secsText, rirText, bandsText, notesText)
     }
 
     // Save current values when component is disposed (e.g., when navigating away)
@@ -586,6 +592,49 @@ fun LoggedSetRow(
                 modifier = Modifier.width(60.dp),
                 fontWeight = FontWeight.Bold
             )
+            
+            // Pre-fill suggestion chip
+            if (performanceSuggestion != null && performanceSuggestion.confidence > 0.3f && 
+                set.weight == null && set.reps == null) { // Only show for empty sets
+                AssistChip(
+                    onClick = {
+                        // Apply suggestions: Update local state first, then trigger saves
+                        performanceSuggestion.suggestedWeight?.let { weight ->
+                            weightText = weight.toString()
+                        }
+                        performanceSuggestion.suggestedReps?.let { reps ->
+                            repsText = reps.toString()
+                        }
+                        performanceSuggestion.suggestedRir?.let { rir ->
+                            rirText = rir.toString()
+                        }
+                        
+                        // Save all current values immediately after updating UI state
+                        saveAllCurrentValues()
+                    },
+                    label = { 
+                        Text(
+                            text = buildString {
+                                performanceSuggestion.suggestedWeight?.let { append("${it}kg ") }
+                                performanceSuggestion.suggestedReps?.let { append("${it}r ") }
+                                performanceSuggestion.daysAgo?.let { 
+                                    append("(${it}d ago)")
+                                }
+                            }.trim(),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.AutoAwesome,
+                            contentDescription = "Smart suggestion",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            }
+            
             Spacer(modifier = Modifier.weight(1f))
             Row {
                 // Delete button (only show if more than 1 set)
