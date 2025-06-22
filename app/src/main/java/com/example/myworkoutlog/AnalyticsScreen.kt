@@ -248,8 +248,10 @@ private fun PerformanceTab(
                     PerformanceTrendCard(trend = trend)
                 }
                 
-                item {
-                    PerformanceChart(dataPoints = trend.dataPoints)
+                if (trend.dataPoints.isNotEmpty()) {
+                    item {
+                        PerformanceChart(dataPoints = trend.dataPoints)
+                    }
                 }
                 
                 item {

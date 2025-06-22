@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -65,6 +66,7 @@ class AnalyticsViewModel(
     val personalRecordProgress: StateFlow<PersonalRecordProgress?> = _selectedExerciseId.flatMapLatest { exerciseId ->
         if (exerciseId != null) {
             analyticsRepository.getPersonalRecordProgress(exerciseId)
+                .catch { emit(null) } // Handle any errors gracefully
         } else {
             kotlinx.coroutines.flow.flowOf(null)
         }

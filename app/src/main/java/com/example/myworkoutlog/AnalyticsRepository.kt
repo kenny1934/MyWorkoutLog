@@ -26,19 +26,24 @@ class AnalyticsRepository(
         } else {
             loggedWorkoutDao.getWorkoutsByDateRange(startDate, endDate)
         }.map { workouts ->
-            workouts.map { workout ->
-                val totalVolume = if (exerciseId != null) {
-                    calculateExerciseVolumeInWorkout(workout, exerciseId)
-                } else {
-                    calculateTotalWorkoutVolume(workout)
+            workouts.mapNotNull { workout ->
+                try {
+                    val totalVolume = if (exerciseId != null) {
+                        calculateExerciseVolumeInWorkout(workout, exerciseId)
+                    } else {
+                        calculateTotalWorkoutVolume(workout)
+                    }
+                    
+                    VolumeDataPoint(
+                        date = workout.date,
+                        totalVolume = totalVolume,
+                        workoutName = workout.name,
+                        cycleId = workout.activeProgramCycleId
+                    )
+                } catch (e: Exception) {
+                    // Skip workouts that cause errors
+                    null
                 }
-                
-                VolumeDataPoint(
-                    date = workout.date,
-                    totalVolume = totalVolume,
-                    workoutName = workout.name,
-                    cycleId = workout.activeProgramCycleId
-                )
             }
         }
     }
@@ -144,70 +149,97 @@ class AnalyticsRepository(
     
     // EXERCISE-SPECIFIC PERFORMANCE TRENDS
     
-    fun getExercisePerformanceTrend(exerciseId: String): Flow<PerformanceTrend> {
+    fun getExercisePerformanceTrend(exerciseId: String): Flow<PerformanceTrend?> {
         return loggedWorkoutDao.getAllWorkoutsWithExercise(exerciseId)
             .map { workouts ->
-                val dataPoints = workouts.mapNotNull { workout ->
-                    val exercise = workout.loggedExercises.find { it.exerciseId == exerciseId }
-                    exercise?.let {
-                        val bestSet = findBestSetInExercise(it)
-                        val totalVolume = calculateExerciseVolumeInWorkout(workout, exerciseId)
-                        val estimated1RM = bestSet?.let { set ->
-                            if (set.weight != null && set.reps != null && set.reps > 0) {
-                                StrengthAnalytics.calculateEpley1RM(set.weight, set.reps)
-                            } else null
+                try {
+                    val dataPoints = workouts.mapNotNull { workout ->
+                        try {
+                            val exercise = workout.loggedExercises.find { it.exerciseId == exerciseId }
+                            exercise?.let {
+                                val bestSet = findBestSetInExercise(it)
+                                val totalVolume = calculateExerciseVolumeInWorkout(workout, exerciseId)
+                                val estimated1RM = bestSet?.let { set ->
+                                    if (set.weight != null && set.reps != null && set.reps > 0) {
+                                        StrengthAnalytics.calculateEpley1RM(set.weight, set.reps)
+                                    } else null
+                                }
+                                
+                                ExercisePerformancePoint(
+                                    date = workout.date,
+                                    exerciseId = exerciseId,
+                                    exerciseName = it.exerciseName,
+                                    bestWeight = bestSet?.weight,
+                                    bestReps = bestSet?.reps,
+                                    totalVolume = totalVolume,
+                                    estimated1RM = estimated1RM,
+                                    workoutId = workout.id,
+                                    cycleId = workout.activeProgramCycleId
+                                )
+                            }
+                        } catch (e: Exception) {
+                            // Log error and skip this workout
+                            null
                         }
-                        
-                        ExercisePerformancePoint(
-                            date = workout.date,
-                            exerciseId = exerciseId,
-                            exerciseName = it.exerciseName,
-                            bestWeight = bestSet?.weight,
-                            bestReps = bestSet?.reps,
-                            totalVolume = totalVolume,
-                            estimated1RM = estimated1RM,
-                            workoutId = workout.id,
-                            cycleId = workout.activeProgramCycleId
-                        )
                     }
+                    
+                    val trend = analyzeTrend(dataPoints)
+                    val exerciseName = dataPoints.firstOrNull()?.exerciseName ?: "Unknown Exercise"
+                    
+                    PerformanceTrend(
+                        exerciseId = exerciseId,
+                        exerciseName = exerciseName,
+                        trendDirection = trend.direction,
+                        trendStrength = trend.strength,
+                        dataPoints = dataPoints,
+                        recommendedAction = generateRecommendation(trend)
+                    )
+                } catch (e: Exception) {
+                    // Return null if processing fails completely
+                    null
                 }
-                
-                val trend = analyzeTrend(dataPoints)
-                val exerciseName = dataPoints.firstOrNull()?.exerciseName ?: "Unknown Exercise"
-                
-                PerformanceTrend(
-                    exerciseId = exerciseId,
-                    exerciseName = exerciseName,
-                    trendDirection = trend.direction,
-                    trendStrength = trend.strength,
-                    dataPoints = dataPoints,
-                    recommendedAction = generateRecommendation(trend)
-                )
             }
     }
     
     fun getPersonalRecordProgress(exerciseId: String): Flow<PersonalRecordProgress?> {
         return combine(
-            kotlinx.coroutines.flow.flowOf(personalRecordDao.getPRsForExercise(exerciseId)),
+            personalRecordDao.getPRsForExerciseFlow(exerciseId),
             loggedWorkoutDao.getRecentWorkoutsForPRAnalysis(exerciseId)
         ) { prs: List<PersonalRecord>, workouts: List<LoggedWorkout> ->
-            if (prs.isEmpty()) return@combine null
-            
-            val currentPR = prs.maxByOrNull { LocalDate.parse(it.date) }
-            val previousPRs = prs.filter { it.id != currentPR?.id }
-            val previousPR = previousPRs.maxByOrNull { LocalDate.parse(it.date) }
-            
-            currentPR?.let { current: PersonalRecord ->
-                val improvement = calculatePRImprovement(current, previousPR)
+            try {
+                if (prs.isEmpty()) return@combine null
                 
-                PersonalRecordProgress(
-                    exerciseId = exerciseId,
-                    exerciseName = current.exerciseName,
-                    currentPR = current,
-                    previousPR = previousPR,
-                    improvement = improvement.value,
-                    improvementType = improvement.type
-                )
+                val currentPR = prs.maxByOrNull { 
+                    try {
+                        LocalDate.parse(it.date)
+                    } catch (e: Exception) {
+                        LocalDate.MIN // fallback for invalid dates
+                    }
+                }
+                val previousPRs = prs.filter { it.id != currentPR?.id }
+                val previousPR = previousPRs.maxByOrNull { 
+                    try {
+                        LocalDate.parse(it.date)
+                    } catch (e: Exception) {
+                        LocalDate.MIN
+                    }
+                }
+                
+                currentPR?.let { current: PersonalRecord ->
+                    val improvement = calculatePRImprovement(current, previousPR)
+                    
+                    PersonalRecordProgress(
+                        exerciseId = exerciseId,
+                        exerciseName = current.exerciseName,
+                        currentPR = current,
+                        previousPR = previousPR,
+                        improvement = improvement.value,
+                        improvementType = improvement.type
+                    )
+                }
+            } catch (e: Exception) {
+                // Return null if processing fails
+                null
             }
         }
     }
