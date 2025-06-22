@@ -30,7 +30,7 @@ interface LoggedWorkoutDao {
     // MESOCYCLE-SPECIFIC QUERIES
     
     // Get all workouts for a specific mesocycle
-    @Query("SELECT * FROM logged_workout_table WHERE activeProgramCycleId = :cycleId ORDER BY date ASC")
+    @Query("SELECT * FROM logged_workout_table WHERE activeProgramCycleId = :cycleId ORDER BY date DESC, startTimestamp DESC")
     fun getWorkoutsByCycle(cycleId: String): Flow<List<LoggedWorkout>>
     
     // Get all unique cycle IDs that have logged workouts

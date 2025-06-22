@@ -63,6 +63,7 @@ class HistoryViewModel(
         combine(activeCycle, allLoggedWorkouts) { cycle, workouts ->
             if (cycle != null) {
                 workouts.filter { it.activeProgramCycleId == cycle.cycleUuid }
+                    .sortedByDescending { it.date }
             } else {
                 emptyList()
             }
@@ -134,7 +135,7 @@ class HistoryViewModel(
                         cycleId = cycleId,
                         cycle = null,
                         program = programTemplate,
-                        workouts = cycleWorkouts,
+                        workouts = cycleWorkouts.sortedByDescending { it.date },
                         completionRate = completionRate,
                         totalWorkouts = totalPlannedSessions,
                         startDate = cycleWorkouts.minByOrNull { it.date }?.date,
