@@ -693,24 +693,56 @@ private fun RecommendationCard(recommendation: String) {
     }
 }
 
+// Helper function to format weight display for bodyweight exercises in analytics
+private fun formatAnalyticsWeightDisplay(pr: PersonalRecord): String {
+    val weightUnit = pr.weightUnit ?: "kg"
+    
+    return if (pr.usesBodyweight && pr.bodyweightUsed != null && pr.externalWeight != null) {
+        // Bodyweight exercise: show breakdown
+        if (pr.externalWeight > 0) {
+            "BW(${pr.bodyweightUsed.toInt()}$weightUnit) + ${pr.externalWeight.toInt()}$weightUnit = ${pr.weight?.toInt()}$weightUnit"
+        } else {
+            "BW(${pr.bodyweightUsed.toInt()}$weightUnit) = ${pr.weight?.toInt()}$weightUnit"
+        }
+    } else {
+        // Regular exercise: show total weight only
+        "${pr.weight?.toInt()}$weightUnit"
+    }
+}
+
 @Composable
 private fun PersonalRecordCard(progress: PersonalRecordProgress) {
     Card(elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                "Personal Record: ${progress.exerciseName}",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    "Personal Record: ${progress.exerciseName}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                // Add bodyweight indicator icon
+                if (progress.currentPR.usesBodyweight) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Bodyweight Exercise",
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(16.dp))
             
             Text("Current PR: ${progress.currentPR.date}")
             when (progress.currentPR.type) {
                 PRType.MAX_WEIGHT_FOR_REPS -> {
-                    Text("${progress.currentPR.weight}kg × ${progress.currentPR.reps} reps")
+                    Text("${formatAnalyticsWeightDisplay(progress.currentPR)} × ${progress.currentPR.reps} reps")
                 }
                 PRType.MAX_REPS_AT_WEIGHT -> {
-                    Text("${progress.currentPR.reps} reps @ ${progress.currentPR.weight}kg")
+                    Text("${progress.currentPR.reps} reps @ ${formatAnalyticsWeightDisplay(progress.currentPR)}")
                 }
                 PRType.DURATION -> {
                     Text("${progress.currentPR.durationSecs}s")

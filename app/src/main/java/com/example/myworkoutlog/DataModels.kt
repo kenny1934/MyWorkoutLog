@@ -262,8 +262,12 @@ data class PersonalRecord(
     val weightUnit: String?,
     // These values will be set depending on the PR type
     val reps: Int?,
-    val weight: Double?,
-    val durationSecs: Int?
+    val weight: Double?, // Total effective weight (bodyweight + external for bodyweight exercises)
+    val durationSecs: Int?,
+    // NEW: Bodyweight exercise breakdown fields
+    val bodyweightUsed: Double? = null, // User's bodyweight at time of PR
+    val externalWeight: Double? = null, // External/added weight only
+    val usesBodyweight: Boolean = false // Flag indicating if exercise uses bodyweight
 )
 
 // Data class for cycle workout count query results
