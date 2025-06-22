@@ -93,6 +93,17 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    private val exportViewModel: ExportViewModel by viewModels {
+        val exportRepository = ExportRepository(
+            (application as WorkoutApplication).database.loggedWorkoutDao(),
+            (application as WorkoutApplication).database.exerciseDao(),
+            (application as WorkoutApplication).database.personalRecordDao(),
+            (application as WorkoutApplication).database.programTemplateDao(),
+            (application as WorkoutApplication).database.activeCycleDao()
+        )
+        ExportViewModelFactory(exportRepository)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -108,7 +119,8 @@ class MainActivity : ComponentActivity() {
                     prViewModel = prViewModel,
                     settingsViewModel = settingsViewModel,
                     volumeViewModel = volumeViewModel,
-                    analyticsViewModel = analyticsViewModel
+                    analyticsViewModel = analyticsViewModel,
+                    exportViewModel = exportViewModel
                 )
             }
         }
@@ -125,7 +137,8 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             prViewModel: PrViewModel,
             settingsViewModel: SettingsViewModel,
             volumeViewModel: VolumeViewModel,
-            analyticsViewModel: AnalyticsViewModel
+            analyticsViewModel: AnalyticsViewModel,
+            exportViewModel: ExportViewModel
 ) {
     val navController = rememberNavController()
     Scaffold(
@@ -143,6 +156,7 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             settingsViewModel = settingsViewModel,
             volumeViewModel = volumeViewModel,
             analyticsViewModel = analyticsViewModel,
+            exportViewModel = exportViewModel,
             modifier = Modifier.padding(innerPadding)
         )
     }
@@ -161,6 +175,7 @@ fun AppNavHost(
     settingsViewModel: SettingsViewModel,
     volumeViewModel: VolumeViewModel,
     analyticsViewModel: AnalyticsViewModel,
+    exportViewModel: ExportViewModel,
     modifier: Modifier = Modifier
 ) {
     val weightUnit by settingsViewModel.weightUnit.collectAsStateWithLifecycle()
@@ -281,7 +296,18 @@ fun AppNavHost(
             )
         }
         composable(Screen.Settings.route) {
-            SettingsScreen(viewModel = settingsViewModel)
+            SettingsScreen(
+                viewModel = settingsViewModel,
+                onNavigateToExport = {
+                    navController.navigate("export")
+                }
+            )
+        }
+        composable("export") {
+            ExportScreen(
+                viewModel = exportViewModel,
+                onNavigateUp = { navController.navigateUp() }
+            )
         }
         composable(Screen.VolumeAnalysis.route) {
             VolumeAnalysisScreen(viewModel = volumeViewModel)
