@@ -16,7 +16,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
-    onNavigateToExport: () -> Unit = {}
+    onNavigateToExport: () -> Unit = {},
+    onNavigateToImport: () -> Unit = {}
 ) {
     val weightUnit by viewModel.weightUnit.collectAsStateWithLifecycle()
     val options = listOf("kg", "lb")
@@ -103,6 +104,44 @@ fun SettingsScreen(
                     Icon(
                         imageVector = Icons.Filled.ChevronRight,
                         contentDescription = "Navigate to Export",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+
+                // Import Data Option
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToImport() }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Upload,
+                        contentDescription = "Import Data",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Import Data",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            "Import workouts, exercises, and personal records",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Filled.ChevronRight,
+                        contentDescription = "Navigate to Import",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }

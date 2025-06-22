@@ -2,6 +2,8 @@ package com.example.myworkoutlog
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -243,12 +245,165 @@ class ExportRepository(
     // JSON EXPORT FUNCTIONS
 
     private suspend fun exportToJSON(options: ExportOptions): ExportResult {
-        // JSON export implementation would go here
-        // For now, return a placeholder
+        val gson = GsonBuilder().setPrettyPrinting().create()
+        
+        val jsonContent = when (options.dataType) {
+            ExportDataType.WORKOUTS -> exportWorkoutsToJSON(options.dateRange, gson)
+            ExportDataType.EXERCISES -> exportExercisesToJSON(gson)
+            ExportDataType.PERSONAL_RECORDS -> exportPersonalRecordsToJSON(options.dateRange, gson)
+            ExportDataType.PROGRAM_TEMPLATES -> exportProgramTemplatesToJSON(gson)
+            ExportDataType.COMPLETE_BACKUP -> exportCompleteBackupToJSON(options.dateRange, gson)
+        }
+
+        val fileName = generateFileName(options.format, options.dataType)
+        val recordCount = when (options.dataType) {
+            ExportDataType.WORKOUTS -> getWorkoutCount(options.dateRange)
+            ExportDataType.EXERCISES -> exerciseDao.getAllExercises().first().size
+            ExportDataType.PERSONAL_RECORDS -> getPRCount(options.dateRange)
+            ExportDataType.PROGRAM_TEMPLATES -> programDao.getAllPrograms().first().size
+            ExportDataType.COMPLETE_BACKUP -> getTotalRecordCount(options.dateRange)
+        }
+        
         return ExportResult(
-            success = false,
-            error = "JSON export not yet implemented"
+            success = true,
+            fileName = fileName,
+            fileContent = jsonContent,
+            recordCount = recordCount,
+            fileSize = jsonContent.toByteArray().size.toLong()
         )
+    }
+
+    private suspend fun exportWorkoutsToJSON(dateRange: DateRange?, gson: Gson): String {
+        val workouts = if (dateRange != null) {
+            loggedWorkoutDao.getWorkoutsByDateRange(dateRange.startDate, dateRange.endDate).first()
+        } else {
+            loggedWorkoutDao.getAllLoggedWorkouts().first()
+        }
+
+        val exportData = mapOf(
+            "metadata" to createMetadata("workouts", dateRange),
+            "workouts" to workouts
+        )
+
+        return gson.toJson(exportData)
+    }
+
+    private suspend fun exportPersonalRecordsToJSON(dateRange: DateRange?, gson: Gson): String {
+        val personalRecords = personalRecordDao.getAllPRs().first()
+        
+        val filteredRecords = if (dateRange != null) {
+            personalRecords.filter { pr ->
+                pr.date >= dateRange.startDate && pr.date <= dateRange.endDate
+            }
+        } else {
+            personalRecords
+        }
+
+        val exportData = mapOf(
+            "metadata" to createMetadata("personal_records", dateRange),
+            "personalRecords" to filteredRecords
+        )
+
+        return gson.toJson(exportData)
+    }
+
+    private suspend fun exportExercisesToJSON(gson: Gson): String {
+        val exercises = exerciseDao.getAllExercises().first()
+
+        val exportData = mapOf(
+            "metadata" to createMetadata("exercises", null),
+            "exercises" to exercises
+        )
+
+        return gson.toJson(exportData)
+    }
+
+    private suspend fun exportProgramTemplatesToJSON(gson: Gson): String {
+        val programs = programDao.getAllPrograms().first()
+
+        val exportData = mapOf(
+            "metadata" to createMetadata("program_templates", null),
+            "programTemplates" to programs
+        )
+
+        return gson.toJson(exportData)
+    }
+
+    private suspend fun exportCompleteBackupToJSON(dateRange: DateRange?, gson: Gson): String {
+        val workouts = if (dateRange != null) {
+            loggedWorkoutDao.getWorkoutsByDateRange(dateRange.startDate, dateRange.endDate).first()
+        } else {
+            loggedWorkoutDao.getAllLoggedWorkouts().first()
+        }
+        
+        val personalRecords = personalRecordDao.getAllPRs().first()
+        val filteredPRs = if (dateRange != null) {
+            personalRecords.filter { pr ->
+                pr.date >= dateRange.startDate && pr.date <= dateRange.endDate
+            }
+        } else {
+            personalRecords
+        }
+        
+        val exercises = exerciseDao.getAllExercises().first()
+        val programs = programDao.getAllPrograms().first()
+        val activeCycle = activeCycleDao.getActiveCycle().first()
+
+        val exportData = mapOf(
+            "metadata" to createMetadata("complete_backup", dateRange),
+            "workouts" to workouts,
+            "personalRecords" to filteredPRs,
+            "exercises" to exercises,
+            "programTemplates" to programs,
+            "activeCycle" to activeCycle
+        )
+
+        return gson.toJson(exportData)
+    }
+
+    // Helper functions for JSON export
+    private fun createMetadata(dataType: String, dateRange: DateRange?): Map<String, Any> {
+        return mapOf(
+            "exportType" to dataType,
+            "exportDate" to getCurrentDate(),
+            "appVersion" to "1.0.0",
+            "schemaVersion" to "19", // Current database version
+            "dateRange" to if (dateRange != null) {
+                mapOf(
+                    "startDate" to dateRange.startDate,
+                    "endDate" to dateRange.endDate
+                )
+            } else {
+                "all_data"
+            }
+        )
+    }
+
+    private suspend fun getWorkoutCount(dateRange: DateRange?): Int {
+        return if (dateRange != null) {
+            loggedWorkoutDao.getWorkoutsByDateRange(dateRange.startDate, dateRange.endDate).first().size
+        } else {
+            loggedWorkoutDao.getAllLoggedWorkouts().first().size
+        }
+    }
+
+    private suspend fun getPRCount(dateRange: DateRange?): Int {
+        val personalRecords = personalRecordDao.getAllPRs().first()
+        return if (dateRange != null) {
+            personalRecords.filter { pr ->
+                pr.date >= dateRange.startDate && pr.date <= dateRange.endDate
+            }.size
+        } else {
+            personalRecords.size
+        }
+    }
+
+    private suspend fun getTotalRecordCount(dateRange: DateRange?): Int {
+        val workouts = getWorkoutCount(dateRange)
+        val prs = getPRCount(dateRange)
+        val exercises = exerciseDao.getAllExercises().first().size
+        val programs = programDao.getAllPrograms().first().size
+        return workouts + prs + exercises + programs
     }
 
     // UTILITY FUNCTIONS

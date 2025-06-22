@@ -104,6 +104,17 @@ class MainActivity : ComponentActivity() {
         ExportViewModelFactory(exportRepository)
     }
 
+    private val importViewModel: ImportViewModel by viewModels {
+        val importRepository = ImportRepository(
+            (application as WorkoutApplication).database.loggedWorkoutDao(),
+            (application as WorkoutApplication).database.exerciseDao(),
+            (application as WorkoutApplication).database.personalRecordDao(),
+            (application as WorkoutApplication).database.programTemplateDao(),
+            (application as WorkoutApplication).database.activeCycleDao()
+        )
+        ImportViewModelFactory(importRepository)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -120,7 +131,8 @@ class MainActivity : ComponentActivity() {
                     settingsViewModel = settingsViewModel,
                     volumeViewModel = volumeViewModel,
                     analyticsViewModel = analyticsViewModel,
-                    exportViewModel = exportViewModel
+                    exportViewModel = exportViewModel,
+                    importViewModel = importViewModel
                 )
             }
         }
@@ -138,7 +150,8 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             settingsViewModel: SettingsViewModel,
             volumeViewModel: VolumeViewModel,
             analyticsViewModel: AnalyticsViewModel,
-            exportViewModel: ExportViewModel
+            exportViewModel: ExportViewModel,
+            importViewModel: ImportViewModel
 ) {
     val navController = rememberNavController()
     Scaffold(
@@ -157,6 +170,7 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             volumeViewModel = volumeViewModel,
             analyticsViewModel = analyticsViewModel,
             exportViewModel = exportViewModel,
+            importViewModel = importViewModel,
             modifier = Modifier.padding(innerPadding)
         )
     }
@@ -176,6 +190,7 @@ fun AppNavHost(
     volumeViewModel: VolumeViewModel,
     analyticsViewModel: AnalyticsViewModel,
     exportViewModel: ExportViewModel,
+    importViewModel: ImportViewModel,
     modifier: Modifier = Modifier
 ) {
     val weightUnit by settingsViewModel.weightUnit.collectAsStateWithLifecycle()
@@ -300,12 +315,21 @@ fun AppNavHost(
                 viewModel = settingsViewModel,
                 onNavigateToExport = {
                     navController.navigate("export")
+                },
+                onNavigateToImport = {
+                    navController.navigate("import")
                 }
             )
         }
         composable("export") {
             ExportScreen(
                 viewModel = exportViewModel,
+                onNavigateUp = { navController.navigateUp() }
+            )
+        }
+        composable("import") {
+            ImportScreen(
+                viewModel = importViewModel,
                 onNavigateUp = { navController.navigateUp() }
             )
         }
