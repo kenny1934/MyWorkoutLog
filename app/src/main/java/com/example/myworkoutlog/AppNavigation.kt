@@ -48,4 +48,6 @@ sealed class Screen(val route: String) {
     data object Settings : Screen("settings")
 
     data object VolumeAnalysis : Screen("volume_analysis")
+    
+    data object Analytics : Screen("analytics")
 }

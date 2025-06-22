@@ -97,4 +97,65 @@ interface LoggedWorkoutDao {
         LIMIT :limit
     """)
     fun getRecentWorkoutsByTemplate(templateId: String, limit: Int = 5): Flow<List<LoggedWorkout>>
+    
+    // ANALYTICS QUERIES FOR TIER 2 FEATURES
+    
+    // Get all workouts within a date range for volume analysis
+    @Query("""
+        SELECT * FROM logged_workout_table 
+        WHERE date BETWEEN :startDate AND :endDate 
+        ORDER BY date ASC, startTimestamp ASC
+    """)
+    fun getWorkoutsByDateRange(startDate: String, endDate: String): Flow<List<LoggedWorkout>>
+    
+    // Get workouts containing specific exercise within date range
+    @Query("""
+        SELECT * FROM logged_workout_table 
+        WHERE date BETWEEN :startDate AND :endDate 
+        AND loggedExercises LIKE '%"exerciseId":"' || :exerciseId || '"%' 
+        ORDER BY date ASC, startTimestamp ASC
+    """)
+    fun getWorkoutsWithExerciseInDateRange(exerciseId: String, startDate: String, endDate: String): Flow<List<LoggedWorkout>>
+    
+    // Get all workouts for performance trend analysis (no date limit)
+    @Query("""
+        SELECT * FROM logged_workout_table 
+        WHERE loggedExercises LIKE '%"exerciseId":"' || :exerciseId || '"%' 
+        ORDER BY date ASC, startTimestamp ASC
+    """)
+    fun getAllWorkoutsWithExercise(exerciseId: String): Flow<List<LoggedWorkout>>
+    
+    // Get workouts grouped by month for volume summaries
+    @Query("""
+        SELECT * FROM logged_workout_table 
+        WHERE date LIKE :yearMonth || '%' 
+        ORDER BY date ASC, startTimestamp ASC
+    """)
+    fun getWorkoutsByMonth(yearMonth: String): Flow<List<LoggedWorkout>> // yearMonth format: "2024-01"
+    
+    // Get workouts for cycle comparison (two specific cycles)
+    @Query("""
+        SELECT * FROM logged_workout_table 
+        WHERE activeProgramCycleId IN (:cycleId1, :cycleId2) 
+        ORDER BY activeProgramCycleId, date ASC
+    """)
+    fun getWorkoutsForCycleComparison(cycleId1: String, cycleId2: String): Flow<List<LoggedWorkout>>
+    
+    // Get all workouts with duration data for average workout time analysis
+    @Query("""
+        SELECT * FROM logged_workout_table 
+        WHERE startTimestamp IS NOT NULL AND endTimestamp IS NOT NULL 
+        AND activeProgramCycleId = :cycleId 
+        ORDER BY date ASC
+    """)
+    fun getWorkoutsWithDurationByCycle(cycleId: String): Flow<List<LoggedWorkout>>
+    
+    // Get most recent workouts for each exercise (for PR tracking)
+    @Query("""
+        SELECT * FROM logged_workout_table 
+        WHERE loggedExercises LIKE '%"exerciseId":"' || :exerciseId || '"%' 
+        ORDER BY date DESC, startTimestamp DESC 
+        LIMIT 10
+    """)
+    fun getRecentWorkoutsForPRAnalysis(exerciseId: String): Flow<List<LoggedWorkout>>
 }

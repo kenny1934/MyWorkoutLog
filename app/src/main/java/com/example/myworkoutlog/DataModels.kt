@@ -288,3 +288,110 @@ enum class ProgressionType {
     MAINTAIN, // Suggest same as last performance
     DECREASE  // Suggest slight decrease (deload/recovery)
 }
+
+// Analytics Data Classes for Tier 2 Advanced Features
+
+// Volume progression data point for charting
+data class VolumeDataPoint(
+    val date: String,
+    val totalVolume: Double, // weight * reps * sets
+    val workoutName: String? = null,
+    val cycleId: String? = null
+)
+
+// Exercise performance data point for trends
+data class ExercisePerformancePoint(
+    val date: String,
+    val exerciseId: String,
+    val exerciseName: String,
+    val bestWeight: Double? = null,
+    val bestReps: Int? = null,
+    val totalVolume: Double? = null,
+    val estimated1RM: Double? = null,
+    val workoutId: String,
+    val cycleId: String? = null
+)
+
+// Personal Record tracking
+data class PersonalRecordProgress(
+    val exerciseId: String,
+    val exerciseName: String,
+    val currentPR: PersonalRecord,
+    val previousPR: PersonalRecord? = null,
+    val improvement: Double? = null, // percentage or absolute improvement
+    val improvementType: PRImprovementType
+)
+
+enum class PRImprovementType {
+    WEIGHT_INCREASE,
+    REP_INCREASE,
+    DURATION_INCREASE,
+    NEW_PR,
+    NO_IMPROVEMENT
+}
+
+// Cycle comparison data
+data class CycleComparison(
+    val currentCycleId: String,
+    val previousCycleId: String? = null,
+    val programTemplateName: String,
+    val totalVolumeChange: Double? = null, // percentage change
+    val strengthGains: List<ExerciseStrengthGain>,
+    val completionRate: Double, // percentage of planned workouts completed
+    val averageWorkoutDuration: Long? = null // in minutes
+)
+
+data class ExerciseStrengthGain(
+    val exerciseId: String,
+    val exerciseName: String,
+    val strengthGainPercentage: Double? = null,
+    val weightIncrease: Double? = null,
+    val repIncrease: Int? = null
+)
+
+// Weekly/Monthly volume summary
+data class VolumeSummary(
+    val periodLabel: String, // "Week 1", "January 2024"
+    val startDate: String,
+    val endDate: String,
+    val totalVolume: Double,
+    val workoutCount: Int,
+    val averageVolumePerWorkout: Double,
+    val exerciseBreakdown: List<ExerciseVolumeBreakdown>
+)
+
+data class ExerciseVolumeBreakdown(
+    val exerciseId: String,
+    val exerciseName: String,
+    val muscleGroups: List<MuscleGroup>,
+    val totalVolume: Double,
+    val setCount: Int,
+    val averageWeight: Double? = null
+)
+
+// Muscle group volume distribution
+data class MuscleGroupVolume(
+    val muscleGroup: MuscleGroup,
+    val totalVolume: Double,
+    val percentage: Double, // of total weekly/monthly volume
+    val exerciseCount: Int
+)
+
+// Performance trend analysis
+data class PerformanceTrend(
+    val exerciseId: String,
+    val exerciseName: String,
+    val trendDirection: TrendDirection,
+    val trendStrength: Double, // 0.0 to 1.0, how strong the trend is
+    val dataPoints: List<ExercisePerformancePoint>,
+    val recommendedAction: String? = null
+)
+
+enum class TrendDirection {
+    STRONGLY_IMPROVING,
+    SLIGHTLY_IMPROVING,
+    STABLE,
+    SLIGHTLY_DECLINING,
+    STRONGLY_DECLINING,
+    INSUFFICIENT_DATA
+}

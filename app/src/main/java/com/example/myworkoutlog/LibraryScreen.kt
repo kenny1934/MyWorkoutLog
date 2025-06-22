@@ -61,6 +61,14 @@ fun LibraryScreen(onNavigate: (String) -> Unit) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
+                .clickable { onNavigate(Screen.Analytics.route) },
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Text("Advanced Analytics", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
+        }
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
                 .clickable { onNavigate(Screen.Settings.route) },
             elevation = CardDefaults.cardElevation(2.dp)
         ) {

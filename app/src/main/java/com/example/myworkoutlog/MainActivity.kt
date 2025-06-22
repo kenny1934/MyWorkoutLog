@@ -80,6 +80,19 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    private val analyticsViewModel: AnalyticsViewModel by viewModels {
+        val analyticsRepository = AnalyticsRepository(
+            (application as WorkoutApplication).database.loggedWorkoutDao(),
+            (application as WorkoutApplication).database.activeCycleDao(),
+            (application as WorkoutApplication).database.personalRecordDao()
+        )
+        AnalyticsViewModelFactory(
+            analyticsRepository,
+            (application as WorkoutApplication).database.exerciseDao(),
+            (application as WorkoutApplication).database.activeCycleDao()
+        )
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -94,7 +107,8 @@ class MainActivity : ComponentActivity() {
                     activeCycleViewModel = activeCycleViewModel,
                     prViewModel = prViewModel,
                     settingsViewModel = settingsViewModel,
-                    volumeViewModel = volumeViewModel
+                    volumeViewModel = volumeViewModel,
+                    analyticsViewModel = analyticsViewModel
                 )
             }
         }
@@ -110,7 +124,8 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             activeCycleViewModel: ActiveCycleViewModel,
             prViewModel: PrViewModel,
             settingsViewModel: SettingsViewModel,
-            volumeViewModel: VolumeViewModel
+            volumeViewModel: VolumeViewModel,
+            analyticsViewModel: AnalyticsViewModel
 ) {
     val navController = rememberNavController()
     Scaffold(
@@ -127,6 +142,7 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             prViewModel = prViewModel,
             settingsViewModel = settingsViewModel,
             volumeViewModel = volumeViewModel,
+            analyticsViewModel = analyticsViewModel,
             modifier = Modifier.padding(innerPadding)
         )
     }
@@ -144,6 +160,7 @@ fun AppNavHost(
     prViewModel: PrViewModel,
     settingsViewModel: SettingsViewModel,
     volumeViewModel: VolumeViewModel,
+    analyticsViewModel: AnalyticsViewModel,
     modifier: Modifier = Modifier
 ) {
     val weightUnit by settingsViewModel.weightUnit.collectAsStateWithLifecycle()
@@ -268,6 +285,9 @@ fun AppNavHost(
         }
         composable(Screen.VolumeAnalysis.route) {
             VolumeAnalysisScreen(viewModel = volumeViewModel)
+        }
+        composable(Screen.Analytics.route) {
+            AnalyticsScreen(viewModel = analyticsViewModel)
         }
     }
 }
