@@ -849,22 +849,26 @@ private fun formatHistoryWeightDisplay(set: LoggedSet, exercise: LoggedExercise,
          exercise.exerciseName.contains("push up", ignoreCase = true) ||
          exercise.exerciseName.contains("pushup", ignoreCase = true)
     
-    // Check if this is a bodyweight exercise and we have bodyweight data
-    if (isBodyweightExercise && 
-        setWeight > 0 && 
-        workout.bodyweight != null) {
-        
+    // Handle bodyweight exercises: set.weight contains external weight only, not total
+    if (isBodyweightExercise && workout.bodyweight != null) {
         val bodyweight = workout.bodyweight
-        val externalWeight = setWeight - bodyweight
+        val externalWeight = setWeight // For bodyweight exercises, set.weight IS the external weight
         
-        return if (externalWeight > 0.1) { // Use smaller threshold - 0.1kg should catch most external weights
-            "${bodyweight.toInt()}$weightUnit + ${externalWeight.toInt()}$weightUnit"
-        } else {
-            "${bodyweight.toInt()}$weightUnit BW" 
+        return when {
+            externalWeight > 0.1 -> {
+                val totalWeight = bodyweight + externalWeight
+                "BW(${bodyweight.toInt()}$weightUnit) + ${externalWeight.toInt()}$weightUnit = ${totalWeight.toInt()}$weightUnit"
+            }
+            else -> "BW(${bodyweight.toInt()}$weightUnit)"
         }
     }
     
-    // Regular exercise or no bodyweight data: show total weight only
+    // For bodyweight exercises without bodyweight data, show external weight only  
+    if (isBodyweightExercise && setWeight > 0) {
+        return "+${setWeight.toInt()}$weightUnit"
+    }
+    
+    // Regular exercise: show total weight only
     return "${setWeight.toInt()}$weightUnit"
 }
 

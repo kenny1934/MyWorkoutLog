@@ -38,7 +38,7 @@ interface LoggedWorkoutDao {
     fun getAllCycleIds(): Flow<List<String>>
     
     // Get workouts that don't belong to any cycle (orphaned workouts)
-    @Query("SELECT * FROM logged_workout_table WHERE activeProgramCycleId IS NULL ORDER BY date DESC")
+    @Query("SELECT * FROM logged_workout_table WHERE activeProgramCycleId IS NULL ORDER BY date DESC, startTimestamp DESC")
     fun getOrphanedWorkouts(): Flow<List<LoggedWorkout>>
     
     // Get workouts for a specific program template across all cycles
