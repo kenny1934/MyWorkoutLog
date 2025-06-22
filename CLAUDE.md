@@ -89,6 +89,25 @@
   - Protected against date parsing errors and invalid workout data scenarios
 - **Result**: Analytics screen now handles exercise selection gracefully without crashes
 
+## ✅ Bodyweight Exercise Display Enhancement (UX Improvement)
+
+### **Problem Solved**: Bodyweight exercise records now show detailed breakdown instead of just total weight
+**Issue**: Personal records for bodyweight exercises only displayed combined total (e.g., "80kg × 10 reps") making it impossible to distinguish bodyweight vs external load components
+**Solution**: 
+- **Enhanced Data Model**: Added `bodyweightUsed`, `externalWeight`, and `usesBodyweight` fields to PersonalRecord
+- **Smart Display Logic**: Shows detailed breakdown format "BW(75kg) + 5kg = 80kg × 10 reps" for bodyweight exercises
+- **Visual Indicators**: Added person icons to clearly identify bodyweight exercises
+- **Comprehensive Coverage**: Updated both PersonalRecordsScreen and AnalyticsScreen displays
+- **Backward Compatibility**: Existing PR data continues to work without migration issues
+- **Database Schema**: Incremented to version 19 with new optional fields
+**Implementation**: 
+- **DataModels.kt**: Added bodyweight breakdown fields to PersonalRecord with default values
+- **PrService.kt**: Enhanced to populate bodyweight and external weight separately during PR detection
+- **PersonalRecordsScreen.kt**: Created `formatWeightDisplay()` helper with detailed breakdown logic
+- **AnalyticsScreen.kt**: Added matching display improvements for analytics personal records
+- **UI Enhancement**: Person icons and improved formatting for better user experience
+**Result**: Users can now clearly see exact bodyweight and external load combinations (e.g., "BW(75kg) + 10kg = 85kg" vs "BW(80kg) + 0kg = 80kg")
+
 ## Next Development Priorities - Tier 2 Advanced Features (Continued)
 
 **Current Status**: Advanced Analytics & Progress Tracking ✅ Complete
