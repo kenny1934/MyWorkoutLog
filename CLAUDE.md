@@ -78,6 +78,17 @@
 
 **Users now have professional-grade analytics capabilities with comprehensive progress tracking and actionable insights!**
 
+### **🔧 Analytics Stability Fixes (Hotfix)**
+**Issue Resolved**: Analytics screen crashes when selecting exercises in Performance and PRs tabs
+- **Root Cause**: Synchronous Room DAO calls within Flow contexts causing threading issues
+- **Solution**: 
+  - Added `getPRsForExerciseFlow()` method to PersonalRecordDao for proper reactive data handling
+  - Changed `getExercisePerformanceTrend()` return type to nullable `Flow<PerformanceTrend?>` 
+  - Implemented comprehensive error handling in all analytics data processing functions
+  - Added defensive null checks and graceful failure recovery throughout analytics pipeline
+  - Protected against date parsing errors and invalid workout data scenarios
+- **Result**: Analytics screen now handles exercise selection gracefully without crashes
+
 ## Next Development Priorities - Tier 2 Advanced Features (Continued)
 
 **Current Status**: Advanced Analytics & Progress Tracking ✅ Complete
