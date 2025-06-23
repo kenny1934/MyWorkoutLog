@@ -238,7 +238,7 @@ private fun UserInfoCard(
                     }
                     IconButton(onClick = onSignOut) {
                         Icon(
-                            imageVector = Icons.Filled.ExitToApp,
+                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                             contentDescription = "Sign Out"
                         )
                     }

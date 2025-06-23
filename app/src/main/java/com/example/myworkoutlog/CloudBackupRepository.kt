@@ -72,9 +72,10 @@ class CloudBackupRepository(
                 }
             }
             
-            val dataHash = when (encryptionResult) {
-                is EncryptionResult.Success -> encryptionResult.dataHash
-                else -> ""
+            val dataHash = if (encryptionResult is EncryptionResult.Success) {
+                encryptionResult.dataHash
+            } else {
+                ""
             }
             
             emit(CloudResult.Loading(0.6f))
