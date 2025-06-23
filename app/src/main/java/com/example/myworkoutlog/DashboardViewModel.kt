@@ -118,6 +118,17 @@ class DashboardViewModel(
                 onNavigate(Screen.History.route)
             }
             
+            QuickActionType.COMPLETE_CYCLE -> {
+                // End the current cycle and navigate to analytics with cycle summary
+                activeCycleDao.clearActiveCycle()
+                onNavigate(Screen.Analytics.route)
+            }
+            
+            QuickActionType.VIEW_CYCLE_ANALYTICS -> {
+                // Navigate to analytics focused on current cycle
+                onNavigate(Screen.Analytics.route)
+            }
+            
             QuickActionType.LOG_QUICK_WORKOUT -> {
                 // TODO: Implement quick workout logging
                 onNavigate(Screen.WorkoutLogger.route)

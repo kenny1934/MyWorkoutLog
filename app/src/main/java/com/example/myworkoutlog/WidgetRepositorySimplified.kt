@@ -68,6 +68,15 @@ class WidgetRepositorySimplified(
             ))
         }
         
+        // Bodyweight trend chart
+        val bodyweightData = getBodyweightTrendData()
+        if (bodyweightData.isNotEmpty()) {
+            widgets.add(DashboardWidget.BodyweightTrendWidget(
+                bodyweightData = bodyweightData,
+                trend = calculateBodyweightTrend(bodyweightData)
+            ))
+        }
+        
         // Activity heatmap (simplified)
         widgets.add(DashboardWidget.ActivityHeatmapWidget(
             workoutDays = emptyMap(),
@@ -111,6 +120,15 @@ class WidgetRepositorySimplified(
                 currentWeight = info.weight,
                 lastRecordedDate = info.date,
                 unit = info.unit
+            ))
+        }
+        
+        // Bodyweight trend chart
+        val bodyweightData = getBodyweightTrendData()
+        if (bodyweightData.isNotEmpty()) {
+            widgets.add(DashboardWidget.BodyweightTrendWidget(
+                bodyweightData = bodyweightData,
+                trend = calculateBodyweightTrend(bodyweightData)
             ))
         }
         
@@ -173,13 +191,34 @@ class WidgetRepositorySimplified(
         val actions = mutableListOf<QuickAction>()
         
         if (activeCycle != null) {
-            actions.add(QuickAction(
-                id = "start_next",
-                title = "Start Next Session",
-                description = "Continue your active cycle",
-                icon = Icons.Default.Refresh,
-                action = QuickActionType.START_NEXT_SESSION
-            ))
+            val isCycleCompleted = isCycleCompleted(activeCycle)
+            
+            if (isCycleCompleted) {
+                // Cycle is completed - show completion actions
+                actions.add(QuickAction(
+                    id = "complete_cycle",
+                    title = "Complete Cycle",
+                    description = "Finish current cycle and view results",
+                    icon = Icons.Default.CheckCircle,
+                    action = QuickActionType.COMPLETE_CYCLE
+                ))
+                actions.add(QuickAction(
+                    id = "cycle_analytics",
+                    title = "View Cycle Analytics",
+                    description = "See your progress for this cycle",
+                    icon = Icons.Default.Analytics,
+                    action = QuickActionType.VIEW_CYCLE_ANALYTICS
+                ))
+            } else {
+                // Cycle is ongoing - show next session action
+                actions.add(QuickAction(
+                    id = "start_next",
+                    title = "Start Next Session",
+                    description = "Continue your active cycle",
+                    icon = Icons.Default.Refresh,
+                    action = QuickActionType.START_NEXT_SESSION
+                ))
+            }
         } else {
             actions.add(QuickAction(
                 id = "start_cycle",
@@ -249,6 +288,69 @@ class WidgetRepositorySimplified(
         val sessionProgress = "$completedSessionsCount of $totalSessions sessions completed"
         
         return Pair(weekProgress, sessionProgress)
+    }
+    
+    private fun isCycleCompleted(activeCycle: ActiveProgramCycle): Boolean {
+        val totalSessions = activeCycle.cycleProgram.weeks.sumOf { it.sessions.size }
+        val completedSessions = activeCycle.completedSessions.size
+        return completedSessions >= totalSessions
+    }
+    
+    private suspend fun getBodyweightTrendData(): List<BodyweightPoint> {
+        return try {
+            val workouts = loggedWorkoutDao.getAllLoggedWorkouts().first()
+            workouts
+                .filter { it.bodyweight != null && it.bodyweight!! > 0 }
+                .sortedBy { it.date }
+                .takeLast(30) // Last 30 data points
+                .map { workout ->
+                    BodyweightPoint(
+                        date = java.time.LocalDate.parse(workout.date),
+                        weight = workout.bodyweight!!.toFloat()
+                    )
+                }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+    
+    private fun calculateBodyweightTrend(data: List<BodyweightPoint>): ProgressTrend {
+        if (data.size < 2) {
+            return ProgressTrend(TrendDirection.INSUFFICIENT_DATA, 0f, "Not enough data")
+        }
+        
+        val recent = data.takeLast(7) // Last week
+        val previous = data.dropLast(7).takeLast(7) // Previous week
+        
+        if (recent.isEmpty() || previous.isEmpty()) {
+            return ProgressTrend(TrendDirection.INSUFFICIENT_DATA, 0f, "Not enough data")
+        }
+        
+        val recentAvg = recent.map { it.weight }.average().toFloat()
+        val previousAvg = previous.map { it.weight }.average().toFloat()
+        
+        val changePercentage = ((recentAvg - previousAvg) / previousAvg) * 100
+        
+        val direction = when {
+            changePercentage > 2f -> TrendDirection.STRONGLY_IMPROVING
+            changePercentage > 0.5f -> TrendDirection.SLIGHTLY_IMPROVING
+            changePercentage < -2f -> TrendDirection.STRONGLY_DECLINING
+            changePercentage < -0.5f -> TrendDirection.SLIGHTLY_DECLINING
+            else -> TrendDirection.STABLE
+        }
+        
+        return ProgressTrend(
+            direction = direction,
+            percentage = kotlin.math.abs(changePercentage),
+            description = when (direction) {
+                TrendDirection.STRONGLY_IMPROVING -> "Significant increase"
+                TrendDirection.SLIGHTLY_IMPROVING -> "Slight increase"
+                TrendDirection.STRONGLY_DECLINING -> "Significant decrease"
+                TrendDirection.SLIGHTLY_DECLINING -> "Slight decrease"
+                TrendDirection.STABLE -> "Stable trend"
+                else -> "No clear trend"
+            }
+        )
     }
 }
 

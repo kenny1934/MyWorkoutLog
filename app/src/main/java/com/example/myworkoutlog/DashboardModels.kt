@@ -197,7 +197,9 @@ enum class QuickActionType {
     VIEW_ANALYTICS,
     ADD_BODYWEIGHT,
     START_NEW_CYCLE,
-    VIEW_HISTORY
+    VIEW_HISTORY,
+    COMPLETE_CYCLE,
+    VIEW_CYCLE_ANALYTICS
 }
 
 data class SmartInsight(

@@ -167,6 +167,7 @@ fun EnhancedDashboardScreen(
                         navController = navController
                     )
                     is DashboardWidget.ActivityHeatmapWidget -> SimpleActivityHeatmapWidgetCard(widget)
+                    is DashboardWidget.BodyweightTrendWidget -> SimpleBodyweightTrendWidgetCard(widget)
                     else -> {
                         // Fallback for other widget types
                         Card(modifier = Modifier.fillMaxWidth()) {
@@ -625,8 +626,11 @@ fun SimpleCycleProgressWidgetCard(
                             .fillMaxWidth()
                             .clickable {
                                 if (isCompleted) {
-                                    // Navigate to session history/details if needed
-                                    // Could implement later: navController.navigate(Screen.SessionDetail.createRoute(session.id))
+                                    // Navigate to the logged workout history screen
+                                    val loggedWorkoutId = widget.cycle.completedSessions[sessionKey]
+                                    loggedWorkoutId?.let { workoutId ->
+                                        navController.navigate(Screen.HistoryDetail.createRoute(workoutId))
+                                    }
                                 } else {
                                     // Start the session
                                     val route = Screen.WorkoutLogger.createRoute(
@@ -731,6 +735,110 @@ fun SimpleActivityHeatmapWidgetCard(widget: DashboardWidget.ActivityHeatmapWidge
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun SimpleBodyweightTrendWidgetCard(widget: DashboardWidget.BodyweightTrendWidget) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Bodyweight Trend",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            if (widget.bodyweightData.isNotEmpty()) {
+                // Prepare data for chart
+                val chartData = widget.bodyweightData.mapIndexed { index, point ->
+                    entryOf(index.toFloat(), point.weight)
+                }
+                
+                val chartModelProducer = ChartEntryModelProducer(chartData)
+                
+                // Custom formatter for dates
+                val bottomAxisValueFormatter = AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, _ ->
+                    val index = value.toInt()
+                    if (index in widget.bodyweightData.indices) {
+                        val date = widget.bodyweightData[index].date
+                        "${date.monthValue}/${date.dayOfMonth}"
+                    } else {
+                        ""
+                    }
+                }
+                
+                Chart(
+                    chart = lineChart(),
+                    chartModelProducer = chartModelProducer,
+                    startAxis = rememberStartAxis(
+                        title = "Weight (kg)"
+                    ),
+                    bottomAxis = rememberBottomAxis(
+                        valueFormatter = bottomAxisValueFormatter,
+                        guideline = null
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Trend indicator
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val trendColor = when (widget.trend.direction) {
+                        TrendDirection.STRONGLY_IMPROVING, TrendDirection.SLIGHTLY_IMPROVING -> Color(0xFF4CAF50)
+                        TrendDirection.STRONGLY_DECLINING, TrendDirection.SLIGHTLY_DECLINING -> Color(0xFFF44336)
+                        TrendDirection.STABLE -> MaterialTheme.colorScheme.onSurfaceVariant
+                        else -> Color(0xFFFF9800)
+                    }
+                    
+                    val trendIcon = when (widget.trend.direction) {
+                        TrendDirection.STRONGLY_IMPROVING, TrendDirection.SLIGHTLY_IMPROVING -> Icons.Default.TrendingUp
+                        TrendDirection.STRONGLY_DECLINING, TrendDirection.SLIGHTLY_DECLINING -> Icons.Default.TrendingDown
+                        TrendDirection.STABLE -> Icons.Default.TrendingFlat
+                        else -> Icons.Default.ShowChart
+                    }
+                    
+                    Icon(
+                        imageVector = trendIcon,
+                        contentDescription = "Trend",
+                        tint = trendColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    
+                    Text(
+                        text = widget.trend.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = trendColor
+                    )
+                    
+                    if (widget.trend.percentage > 0) {
+                        Text(
+                            text = "${widget.trend.percentage.toInt()}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = trendColor,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    text = "No bodyweight data available",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
