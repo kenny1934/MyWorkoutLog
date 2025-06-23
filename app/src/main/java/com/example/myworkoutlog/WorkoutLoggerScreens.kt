@@ -1,8 +1,12 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 
 package com.example.myworkoutlog
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,6 +24,30 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
+
+@Composable
+fun EditWorkoutScreen(
+    workoutId: String,
+    viewModel: WorkoutLoggerViewModel,
+    activeCycleViewModel: ActiveCycleViewModel,
+    weightUnit: String,
+    onNavigateUp: () -> Unit
+) {
+    // LaunchedEffect to load workout for editing when the composable first appears
+    LaunchedEffect(key1 = workoutId) {
+        viewModel.loadWorkoutForEdit(workoutId)
+    }
+
+    // Reuse the WorkoutLoggerScreen UI but with edit mode context
+    WorkoutLoggerScreenContent(
+        viewModel = viewModel,
+        activeCycleViewModel = activeCycleViewModel,
+        weightUnit = weightUnit,
+        onNavigateUp = onNavigateUp,
+        isEditMode = true
+    )
+}
 
 @Composable
 fun WorkoutLoggerScreen(
@@ -32,12 +60,79 @@ fun WorkoutLoggerScreen(
     weightUnit: String,
     onNavigateUp: () -> Unit
 ) {
-    // Local state for the bodyweight text field
-    var bodyweightText by remember { mutableStateOf("") }
-
     // LaunchedEffect runs a coroutine when the composable first appears.
     LaunchedEffect(key1 = templateId) {
         viewModel.startWorkoutFromTemplate(templateId, cycleId, weekId, sessionId)
+    }
+
+    // Reuse the shared content with normal mode
+    WorkoutLoggerScreenContent(
+        viewModel = viewModel,
+        activeCycleViewModel = activeCycleViewModel,
+        weightUnit = weightUnit,
+        onNavigateUp = onNavigateUp,
+        isEditMode = false
+    )
+}
+
+@Composable
+private fun WorkoutLoggerScreenContent(
+    viewModel: WorkoutLoggerViewModel,
+    activeCycleViewModel: ActiveCycleViewModel,
+    weightUnit: String,
+    onNavigateUp: () -> Unit,
+    isEditMode: Boolean
+) {
+    // Local state for the bodyweight text field
+    var bodyweightText by remember { mutableStateOf("") }
+    
+    // State for exit confirmation dialog
+    var showExitConfirmation by remember { mutableStateOf(false) }
+    var exitAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var isFinishAction by remember { mutableStateOf(false) }
+    
+    // State for exercise addition dialog
+    var showAddExerciseDialog by remember { mutableStateOf(false) }
+    
+    // State for exercise context menu
+    var showExerciseContextMenu by remember { mutableStateOf(false) }
+    var selectedExerciseForMenu by remember { mutableStateOf<LoggedExercise?>(null) }
+    
+    // State for exercise substitution dialog
+    var showSubstituteExerciseDialog by remember { mutableStateOf(false) }
+    
+    // State for exercise removal confirmation
+    var showRemoveExerciseConfirmation by remember { mutableStateOf(false) }
+    
+    // State for set removal confirmation
+    var showRemoveSetConfirmation by remember { mutableStateOf(false) }
+    var selectedSetForRemoval by remember { mutableStateOf<Pair<String, String>?>(null) } // exerciseId, setId
+    
+    // Coroutine scope for handling async save operations
+    val coroutineScope = rememberCoroutineScope()
+    
+    // Function to save all pending field data before navigation/completion
+    suspend fun saveAllPendingData() {
+        // Save bodyweight if changed
+        viewModel.updateBodyweight(bodyweightText)
+        // Give a brief moment for any active typing to be captured by debounced saves
+        kotlinx.coroutines.delay(100)
+        // Note: Individual set data is automatically saved via DisposableEffect and debounced LaunchedEffect
+    }
+    
+    // Function to show exit confirmation dialog
+    fun showExitConfirmationDialog(action: () -> Unit, isFinish: Boolean = false) {
+        exitAction = action
+        isFinishAction = isFinish
+        showExitConfirmation = true
+    }
+
+    // Debounced auto-save for bodyweight field
+    LaunchedEffect(bodyweightText) {
+        if (bodyweightText.isNotBlank()) {
+            kotlinx.coroutines.delay(1000) // 1 second debounce
+            viewModel.updateBodyweight(bodyweightText)
+        }
     }
 
     // Collect the active workout state from the ViewModel.
@@ -49,32 +144,65 @@ fun WorkoutLoggerScreen(
     val timerValue by viewModel.timerValueSeconds.collectAsStateWithLifecycle()
     val sessionElapsedTime by viewModel.sessionElapsedTime.collectAsStateWithLifecycle()
 
+    // Handle system back gesture
+    BackHandler {
+        showExitConfirmationDialog({
+            coroutineScope.launch {
+                saveAllPendingData()
+                viewModel.stopRestTimer()
+                onNavigateUp()
+            }
+        })
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(activeWorkout?.name ?: "Log Workout") },
+                title = { 
+                    Text(if (isEditMode) "Edit: ${activeWorkout?.name ?: "Workout"}" else activeWorkout?.name ?: "Log Workout") 
+                },
                 navigationIcon = {
                     IconButton(onClick = {
-                        viewModel.stopRestTimer()
-                        onNavigateUp()
+                        showExitConfirmationDialog({
+                            coroutineScope.launch {
+                                saveAllPendingData()
+                                viewModel.stopRestTimer()
+                                onNavigateUp()
+                            }
+                        })
                     }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    Text(
-                        text = formatTime(sessionElapsedTime),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
+                    if (!isEditMode) {
+                        Text(
+                            text = formatTime(sessionElapsedTime),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                    }
                     Button(onClick = {
-                        viewModel.finishWorkout(weightUnit, activeCycle)
-                        onNavigateUp()
+                        showExitConfirmationDialog({
+                            coroutineScope.launch {
+                                saveAllPendingData()
+                                viewModel.finishWorkout(weightUnit, activeCycle)
+                                onNavigateUp()
+                            }
+                        }, isFinish = true)
                     }) {
-                        Text("Finish")
+                        Text(if (isEditMode) "Save Changes" else "Finish")
                     }
                 }
             )
+        },
+        
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showAddExerciseDialog = true }
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = "Add Exercise")
+            }
         },
 
         bottomBar = {
@@ -122,9 +250,51 @@ fun WorkoutLoggerScreen(
                     )
                 }
                 items(activeWorkout!!.loggedExercises) { exercise ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .combinedClickable(
+                                onClick = { /* Regular click - no action needed */ },
+                                onLongClick = {
+                                    selectedExerciseForMenu = exercise
+                                    showExerciseContextMenu = true
+                                }
+                            )
+                    ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text(exercise.exerciseName, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = exercise.exerciseName, 
+                                    fontSize = 18.sp, 
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    // Add Set button
+                                    IconButton(
+                                        onClick = { viewModel.addSetToExercise(exercise.id) }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Add,
+                                            contentDescription = "Add Set",
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    // Show substitution indicator if exercise is substituted
+                                    if (exercise.isSubstitute == true) {
+                                        Icon(
+                                            imageVector = Icons.Filled.SwapHoriz,
+                                            contentDescription = "Substituted Exercise",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
                             Spacer(Modifier.height(8.dp))
                             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
@@ -134,6 +304,9 @@ fun WorkoutLoggerScreen(
                                     set = set,
                                     setNumber = index + 1,
                                     weightUnit = weightUnit,
+                                    showDeleteButton = exercise.sets.size > 1, // Only show delete if more than 1 set
+                                    exerciseId = exercise.exerciseId,
+                                    viewModel = viewModel,
                                     onRepsChange = { newReps ->
                                         viewModel.updateSet(exercise.id, set.id, newReps, set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes)
                                     },
@@ -152,7 +325,14 @@ fun WorkoutLoggerScreen(
                                     onNotesChange = { newNotes ->
                                         viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, newNotes)
                                     },
-                                    onStartRest = { viewModel.startRestTimer() }
+                                    onStartRest = { viewModel.startRestTimer() },
+                                    onDeleteSet = {
+                                        selectedSetForRemoval = Pair(exercise.id, set.id)
+                                        showRemoveSetConfirmation = true
+                                    },
+                                    onSetUpdate = { newReps, newWeight, newSecs, newRir, newBands, newNotes ->
+                                        viewModel.updateSet(exercise.id, set.id, newReps, newWeight, newSecs, newRir, newBands, newNotes)
+                                    }
                                 )
                             }
                         }
@@ -161,6 +341,172 @@ fun WorkoutLoggerScreen(
             }
         }
     }
+    
+    // Exit confirmation dialog
+    if (showExitConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showExitConfirmation = false },
+            title = { 
+                Text(if (isFinishAction) {
+                    if (isEditMode) "Confirm Save Changes" else "Confirm Finish"
+                } else {
+                    if (isEditMode) "Confirm Exit" else "Confirm Exit"
+                }) 
+            },
+            text = { 
+                Text(if (isFinishAction) {
+                    if (isEditMode) "Are you sure you want to save these changes to the workout?"
+                    else "Are you sure you want to finish this workout? All progress will be saved."
+                } else {
+                    if (isEditMode) "Are you sure you want to exit without saving your changes?"
+                    else "Are you sure you want to exit this workout? All progress will be saved."
+                }) 
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showExitConfirmation = false
+                        exitAction?.invoke()
+                    }
+                ) {
+                    Text(if (isFinishAction) {
+                        if (isEditMode) "Save Changes" else "Finish"
+                    } else {
+                        "Exit"
+                    })
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showExitConfirmation = false }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+    
+    // Add Exercise Dialog
+    if (showAddExerciseDialog) {
+        AddExerciseToWorkoutDialog(
+            viewModel = viewModel,
+            onDismiss = { showAddExerciseDialog = false },
+            onExerciseAdded = { showAddExerciseDialog = false }
+        )
+    }
+    
+    // Exercise Context Menu Dialog
+    if (showExerciseContextMenu && selectedExerciseForMenu != null) {
+        ExerciseContextMenuDialog(
+            exercise = selectedExerciseForMenu!!,
+            onDismiss = { 
+                showExerciseContextMenu = false
+                selectedExerciseForMenu = null
+            },
+            onSubstitute = {
+                showExerciseContextMenu = false
+                showSubstituteExerciseDialog = true
+            },
+            onRemove = {
+                showExerciseContextMenu = false
+                showRemoveExerciseConfirmation = true
+            }
+        )
+    }
+    
+    // Substitute Exercise Dialog
+    if (showSubstituteExerciseDialog && selectedExerciseForMenu != null) {
+        SubstituteExerciseDialog(
+            viewModel = viewModel,
+            currentExercise = selectedExerciseForMenu!!,
+            onDismiss = { 
+                showSubstituteExerciseDialog = false
+                selectedExerciseForMenu = null
+            },
+            onExerciseSubstituted = { 
+                showSubstituteExerciseDialog = false
+                selectedExerciseForMenu = null
+            }
+        )
+    }
+    
+    // Remove Exercise Confirmation Dialog
+    if (showRemoveExerciseConfirmation && selectedExerciseForMenu != null) {
+        AlertDialog(
+            onDismissRequest = { 
+                showRemoveExerciseConfirmation = false
+                selectedExerciseForMenu = null
+            },
+            title = { Text("Remove Exercise") },
+            text = { 
+                Text("Are you sure you want to remove \"${selectedExerciseForMenu!!.exerciseName}\" from this workout? This action cannot be undone.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.removeExerciseFromWorkout(selectedExerciseForMenu!!.id)
+                        showRemoveExerciseConfirmation = false
+                        selectedExerciseForMenu = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Remove")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showRemoveExerciseConfirmation = false
+                        selectedExerciseForMenu = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+    
+    // Remove Set Confirmation Dialog
+    if (showRemoveSetConfirmation && selectedSetForRemoval != null) {
+        AlertDialog(
+            onDismissRequest = { 
+                showRemoveSetConfirmation = false
+                selectedSetForRemoval = null
+            },
+            title = { Text("Remove Set") },
+            text = { 
+                Text("Are you sure you want to remove this set? This action cannot be undone.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        selectedSetForRemoval?.let { (exerciseId, setId) ->
+                            viewModel.removeSetFromExercise(exerciseId, setId)
+                        }
+                        showRemoveSetConfirmation = false
+                        selectedSetForRemoval = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Remove")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showRemoveSetConfirmation = false
+                        selectedSetForRemoval = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -168,17 +514,25 @@ fun LoggedSetRow(
     set: LoggedSet,
     setNumber: Int,
     weightUnit: String,
+    showDeleteButton: Boolean = false,
+    exerciseId: String,
+    viewModel: WorkoutLoggerViewModel,
     onRepsChange: (String) -> Unit,
     onWeightChange: (Double?) -> Unit,
     onSecsChange: (String) -> Unit,
     onRirChange: (String) -> Unit = {},
     onBandsChange: (String) -> Unit = {},
     onNotesChange: (String) -> Unit = {},
-    onStartRest: () -> Unit
+    onStartRest: () -> Unit,
+    onDeleteSet: () -> Unit = {},
+    onSetUpdate: (String, Double?, String, String, String, String) -> Unit
 ) {
     // Determine which fields to show based on the template's targets for this set
     val showWeightReps = !set.targetReps.isNullOrBlank()
     val showSecs = !set.targetSecs.isNullOrBlank()
+    
+    // Get performance suggestion for this exercise
+    val performanceSuggestion = viewModel.getPerformanceSuggestion(exerciseId)
 
     // Local state holds the text as the user types it.
     var weightText by remember { mutableStateOf(set.weight?.toString() ?: "") }
@@ -188,6 +542,62 @@ fun LoggedSetRow(
     var bandsText by remember { mutableStateOf(set.bands ?: "") }
     var notesText by remember { mutableStateOf(set.notes ?: "") }
     var showNotes by remember { mutableStateOf(false) }
+    
+    // Debounced auto-save for critical fields to handle active typing scenario
+    LaunchedEffect(notesText) {
+        if (notesText != (set.notes ?: "")) {
+            kotlinx.coroutines.delay(1000) // 1 second debounce
+            onNotesChange(notesText)
+        }
+    }
+    
+    LaunchedEffect(bandsText) {
+        if (bandsText != (set.bands ?: "")) {
+            kotlinx.coroutines.delay(1000) // 1 second debounce
+            onBandsChange(bandsText)
+        }
+    }
+    
+    LaunchedEffect(rirText) {
+        if (rirText != (set.rir?.toString() ?: "")) {
+            kotlinx.coroutines.delay(1000) // 1 second debounce
+            onRirChange(rirText)
+        }
+    }
+    
+    // Debounced auto-save for core fields as well
+    LaunchedEffect(weightText) {
+        if (weightText != (set.weight?.toString() ?: "")) {
+            kotlinx.coroutines.delay(1000) // 1 second debounce
+            onWeightChange(weightText.toDoubleOrNull())
+        }
+    }
+    
+    LaunchedEffect(repsText) {
+        if (repsText != (set.reps?.toString() ?: "")) {
+            kotlinx.coroutines.delay(1000) // 1 second debounce
+            onRepsChange(repsText)
+        }
+    }
+    
+    LaunchedEffect(secsText) {
+        if (secsText != (set.secs?.toString() ?: "")) {
+            kotlinx.coroutines.delay(1000) // 1 second debounce
+            onSecsChange(secsText)
+        }
+    }
+
+    // Function to save all current field values
+    fun saveAllCurrentValues() {
+        onSetUpdate(repsText, weightText.toDoubleOrNull(), secsText, rirText, bandsText, notesText)
+    }
+
+    // Save current values when component is disposed (e.g., when navigating away)
+    DisposableEffect(Unit) {
+        onDispose {
+            saveAllCurrentValues()
+        }
+    }
 
     // This ensures if the underlying data changes from elsewhere, our text fields update.
     LaunchedEffect(set.weight) {
@@ -237,10 +647,70 @@ fun LoggedSetRow(
                 modifier = Modifier.width(60.dp),
                 fontWeight = FontWeight.Bold
             )
+            
+            // Pre-fill suggestion chip
+            if (performanceSuggestion != null && performanceSuggestion.confidence > 0.3f && 
+                set.weight == null && set.reps == null) { // Only show for empty sets
+                AssistChip(
+                    onClick = {
+                        // Apply suggestions: Update local state first, then trigger saves
+                        performanceSuggestion.suggestedWeight?.let { weight ->
+                            weightText = weight.toString()
+                        }
+                        performanceSuggestion.suggestedReps?.let { reps ->
+                            repsText = reps.toString()
+                        }
+                        performanceSuggestion.suggestedRir?.let { rir ->
+                            rirText = rir.toString()
+                        }
+                        
+                        // Save all current values immediately after updating UI state
+                        saveAllCurrentValues()
+                    },
+                    label = { 
+                        Text(
+                            text = buildString {
+                                performanceSuggestion.suggestedWeight?.let { append("${it}kg ") }
+                                performanceSuggestion.suggestedReps?.let { append("${it}r ") }
+                                performanceSuggestion.daysAgo?.let { 
+                                    append("(${it}d ago)")
+                                }
+                            }.trim(),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.AutoAwesome,
+                            contentDescription = "Smart suggestion",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            }
+            
             Spacer(modifier = Modifier.weight(1f))
-            if (set.reps != null || set.secs != null) {
-                IconButton(onClick = onStartRest) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = "Start Rest Timer")
+            Row {
+                // Delete button (only show if more than 1 set)
+                if (showDeleteButton) {
+                    IconButton(onClick = onDeleteSet) {
+                        Icon(
+                            Icons.Filled.Remove, 
+                            contentDescription = "Remove Set",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+                // Start rest timer button
+                if (set.reps != null || set.secs != null) {
+                    IconButton(onClick = { 
+                        // Save current values when starting rest timer
+                        saveAllCurrentValues()
+                        onStartRest() 
+                    }) {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = "Start Rest Timer")
+                    }
                 }
             }
         }
@@ -354,7 +824,14 @@ fun LoggedSetRow(
 
             // Notes toggle button
             IconButton(
-                onClick = { showNotes = !showNotes }
+                onClick = { 
+                    // Save current values when toggling notes visibility
+                    if (showNotes) {
+                        // If collapsing notes, save all current data
+                        saveAllCurrentValues()
+                    }
+                    showNotes = !showNotes 
+                }
             ) {
                 Icon(
                     imageVector = if (showNotes) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
@@ -429,6 +906,259 @@ fun TimerBar(
             }
         }
     }
+}
+
+@Composable
+fun AddExerciseToWorkoutDialog(
+    viewModel: WorkoutLoggerViewModel,
+    onDismiss: () -> Unit,
+    onExerciseAdded: () -> Unit
+) {
+    // State for exercise selection
+    var selectedExercise by remember { mutableStateOf<Exercise?>(null) }
+    var numberOfSets by remember { mutableStateOf("3") }
+    var showExerciseSelector by remember { mutableStateOf(true) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Text(if (showExerciseSelector) "Select Exercise" else "Configure Sets")
+        },
+        text = {
+            if (showExerciseSelector) {
+                ExerciseSelectorContent(
+                    viewModel = viewModel,
+                    onExerciseSelected = { exercise ->
+                        selectedExercise = exercise
+                        showExerciseSelector = false
+                    }
+                )
+            } else {
+                Column {
+                    Text("Exercise: ${selectedExercise?.name}")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = numberOfSets,
+                        onValueChange = { newValue ->
+                            if (newValue.all { it.isDigit() } && newValue.isNotEmpty()) {
+                                numberOfSets = newValue
+                            }
+                        },
+                        label = { Text("Number of Sets") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (showExerciseSelector) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            } else {
+                Button(
+                    onClick = {
+                        selectedExercise?.let { exercise ->
+                            val sets = numberOfSets.toIntOrNull() ?: 3
+                            viewModel.addExerciseToWorkout(exercise.id, sets)
+                            onExerciseAdded()
+                        }
+                    },
+                    enabled = selectedExercise != null
+                ) {
+                    Text("Add Exercise")
+                }
+            }
+        },
+        dismissButton = {
+            if (!showExerciseSelector) {
+                TextButton(
+                    onClick = { 
+                        showExerciseSelector = true
+                        selectedExercise = null
+                    }
+                ) {
+                    Text("Back")
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun ExerciseSelectorContent(
+    viewModel: WorkoutLoggerViewModel,
+    onExerciseSelected: (Exercise) -> Unit
+) {
+    val exercises by viewModel.allExercises.collectAsStateWithLifecycle()
+    var searchText by remember { mutableStateOf("") }
+    
+    Column {
+        OutlinedTextField(
+            value = searchText,
+            onValueChange = { searchText = it },
+            label = { Text("Search exercises...") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        LazyColumn(
+            modifier = Modifier.height(300.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            val filteredExercises = exercises.filter { exercise ->
+                exercise.name.contains(searchText, ignoreCase = true)
+            }
+            
+            items(filteredExercises) { exercise ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onExerciseSelected(exercise) }
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Text(
+                            text = exercise.name,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = exercise.targetMuscleGroups.joinToString(", "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ExerciseContextMenuDialog(
+    exercise: LoggedExercise,
+    onDismiss: () -> Unit,
+    onSubstitute: () -> Unit,
+    onRemove: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Exercise Options") },
+        text = { 
+            Column {
+                Text("Choose an action for \"${exercise.exerciseName}\"")
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Button(
+                    onClick = onSubstitute,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.SwapHoriz, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Substitute Exercise")
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Button(
+                    onClick = onRemove,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(Icons.Filled.Delete, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Remove Exercise")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        dismissButton = null
+    )
+}
+
+@Composable
+fun SubstituteExerciseDialog(
+    viewModel: WorkoutLoggerViewModel,
+    currentExercise: LoggedExercise,
+    onDismiss: () -> Unit,
+    onExerciseSubstituted: () -> Unit
+) {
+    // State for exercise selection
+    var selectedExercise by remember { mutableStateOf<Exercise?>(null) }
+    var showExerciseSelector by remember { mutableStateOf(true) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Text(if (showExerciseSelector) "Select Substitute" else "Confirm Substitution")
+        },
+        text = {
+            if (showExerciseSelector) {
+                Column {
+                    Text("Substituting: ${currentExercise.exerciseName}")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    ExerciseSelectorContent(
+                        viewModel = viewModel,
+                        onExerciseSelected = { exercise ->
+                            selectedExercise = exercise
+                            showExerciseSelector = false
+                        }
+                    )
+                }
+            } else {
+                Column {
+                    Text("Current: ${currentExercise.exerciseName}")
+                    Text("Substitute with: ${selectedExercise?.name}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "This will replace the exercise while keeping all current set data.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (showExerciseSelector) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            } else {
+                Button(
+                    onClick = {
+                        selectedExercise?.let { newExercise ->
+                            viewModel.substituteExercise(currentExercise.id, newExercise.id)
+                            onExerciseSubstituted()
+                        }
+                    },
+                    enabled = selectedExercise != null
+                ) {
+                    Text("Substitute")
+                }
+            }
+        },
+        dismissButton = {
+            if (!showExerciseSelector) {
+                TextButton(
+                    onClick = { 
+                        showExerciseSelector = true
+                        selectedExercise = null
+                    }
+                ) {
+                    Text("Back")
+                }
+            }
+        }
+    )
 }
 
 // A helper function to format seconds into MM:SS format

@@ -28,6 +28,10 @@ interface ExerciseDao {
     @Query("SELECT * FROM exercise_table")
     fun getAllExercisesSnapshot(): List<Exercise> // Non-Flow version for one-time fetches
 
+    // Get single exercise by ID
+    @Query("SELECT * FROM exercise_table WHERE id = :exerciseId")
+    fun getExerciseById(exerciseId: String): Exercise?
+
     // NEW function to update an existing exercise
     @Update
     fun update(exercise: Exercise): Int

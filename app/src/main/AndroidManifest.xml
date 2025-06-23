@@ -2,6 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Internet permission for cloud backup -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Network state permission for checking connectivity -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Account permission for Google Drive authentication -->
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+
     <application
         android:name=".WorkoutApplication"
         android:allowBackup="true"

@@ -45,7 +45,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private val historyViewModel: HistoryViewModel by viewModels {
-        HistoryViewModelFactory((application as WorkoutApplication).database.loggedWorkoutDao())
+        HistoryViewModelFactory(
+            (application as WorkoutApplication).database.loggedWorkoutDao(),
+            (application as WorkoutApplication).database.activeCycleDao(),
+            (application as WorkoutApplication).database.programTemplateDao()
+        )
     }
 
     private val programViewModel: ProgramViewModel by viewModels {
@@ -76,6 +80,84 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    private val analyticsViewModel: AnalyticsViewModel by viewModels {
+        val analyticsRepository = AnalyticsRepository(
+            (application as WorkoutApplication).database.loggedWorkoutDao(),
+            (application as WorkoutApplication).database.activeCycleDao(),
+            (application as WorkoutApplication).database.personalRecordDao()
+        )
+        AnalyticsViewModelFactory(
+            analyticsRepository,
+            (application as WorkoutApplication).database.exerciseDao(),
+            (application as WorkoutApplication).database.activeCycleDao()
+        )
+    }
+
+    private val exportViewModel: ExportViewModel by viewModels {
+        val exportRepository = ExportRepository(
+            (application as WorkoutApplication).database.loggedWorkoutDao(),
+            (application as WorkoutApplication).database.exerciseDao(),
+            (application as WorkoutApplication).database.personalRecordDao(),
+            (application as WorkoutApplication).database.programTemplateDao(),
+            (application as WorkoutApplication).database.activeCycleDao()
+        )
+        ExportViewModelFactory(exportRepository)
+    }
+
+    private val importViewModel: ImportViewModel by viewModels {
+        val importRepository = ImportRepository(
+            (application as WorkoutApplication).database.loggedWorkoutDao(),
+            (application as WorkoutApplication).database.exerciseDao(),
+            (application as WorkoutApplication).database.personalRecordDao(),
+            (application as WorkoutApplication).database.programTemplateDao(),
+            (application as WorkoutApplication).database.activeCycleDao()
+        )
+        ImportViewModelFactory(importRepository)
+    }
+
+    private val cloudBackupViewModel: CloudBackupViewModel by viewModels {
+        val cloudProvider = GoogleDriveCloudProvider(this)
+        val cloudBackupRepository = CloudBackupRepository(
+            this,
+            ExportRepository(
+                (application as WorkoutApplication).database.loggedWorkoutDao(),
+                (application as WorkoutApplication).database.exerciseDao(),
+                (application as WorkoutApplication).database.personalRecordDao(),
+                (application as WorkoutApplication).database.programTemplateDao(),
+                (application as WorkoutApplication).database.activeCycleDao()
+            ),
+            ImportRepository(
+                (application as WorkoutApplication).database.loggedWorkoutDao(),
+                (application as WorkoutApplication).database.exerciseDao(),
+                (application as WorkoutApplication).database.personalRecordDao(),
+                (application as WorkoutApplication).database.programTemplateDao(),
+                (application as WorkoutApplication).database.activeCycleDao()
+            ),
+            cloudProvider
+        )
+        CloudBackupViewModelFactory(cloudBackupRepository)
+    }
+
+    private val dashboardViewModel: DashboardViewModel by viewModels {
+        val analyticsRepository = AnalyticsRepository(
+            (application as WorkoutApplication).database.loggedWorkoutDao(),
+            (application as WorkoutApplication).database.activeCycleDao(),
+            (application as WorkoutApplication).database.personalRecordDao()
+        )
+        val widgetRepository = WidgetRepositorySimplified(
+            analyticsRepository,
+            (application as WorkoutApplication).database.personalRecordDao(),
+            (application as WorkoutApplication).database.loggedWorkoutDao(),
+            (application as WorkoutApplication).database.activeCycleDao(),
+            (application as WorkoutApplication).database.programTemplateDao()
+        )
+        DashboardViewModelFactory(
+            widgetRepository,
+            (application as WorkoutApplication).database.activeCycleDao(),
+            analyticsRepository
+        )
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -90,7 +172,12 @@ class MainActivity : ComponentActivity() {
                     activeCycleViewModel = activeCycleViewModel,
                     prViewModel = prViewModel,
                     settingsViewModel = settingsViewModel,
-                    volumeViewModel = volumeViewModel
+                    volumeViewModel = volumeViewModel,
+                    analyticsViewModel = analyticsViewModel,
+                    exportViewModel = exportViewModel,
+                    importViewModel = importViewModel,
+                    cloudBackupViewModel = cloudBackupViewModel,
+                    dashboardViewModel = dashboardViewModel
                 )
             }
         }
@@ -106,7 +193,12 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             activeCycleViewModel: ActiveCycleViewModel,
             prViewModel: PrViewModel,
             settingsViewModel: SettingsViewModel,
-            volumeViewModel: VolumeViewModel
+            volumeViewModel: VolumeViewModel,
+            analyticsViewModel: AnalyticsViewModel,
+            exportViewModel: ExportViewModel,
+            importViewModel: ImportViewModel,
+            cloudBackupViewModel: CloudBackupViewModel,
+            dashboardViewModel: DashboardViewModel
 ) {
     val navController = rememberNavController()
     Scaffold(
@@ -123,6 +215,11 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             prViewModel = prViewModel,
             settingsViewModel = settingsViewModel,
             volumeViewModel = volumeViewModel,
+            analyticsViewModel = analyticsViewModel,
+            exportViewModel = exportViewModel,
+            importViewModel = importViewModel,
+            cloudBackupViewModel = cloudBackupViewModel,
+            dashboardViewModel = dashboardViewModel,
             modifier = Modifier.padding(innerPadding)
         )
     }
@@ -140,6 +237,11 @@ fun AppNavHost(
     prViewModel: PrViewModel,
     settingsViewModel: SettingsViewModel,
     volumeViewModel: VolumeViewModel,
+    analyticsViewModel: AnalyticsViewModel,
+    exportViewModel: ExportViewModel,
+    importViewModel: ImportViewModel,
+    cloudBackupViewModel: CloudBackupViewModel,
+    dashboardViewModel: DashboardViewModel,
     modifier: Modifier = Modifier
 ) {
     val weightUnit by settingsViewModel.weightUnit.collectAsStateWithLifecycle()
@@ -154,7 +256,8 @@ fun AppNavHost(
                 historyViewModel = historyViewModel,
                 activeCycleViewModel = activeCycleViewModel,
                 programViewModel = programViewModel,
-                navController = navController
+                navController = navController,
+                dashboardViewModel = dashboardViewModel
             )
         }
         composable(Screen.History.route) {
@@ -170,7 +273,10 @@ fun AppNavHost(
             HistoryDetailScreen(
                 workoutId = workoutId,
                 viewModel = historyViewModel,
-                onNavigateUp = { navController.navigateUp() }
+                onNavigateUp = { navController.navigateUp() },
+                onNavigateToEdit = { editWorkoutId ->
+                    navController.navigate(Screen.EditWorkout.createRoute(editWorkoutId))
+                }
             )
         }
         composable(Screen.Library.route) {
@@ -215,12 +321,27 @@ fun AppNavHost(
                 onNavigateUp = { navController.navigateUp() }
             )
         }
-        composable(Screen.ManagePrograms.route) {
+        composable(Screen.EditWorkout.route) { backStackEntry ->
+            val workoutId = backStackEntry.arguments?.getString("workoutId") ?: ""
+            EditWorkoutScreen(
+                workoutId = workoutId,
+                viewModel = loggerViewModel,
+                activeCycleViewModel = activeCycleViewModel,
+                weightUnit = weightUnit,
+                onNavigateUp = { navController.navigateUp() }
+            )
+        }
+        composable(Screen.Programs.route) {
             ManageProgramsScreen(
                 programViewModel = programViewModel,
                 activeCycleViewModel = activeCycleViewModel,
                 onNavigateToProgram = { programId ->
                     navController.navigate(Screen.ProgramEditor.createRoute(programId))
+                },
+                onNavigateToDashboard = {
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Dashboard.route) { inclusive = true }
+                    }
                 }
             )
         }
@@ -242,10 +363,42 @@ fun AppNavHost(
             )
         }
         composable(Screen.Settings.route) {
-            SettingsScreen(viewModel = settingsViewModel)
+            SettingsScreen(
+                viewModel = settingsViewModel,
+                onNavigateToExport = {
+                    navController.navigate("export")
+                },
+                onNavigateToImport = {
+                    navController.navigate("import")
+                },
+                onNavigateToCloudBackup = {
+                    navController.navigate("cloud_backup")
+                }
+            )
+        }
+        composable("export") {
+            ExportScreen(
+                viewModel = exportViewModel,
+                onNavigateUp = { navController.navigateUp() }
+            )
+        }
+        composable("import") {
+            ImportScreen(
+                viewModel = importViewModel,
+                onNavigateUp = { navController.navigateUp() }
+            )
+        }
+        composable("cloud_backup") {
+            CloudBackupScreen(
+                viewModel = cloudBackupViewModel,
+                onNavigateUp = { navController.navigateUp() }
+            )
         }
         composable(Screen.VolumeAnalysis.route) {
             VolumeAnalysisScreen(viewModel = volumeViewModel)
+        }
+        composable(Screen.Analytics.route) {
+            AnalyticsScreen(viewModel = analyticsViewModel)
         }
     }
 }

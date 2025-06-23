@@ -13,6 +13,12 @@ interface PersonalRecordDao {
     @Query("SELECT * FROM personal_record_table WHERE exerciseId = :exerciseId")
     fun getPRsForExercise(exerciseId: String): List<PersonalRecord>
 
+    @Query("SELECT * FROM personal_record_table WHERE exerciseId = :exerciseId")
+    fun getPRsForExerciseFlow(exerciseId: String): Flow<List<PersonalRecord>>
+
     @Query("SELECT * FROM personal_record_table ORDER BY date DESC")
     fun getAllPRs(): Flow<List<PersonalRecord>>
+    
+    @Query("SELECT * FROM personal_record_table ORDER BY date DESC LIMIT :limit")
+    fun recentPersonalRecords(limit: Int): List<PersonalRecord>
 }
