@@ -149,7 +149,8 @@ class MainActivity : ComponentActivity() {
             (application as WorkoutApplication).database.personalRecordDao(),
             (application as WorkoutApplication).database.loggedWorkoutDao(),
             (application as WorkoutApplication).database.activeCycleDao(),
-            (application as WorkoutApplication).database.programTemplateDao()
+            (application as WorkoutApplication).database.programTemplateDao(),
+            (application as WorkoutApplication).database.workoutTemplateDao()
         )
         DashboardViewModelFactory(
             widgetRepository,

@@ -16,7 +16,8 @@ class WidgetRepositorySimplified(
     private val personalRecordDao: PersonalRecordDao,
     private val loggedWorkoutDao: LoggedWorkoutDao,
     private val activeCycleDao: ActiveCycleDao,
-    private val programTemplateDao: ProgramTemplateDao
+    private val programTemplateDao: ProgramTemplateDao,
+    private val workoutTemplateDao: WorkoutTemplateDao
 ) {
     
     suspend fun getDashboardState(activeCycle: ActiveProgramCycle?): Flow<DashboardState> {
@@ -77,6 +78,36 @@ class WidgetRepositorySimplified(
             ))
         }
         
+        // Performance trends widget
+        val performanceTrends = getTopPerformanceTrends()
+        if (performanceTrends.isNotEmpty()) {
+            widgets.add(DashboardWidget.PerformanceTrendWidget(
+                strengthGains = performanceTrends,
+                volumeTrend = calculateOverallVolumeTrend(),
+                timeframe = "Last 30 Days"
+            ))
+        }
+        
+        // Volume progress widget
+        val volumeData = getWeeklyVolumeData()
+        if (volumeData.isNotEmpty()) {
+            widgets.add(DashboardWidget.VolumeProgressWidget(
+                weeklyVolume = volumeData,
+                trend = calculateVolumeProgressTrend(volumeData),
+                targetVolume = null // Could be user-set goal
+            ))
+        }
+        
+        // Achievement widget
+        val recentAchievements = getRecentAchievements()
+        val nextMilestone = getNextMilestone()
+        if (recentAchievements.isNotEmpty() || nextMilestone != null) {
+            widgets.add(DashboardWidget.AchievementWidget(
+                recentAchievements = recentAchievements,
+                nextMilestone = nextMilestone
+            ))
+        }
+        
         // Activity heatmap (simplified)
         widgets.add(DashboardWidget.ActivityHeatmapWidget(
             workoutDays = emptyMap(),
@@ -129,6 +160,47 @@ class WidgetRepositorySimplified(
             widgets.add(DashboardWidget.BodyweightTrendWidget(
                 bodyweightData = bodyweightData,
                 trend = calculateBodyweightTrend(bodyweightData)
+            ))
+        }
+        
+        // Performance trends widget for active cycle
+        val performanceTrends = getTopPerformanceTrends()
+        if (performanceTrends.isNotEmpty()) {
+            widgets.add(DashboardWidget.PerformanceTrendWidget(
+                strengthGains = performanceTrends,
+                volumeTrend = calculateOverallVolumeTrend(),
+                timeframe = "This Cycle"
+            ))
+        }
+        
+        // Volume progress widget for active cycle
+        val volumeData = getWeeklyVolumeData()
+        if (volumeData.isNotEmpty()) {
+            widgets.add(DashboardWidget.VolumeProgressWidget(
+                weeklyVolume = volumeData,
+                trend = calculateVolumeProgressTrend(volumeData),
+                targetVolume = null // Could be cycle-specific target
+            ))
+        }
+        
+        // Achievement widget for active cycle
+        val recentAchievements = getRecentAchievements()
+        val nextMilestone = getNextMilestone()
+        if (recentAchievements.isNotEmpty() || nextMilestone != null) {
+            widgets.add(DashboardWidget.AchievementWidget(
+                recentAchievements = recentAchievements,
+                nextMilestone = nextMilestone
+            ))
+        }
+        
+        // Next session widget for active cycle
+        val nextSession = getNextSessionInfo(activeCycle)
+        nextSession?.let { sessionInfo ->
+            widgets.add(DashboardWidget.NextSessionWidget(
+                session = sessionInfo,
+                estimatedDuration = sessionInfo.estimatedDuration,
+                exercises = sessionInfo.exercises,
+                difficulty = sessionInfo.difficulty
             ))
         }
         
@@ -349,6 +421,426 @@ class WidgetRepositorySimplified(
                 TrendDirection.SLIGHTLY_DECLINING -> "Slight decrease"
                 TrendDirection.STABLE -> "Stable trend"
                 else -> "No clear trend"
+            }
+        )
+    }
+    
+    private suspend fun getTopPerformanceTrends(): List<ExerciseProgress> {
+        return try {
+            // Get the most frequently performed exercises
+            val workouts = loggedWorkoutDao.getAllLoggedWorkouts().first()
+            val exerciseFrequency = mutableMapOf<String, Pair<String, Int>>() // exerciseId to (name, count)
+            
+            workouts.forEach { workout ->
+                workout.loggedExercises.forEach { exercise ->
+                    val current = exerciseFrequency[exercise.exerciseId]
+                    exerciseFrequency[exercise.exerciseId] = Pair(
+                        exercise.exerciseName,
+                        (current?.second ?: 0) + 1
+                    )
+                }
+            }
+            
+            // Get top 3 most frequent exercises
+            val topExercises = exerciseFrequency.entries
+                .sortedByDescending { it.value.second }
+                .take(3)
+                .map { it.key to it.value.first }
+            
+            // Calculate progress for each exercise
+            topExercises.mapNotNull { (exerciseId, exerciseName) ->
+                calculateExerciseProgress(exerciseId, exerciseName, workouts)
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+    
+    private fun calculateExerciseProgress(
+        exerciseId: String, 
+        exerciseName: String, 
+        workouts: List<LoggedWorkout>
+    ): ExerciseProgress? {
+        try {
+            val exerciseWorkouts = workouts.filter { workout ->
+                workout.loggedExercises.any { it.exerciseId == exerciseId }
+            }.sortedBy { it.date }
+            
+            if (exerciseWorkouts.size < 2) return null
+            
+            // Get recent and previous best performances
+            val recentWorkouts = exerciseWorkouts.takeLast(5)
+            val previousWorkouts = exerciseWorkouts.dropLast(5).takeLast(5)
+            
+            if (previousWorkouts.isEmpty()) return null
+            
+            val recentBest = findBestPerformance(recentWorkouts, exerciseId)
+            val previousBest = findBestPerformance(previousWorkouts, exerciseId)
+            
+            if (recentBest == null || previousBest == null) return null
+            
+            val improvement = ((recentBest - previousBest) / previousBest) * 100
+            
+            val trendDirection = when {
+                improvement > 5f -> TrendDirection.STRONGLY_IMPROVING
+                improvement > 1f -> TrendDirection.SLIGHTLY_IMPROVING
+                improvement < -5f -> TrendDirection.STRONGLY_DECLINING
+                improvement < -1f -> TrendDirection.SLIGHTLY_DECLINING
+                else -> TrendDirection.STABLE
+            }
+            
+            return ExerciseProgress(
+                exerciseName = exerciseName,
+                currentMax = recentBest,
+                previousMax = previousBest,
+                improvementPercentage = improvement,
+                trend = ProgressTrend(
+                    direction = trendDirection,
+                    percentage = kotlin.math.abs(improvement),
+                    description = when (trendDirection) {
+                        TrendDirection.STRONGLY_IMPROVING -> "Great progress!"
+                        TrendDirection.SLIGHTLY_IMPROVING -> "Steady gains"
+                        TrendDirection.STRONGLY_DECLINING -> "Needs attention"
+                        TrendDirection.SLIGHTLY_DECLINING -> "Slight decline"
+                        else -> "Maintaining"
+                    }
+                )
+            )
+        } catch (e: Exception) {
+            return null
+        }
+    }
+    
+    private fun findBestPerformance(workouts: List<LoggedWorkout>, exerciseId: String): Float? {
+        var bestEstimated1RM = 0f
+        
+        workouts.forEach { workout ->
+            workout.loggedExercises.forEach { exercise ->
+                if (exercise.exerciseId == exerciseId) {
+                    exercise.sets.forEach { set ->
+                        if (set.weight != null && set.reps != null && set.reps!! > 0) {
+                            // Simple 1RM estimation: weight * (1 + reps/30)
+                            val estimated1RM = set.weight!! * (1 + set.reps!! / 30f)
+                            if (estimated1RM > bestEstimated1RM) {
+                                bestEstimated1RM = estimated1RM.toFloat()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        return if (bestEstimated1RM > 0) bestEstimated1RM else null
+    }
+    
+    private suspend fun calculateOverallVolumeTrend(): ProgressTrend {
+        return try {
+            val workouts = loggedWorkoutDao.getAllLoggedWorkouts().first()
+            if (workouts.size < 4) {
+                return ProgressTrend(TrendDirection.INSUFFICIENT_DATA, 0f, "Need more data")
+            }
+            
+            val recentVolume = workouts.take(7).sumOf { workout ->
+                workout.loggedExercises.sumOf { exercise ->
+                    exercise.sets.sumOf { set ->
+                        (set.weight ?: 0.0) * (set.reps ?: 0)
+                    }
+                }
+            }
+            
+            val previousVolume = workouts.drop(7).take(7).sumOf { workout ->
+                workout.loggedExercises.sumOf { exercise ->
+                    exercise.sets.sumOf { set ->
+                        (set.weight ?: 0.0) * (set.reps ?: 0)
+                    }
+                }
+            }
+            
+            if (previousVolume == 0.0) {
+                return ProgressTrend(TrendDirection.INSUFFICIENT_DATA, 0f, "Need more data")
+            }
+            
+            val changePercentage = ((recentVolume - previousVolume) / previousVolume * 100).toFloat()
+            
+            val direction = when {
+                changePercentage > 10f -> TrendDirection.STRONGLY_IMPROVING
+                changePercentage > 3f -> TrendDirection.SLIGHTLY_IMPROVING
+                changePercentage < -10f -> TrendDirection.STRONGLY_DECLINING
+                changePercentage < -3f -> TrendDirection.SLIGHTLY_DECLINING
+                else -> TrendDirection.STABLE
+            }
+            
+            ProgressTrend(
+                direction = direction,
+                percentage = kotlin.math.abs(changePercentage),
+                description = when (direction) {
+                    TrendDirection.STRONGLY_IMPROVING -> "Volume increasing rapidly"
+                    TrendDirection.SLIGHTLY_IMPROVING -> "Volume trending up"
+                    TrendDirection.STRONGLY_DECLINING -> "Volume decreasing significantly"
+                    TrendDirection.SLIGHTLY_DECLINING -> "Volume declining slightly"
+                    TrendDirection.STABLE -> "Volume stable"
+                    else -> "Insufficient data"
+                }
+            )
+        } catch (e: Exception) {
+            ProgressTrend(TrendDirection.INSUFFICIENT_DATA, 0f, "Error calculating trend")
+        }
+    }
+    
+    private suspend fun getNextSessionInfo(activeCycle: ActiveProgramCycle): SessionInfo? {
+        return try {
+            val completedSessionIds = activeCycle.completedSessions.keys.toSet()
+            
+            // Find the next incomplete session
+            for (week in activeCycle.cycleProgram.weeks.sortedBy { it.order }) {
+                for (session in week.sessions.sortedBy { it.order }) {
+                    val sessionKey = "${week.id}_${session.id}"
+                    if (sessionKey !in completedSessionIds) {
+                        // Found the next session - get its details
+                        return createSessionInfo(session, week, activeCycle)
+                    }
+                }
+            }
+            null // All sessions completed
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    private suspend fun createSessionInfo(
+        session: ProgramSessionDefinition,
+        week: ProgramWeekDefinition,
+        activeCycle: ActiveProgramCycle
+    ): SessionInfo? {
+        return try {
+            // Get workout template to extract exercise details
+            val workoutTemplate = workoutTemplateDao.getTemplateById(session.workoutTemplateId).first()
+                ?: return null
+            
+            // Create exercise previews
+            val exercisePreviews = workoutTemplate.templateExercises.take(3).map { templateExercise ->
+                val sets = templateExercise.sets.size
+                val repsRange = templateExercise.sets.firstOrNull()?.targetReps ?: "?"
+                val primaryMuscleGroup = templateExercise.targetMuscleGroups.firstOrNull() ?: MuscleGroup.OTHER
+                
+                ExercisePreview(
+                    name = templateExercise.exerciseName,
+                    sets = sets,
+                    reps = repsRange,
+                    weight = null, // Will be determined during workout
+                    muscleGroup = primaryMuscleGroup
+                )
+            }
+            
+            // Estimate duration based on exercises and sets
+            val totalSets = workoutTemplate.templateExercises.sumOf { it.sets.size }
+            val estimatedDuration = (totalSets * 3) + 10 // 3 min per set + 10 min warmup
+            
+            // Calculate difficulty based on volume and exercise count
+            val exerciseCount = workoutTemplate.templateExercises.size
+            val difficulty = when {
+                exerciseCount > 8 && totalSets > 25 -> SessionDifficulty.VERY_HARD
+                exerciseCount > 6 && totalSets > 20 -> SessionDifficulty.HARD
+                exerciseCount > 4 && totalSets > 15 -> SessionDifficulty.MODERATE
+                else -> SessionDifficulty.LIGHT
+            }
+            
+            SessionInfo(
+                id = session.id,
+                name = session.sessionName,
+                weekLabel = week.weekLabel,
+                exercises = exercisePreviews,
+                estimatedDuration = estimatedDuration,
+                difficulty = difficulty,
+                targetVolume = null // Could be calculated if needed
+            )
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    private suspend fun getRecentAchievements(): List<Achievement> {
+        val achievements = mutableListOf<Achievement>()
+        
+        try {
+            // Get recent personal records (last 30 days)
+            val recentPRs = personalRecordDao.getAllPRs().first()
+                .filter { pr ->
+                    try {
+                        val prDate = java.time.LocalDate.parse(pr.date)
+                        val thirtyDaysAgo = java.time.LocalDate.now().minusDays(30)
+                        prDate.isAfter(thirtyDaysAgo)
+                    } catch (e: Exception) {
+                        false
+                    }
+                }
+                .take(3) // Most recent 3 PRs
+            
+            recentPRs.forEach { pr ->
+                achievements.add(Achievement(
+                    id = "pr_${pr.id}",
+                    title = "Personal Record!",
+                    description = "New ${pr.type.name.replace("_", " ").lowercase()} PR in ${pr.exerciseName}",
+                    icon = "🏆",
+                    unlockedDate = try { java.time.LocalDate.parse(pr.date) } catch (e: Exception) { java.time.LocalDate.now() },
+                    category = AchievementCategory.STRENGTH
+                ))
+            }
+            
+            // Check for recent workout milestones
+            val totalWorkouts = analyticsRepository.getTotalWorkoutCount()
+            val milestoneTargets = listOf(10, 25, 50, 100, 200, 300, 500, 1000)
+            val recentMilestone = milestoneTargets.firstOrNull { it == totalWorkouts }
+            
+            recentMilestone?.let { milestone ->
+                achievements.add(Achievement(
+                    id = "milestone_$milestone",
+                    title = "Workout Milestone!",
+                    description = "Completed $milestone workouts! Amazing dedication!",
+                    icon = "🎯",
+                    unlockedDate = java.time.LocalDate.now(),
+                    category = AchievementCategory.MILESTONE
+                ))
+            }
+            
+            // Check for volume achievements (high volume week)
+            val thisWeekVolume = getWeeklyVolumeData().lastOrNull()?.totalVolume ?: 0.0
+            if (thisWeekVolume > 50000) { // 50k+ kg volume in a week
+                achievements.add(Achievement(
+                    id = "volume_high_week",
+                    title = "Volume Beast!",
+                    description = "Crushed ${(thisWeekVolume / 1000).toInt()}k kg this week!",
+                    icon = "💪",
+                    unlockedDate = java.time.LocalDate.now(),
+                    category = AchievementCategory.VOLUME
+                ))
+            }
+            
+            // Check for consistency achievements
+            val streak = calculateBasicStreak()
+            if (streak >= 7) {
+                achievements.add(Achievement(
+                    id = "consistency_week",
+                    title = "Consistency Champion!",
+                    description = "Maintained workout streak for $streak days!",
+                    icon = "🔥",
+                    unlockedDate = java.time.LocalDate.now(),
+                    category = AchievementCategory.CONSISTENCY
+                ))
+            }
+            
+        } catch (e: Exception) {
+            // Handle errors gracefully
+        }
+        
+        return achievements.take(5) // Max 5 recent achievements
+    }
+    
+    private suspend fun getNextMilestone(): Milestone? {
+        return try {
+            val totalWorkouts = analyticsRepository.getTotalWorkoutCount()
+            val milestoneTargets = listOf(10, 25, 50, 100, 200, 300, 500, 1000)
+            
+            val nextTarget = milestoneTargets.firstOrNull { it > totalWorkouts }
+            
+            nextTarget?.let { target ->
+                val progress = totalWorkouts.toFloat() / target.toFloat()
+                val remaining = target - totalWorkouts
+                
+                Milestone(
+                    title = "Next Workout Milestone",
+                    description = "Just $remaining workouts away from your $target workout milestone!",
+                    progress = progress,
+                    target = "$target workouts"
+                )
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    private suspend fun getWeeklyVolumeData(): List<VolumeDataPoint> {
+        return try {
+            val workouts = loggedWorkoutDao.getAllLoggedWorkouts().first()
+            if (workouts.isEmpty()) return emptyList()
+            
+            // Group workouts by week and calculate weekly volume
+            val weeklyVolumeMap = mutableMapOf<String, Double>()
+            val dateFormatter = java.time.format.DateTimeFormatter.ISO_LOCAL_DATE
+            
+            workouts.forEach { workout ->
+                try {
+                    val workoutDate = java.time.LocalDate.parse(workout.date, dateFormatter)
+                    // Get the start of the week (Monday)
+                    val weekStart = workoutDate.minusDays(workoutDate.dayOfWeek.value - 1L)
+                    val weekKey = weekStart.format(dateFormatter)
+                    
+                    val workoutVolume = workout.loggedExercises.sumOf { exercise ->
+                        exercise.sets.sumOf { set ->
+                            (set.weight ?: 0.0) * (set.reps ?: 0)
+                        }
+                    }
+                    
+                    weeklyVolumeMap[weekKey] = (weeklyVolumeMap[weekKey] ?: 0.0) + workoutVolume
+                } catch (e: Exception) {
+                    // Skip workouts with invalid dates
+                }
+            }
+            
+            // Convert to VolumeDataPoint list and sort by date
+            weeklyVolumeMap.map { (weekStart, volume) ->
+                VolumeDataPoint(
+                    date = weekStart,
+                    totalVolume = volume,
+                    workoutName = "Weekly Total",
+                    cycleId = null
+                )
+            }.sortedBy { it.date }.takeLast(8) // Last 8 weeks
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+    
+    private fun calculateVolumeProgressTrend(volumeData: List<VolumeDataPoint>): ProgressTrend {
+        if (volumeData.size < 2) {
+            return ProgressTrend(TrendDirection.INSUFFICIENT_DATA, 0f, "Need more data")
+        }
+        
+        // Compare recent weeks to previous weeks
+        val recentWeeks = volumeData.takeLast(3) // Last 3 weeks
+        val previousWeeks = volumeData.dropLast(3).takeLast(3) // Previous 3 weeks
+        
+        if (recentWeeks.isEmpty() || previousWeeks.isEmpty()) {
+            return ProgressTrend(TrendDirection.INSUFFICIENT_DATA, 0f, "Need more data")
+        }
+        
+        val recentAverage = recentWeeks.map { it.totalVolume }.average()
+        val previousAverage = previousWeeks.map { it.totalVolume }.average()
+        
+        if (previousAverage == 0.0) {
+            return ProgressTrend(TrendDirection.INSUFFICIENT_DATA, 0f, "Need more data")
+        }
+        
+        val changePercentage = ((recentAverage - previousAverage) / previousAverage * 100).toFloat()
+        
+        val direction = when {
+            changePercentage > 15f -> TrendDirection.STRONGLY_IMPROVING
+            changePercentage > 5f -> TrendDirection.SLIGHTLY_IMPROVING
+            changePercentage < -15f -> TrendDirection.STRONGLY_DECLINING
+            changePercentage < -5f -> TrendDirection.SLIGHTLY_DECLINING
+            else -> TrendDirection.STABLE
+        }
+        
+        return ProgressTrend(
+            direction = direction,
+            percentage = kotlin.math.abs(changePercentage),
+            description = when (direction) {
+                TrendDirection.STRONGLY_IMPROVING -> "Volume increasing significantly"
+                TrendDirection.SLIGHTLY_IMPROVING -> "Volume trending upward"
+                TrendDirection.STRONGLY_DECLINING -> "Volume declining significantly"
+                TrendDirection.SLIGHTLY_DECLINING -> "Volume trending downward"
+                TrendDirection.STABLE -> "Volume remaining stable"
+                else -> "Insufficient data for trend"
             }
         )
     }
