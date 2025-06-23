@@ -331,7 +331,7 @@ fun AppNavHost(
                 onNavigateUp = { navController.navigateUp() }
             )
         }
-        composable(Screen.ManagePrograms.route) {
+        composable(Screen.Programs.route) {
             ManageProgramsScreen(
                 programViewModel = programViewModel,
                 activeCycleViewModel = activeCycleViewModel,

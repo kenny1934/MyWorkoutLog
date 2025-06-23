@@ -69,36 +69,40 @@ class DashboardViewModel(
             QuickActionType.START_NEXT_SESSION -> {
                 val currentState = dashboardState.value
                 if (currentState.mode is DashboardMode.ActiveCycle) {
-                    val nextSession = currentState.widgets
-                        .filterIsInstance<DashboardWidget.NextSessionWidget>()
-                        .firstOrNull()
+                    val cycle = currentState.mode.cycle
                     
-                    if (nextSession != null) {
-                        // Navigate to workout logger with next session
-                        val cycle = currentState.mode.cycle
-                        val sessionInfo = nextSession.session
-                        
-                        // Find the week and session IDs for navigation
-                        val week = cycle.cycleProgram.weeks.find { week ->
-                            week.sessions.any { it.sessionName == sessionInfo.name }
+                    // Find the next session to log based on completedSessions
+                    val completedSessionIds = cycle.completedSessions.keys.toSet()
+                    
+                    // Find the first incomplete session across all weeks
+                    var nextSession: ProgramSessionDefinition? = null
+                    var nextWeek: ProgramWeekDefinition? = null
+                    
+                    for (week in cycle.cycleProgram.weeks) {
+                        for (session in week.sessions) {
+                            if (session.id !in completedSessionIds) {
+                                nextSession = session
+                                nextWeek = week
+                                break
+                            }
                         }
-                        val session = week?.sessions?.find { it.sessionName == sessionInfo.name }
-                        
-                        if (week != null && session != null) {
-                            val route = Screen.WorkoutLogger.createRoute(
-                                templateId = session.workoutTemplateId,
-                                cycleId = cycle.cycleUuid,
-                                weekId = week.id,
-                                sessionId = session.id
-                            )
-                            onNavigate(route)
-                        }
+                        if (nextSession != null) break
+                    }
+                    
+                    if (nextWeek != null && nextSession != null) {
+                        val route = Screen.WorkoutLogger.createRoute(
+                            templateId = nextSession.workoutTemplateId,
+                            cycleId = cycle.cycleUuid,
+                            weekId = nextWeek.id,
+                            sessionId = nextSession.id
+                        )
+                        onNavigate(route)
                     }
                 }
             }
             
             QuickActionType.START_NEW_CYCLE -> {
-                onNavigate(Screen.Library.route)
+                onNavigate(Screen.Programs.route)
             }
             
             QuickActionType.VIEW_ANALYTICS -> {

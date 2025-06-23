@@ -157,7 +157,15 @@ fun EnhancedDashboardScreen(
                 when (widget) {
                     is DashboardWidget.WelcomeWidget -> SimpleWelcomeWidgetCard(widget)
                     is DashboardWidget.QuickStatsWidget -> SimpleQuickStatsWidgetCard(widget)
-                    is DashboardWidget.CycleProgressWidget -> SimpleCycleProgressWidgetCard(widget)
+                    is DashboardWidget.BodyweightWidget -> SimpleBodyweightWidgetCard(
+                        currentWeight = widget.currentWeight,
+                        lastRecordedDate = widget.lastRecordedDate,
+                        unit = widget.unit
+                    )
+                    is DashboardWidget.CycleProgressWidget -> SimpleCycleProgressWidgetCard(
+                        widget = widget,
+                        navController = navController
+                    )
                     is DashboardWidget.ActivityHeatmapWidget -> SimpleActivityHeatmapWidgetCard(widget)
                     else -> {
                         // Fallback for other widget types
@@ -542,47 +550,139 @@ fun SimpleQuickStatsWidgetCard(widget: DashboardWidget.QuickStatsWidget) {
 }
 
 @Composable
-fun SimpleCycleProgressWidgetCard(widget: DashboardWidget.CycleProgressWidget) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+fun SimpleCycleProgressWidgetCard(
+    widget: DashboardWidget.CycleProgressWidget,
+    navController: NavHostController
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+    
+    DashboardWidgetCard(
+        title = "Cycle Progress",
+        icon = Icons.Default.FitnessCenter,
+        isExpanded = isExpanded,
+        onExpandToggle = { isExpanded = !isExpanded },
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        // Basic cycle info (always visible)
+        Text(
+            text = widget.cycle.userCycleName,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = widget.weekProgress,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = widget.sessionProgress,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        LinearProgressIndicator(
+            progress = widget.completionPercentage / 100f,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "${widget.completionPercentage.toInt()}% Complete",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        
+        // Expanded content with session management
+        if (isExpanded) {
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(16.dp))
+            
             Text(
-                text = "Cycle Progress",
+                text = "Sessions",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             
-            Text(
-                text = widget.cycle.userCycleName,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = widget.weekProgress,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = widget.sessionProgress,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            LinearProgressIndicator(
-                progress = widget.completionPercentage / 100f,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "${widget.completionPercentage.toInt()}% Complete",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
+            // Session list
+            val completedSessionIds = widget.cycle.completedSessions.keys.toSet()
+            widget.cycle.cycleProgram.weeks.forEachIndexed { weekIndex, week ->
+                Text(
+                    text = "Week ${weekIndex + 1}",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                week.sessions.forEach { session ->
+                    val isCompleted = session.id in completedSessionIds
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                if (isCompleted) {
+                                    // Navigate to session history/details if needed
+                                    // Could implement later: navController.navigate(Screen.SessionDetail.createRoute(session.id))
+                                } else {
+                                    // Start the session
+                                    val route = Screen.WorkoutLogger.createRoute(
+                                        templateId = session.workoutTemplateId,
+                                        cycleId = widget.cycle.cycleUuid,
+                                        weekId = week.id,
+                                        sessionId = session.id
+                                    )
+                                    navController.navigate(route)
+                                }
+                            }
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isCompleted) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                                contentDescription = if (isCompleted) "Completed" else "Not completed",
+                                tint = if (isCompleted) Color.Green else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = session.sessionName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (isCompleted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        
+                        if (!isCompleted) {
+                            IconButton(
+                                onClick = {
+                                    val route = Screen.WorkoutLogger.createRoute(
+                                        templateId = session.workoutTemplateId,
+                                        cycleId = widget.cycle.cycleUuid,
+                                        weekId = week.id,
+                                        sessionId = session.id
+                                    )
+                                    navController.navigate(route)
+                                },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "Start session",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
         }
     }
 }

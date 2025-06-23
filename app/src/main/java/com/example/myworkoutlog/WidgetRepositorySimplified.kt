@@ -30,6 +30,9 @@ class WidgetRepositorySimplified(
     private suspend fun getNoActiveCycleDashboardState(): Flow<DashboardState> = flow {
         val widgets = mutableListOf<DashboardWidget>()
         
+        // Get bodyweight info
+        val bodyweightInfo = getLatestBodyweightInfo()
+        
         // Welcome widget
         val greeting = getTimeBasedGreeting()
         val streak = calculateBasicStreak()
@@ -56,6 +59,15 @@ class WidgetRepositorySimplified(
             recentPRs = recentPRs
         ))
         
+        // Bodyweight widget
+        bodyweightInfo?.let { info ->
+            widgets.add(DashboardWidget.BodyweightWidget(
+                currentWeight = info.weight,
+                lastRecordedDate = info.date,
+                unit = info.unit
+            ))
+        }
+        
         // Activity heatmap (simplified)
         widgets.add(DashboardWidget.ActivityHeatmapWidget(
             workoutDays = emptyMap(),
@@ -78,6 +90,9 @@ class WidgetRepositorySimplified(
     private suspend fun getActiveCycleDashboardState(activeCycle: ActiveProgramCycle): Flow<DashboardState> = flow {
         val widgets = mutableListOf<DashboardWidget>()
         
+        // Get bodyweight info
+        val bodyweightInfo = getLatestBodyweightInfo()
+        
         // Cycle progress
         val progress = calculateBasicCycleProgress(activeCycle)
         widgets.add(DashboardWidget.CycleProgressWidget(
@@ -88,6 +103,15 @@ class WidgetRepositorySimplified(
             nextSession = null,
             daysUntilNext = null
         ))
+        
+        // Bodyweight widget
+        bodyweightInfo?.let { info ->
+            widgets.add(DashboardWidget.BodyweightWidget(
+                currentWeight = info.weight,
+                lastRecordedDate = info.date,
+                unit = info.unit
+            ))
+        }
         
         emit(DashboardState(
             mode = DashboardMode.ActiveCycle(activeCycle, CycleProgress(
@@ -172,4 +196,25 @@ class WidgetRepositorySimplified(
         
         return actions
     }
+    
+    private suspend fun getLatestBodyweightInfo(): BodyweightInfo? {
+        return try {
+            val latestWorkout = loggedWorkoutDao.getLatestLoggedWorkoutWithBodyweight()
+            latestWorkout?.let { workout ->
+                BodyweightInfo(
+                    weight = workout.bodyweight ?: 0.0,
+                    date = workout.date,
+                    unit = "kg" // Default unit, could be made configurable
+                )
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
 }
+
+data class BodyweightInfo(
+    val weight: Double,
+    val date: String,
+    val unit: String
+)

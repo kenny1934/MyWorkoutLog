@@ -33,8 +33,8 @@ sealed class Screen(val route: String) {
         fun createRoute(workoutId: String) = "edit_workout/$workoutId"
     }
 
-    // The route for managing program blueprints
-    data object ManagePrograms : Screen("manage_programs")
+    // The route for managing program blueprints/templates
+    data object Programs : Screen("programs")
 
     // Route for the program editor screen
     data object ProgramEditor : Screen("program_editor/{programId}") {

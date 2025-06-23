@@ -49,6 +49,13 @@ sealed class DashboardWidget(
         val recentPRs: List<PersonalRecord>
     ) : DashboardWidget("quick_stats", "Quick Stats", 2)
     
+    data class BodyweightWidget(
+        val currentWeight: Double?,
+        val lastRecordedDate: String?,
+        val unit: String = "kg",
+        val trend: String? = null
+    ) : DashboardWidget("bodyweight", "Current Weight", 2)
+    
     data class CycleProgressWidget(
         val cycle: ActiveProgramCycle,
         val completionPercentage: Float,

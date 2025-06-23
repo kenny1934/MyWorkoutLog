@@ -516,3 +516,48 @@ fun ActivityHeatmapGrid(
         }
     }
 }
+
+// Simple bodyweight widget card
+@Composable
+fun SimpleBodyweightWidgetCard(
+    currentWeight: Double?,
+    lastRecordedDate: String?,
+    unit: String,
+    modifier: Modifier = Modifier
+) {
+    DashboardWidgetCard(
+        title = "Current Weight",
+        icon = Icons.Default.MonitorWeight,
+        modifier = modifier
+    ) {
+        if (currentWeight != null) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "${currentWeight.toInt()} $unit",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                
+                lastRecordedDate?.let { date ->
+                    Text(
+                        text = "Last recorded: $date",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            Text(
+                text = "No bodyweight data",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
