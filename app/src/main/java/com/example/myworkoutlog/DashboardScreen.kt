@@ -3,15 +3,18 @@ package com.example.myworkoutlog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -28,6 +31,174 @@ import java.util.*
 
 @Composable
 fun DashboardScreen(
+    historyViewModel: HistoryViewModel,
+    activeCycleViewModel: ActiveCycleViewModel,
+    programViewModel: ProgramViewModel,
+    navController: NavHostController,
+    dashboardViewModel: DashboardViewModel? = null
+) {
+    // Use enhanced dashboard if available, fallback to legacy
+    if (dashboardViewModel != null) {
+        EnhancedDashboardScreen(
+            dashboardViewModel = dashboardViewModel,
+            navController = navController
+        )
+    } else {
+        // Legacy dashboard implementation
+        LegacyDashboardScreen(
+            historyViewModel = historyViewModel,
+            activeCycleViewModel = activeCycleViewModel,
+            programViewModel = programViewModel,
+            navController = navController
+        )
+    }
+}
+
+@Composable
+fun EnhancedDashboardScreen(
+    dashboardViewModel: DashboardViewModel,
+    navController: NavHostController
+) {
+    val dashboardState by dashboardViewModel.dashboardState.collectAsStateWithLifecycle()
+    val isLoading by dashboardViewModel.isLoading.collectAsStateWithLifecycle()
+    val error by dashboardViewModel.error.collectAsStateWithLifecycle()
+    
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Header
+        item {
+            Text(
+                text = "Dashboard",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+        
+        // Error state
+        error?.let { errorMessage ->
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Error",
+                            tint = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = errorMessage,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Loading state
+        if (isLoading) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+        } else {
+            // High priority insights
+            val urgentInsights = dashboardState.insights.filter { 
+                it.priority == InsightPriority.URGENT || it.priority == InsightPriority.HIGH 
+            }
+            if (urgentInsights.isNotEmpty()) {
+                items(urgentInsights) { insight ->
+                    InsightCard(
+                        insight = insight,
+                        onDismiss = { dashboardViewModel.dismissInsight(it) },
+                        onAction = { /* TODO: Handle insight actions */ }
+                    )
+                }
+            }
+            
+            // Quick actions
+            if (dashboardState.quickActions.isNotEmpty()) {
+                item {
+                    DashboardWidgetCard(
+                        title = "Quick Actions",
+                        icon = Icons.Default.FlashOn
+                    ) {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(dashboardState.quickActions) { action ->
+                                QuickActionButton(
+                                    action = action,
+                                    onClick = { dashboardViewModel.executeQuickAction(it) { route -> navController.navigate(route) } }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Dashboard widgets (simplified for compilation)
+            items(dashboardState.widgets) { widget ->
+                when (widget) {
+                    is DashboardWidget.WelcomeWidget -> SimpleWelcomeWidgetCard(widget)
+                    is DashboardWidget.QuickStatsWidget -> SimpleQuickStatsWidgetCard(widget)
+                    is DashboardWidget.CycleProgressWidget -> SimpleCycleProgressWidgetCard(widget)
+                    is DashboardWidget.ActivityHeatmapWidget -> SimpleActivityHeatmapWidgetCard(widget)
+                    else -> {
+                        // Fallback for other widget types
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = widget.title,
+                                modifier = Modifier.padding(16.dp),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                    }
+                }
+            }
+            
+            // Low priority insights
+            val lowPriorityInsights = dashboardState.insights.filter { 
+                it.priority == InsightPriority.LOW || it.priority == InsightPriority.MEDIUM 
+            }
+            if (lowPriorityInsights.isNotEmpty()) {
+                item {
+                    DashboardWidgetCard(
+                        title = "Insights",
+                        icon = Icons.Default.Lightbulb
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            lowPriorityInsights.forEach { insight ->
+                                InsightCard(
+                                    insight = insight,
+                                    onDismiss = { dashboardViewModel.dismissInsight(it) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LegacyDashboardScreen(
     historyViewModel: HistoryViewModel,
     activeCycleViewModel: ActiveCycleViewModel,
     programViewModel: ProgramViewModel,
@@ -271,3 +442,197 @@ fun NoActiveCycleDashboard(
         }
     }
 }
+
+// Simplified Dashboard Widget Cards
+
+@Composable
+fun SimpleWelcomeWidgetCard(widget: DashboardWidget.WelcomeWidget) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = widget.greeting,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = widget.motivationalMessage,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (widget.currentStreak > 0) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "${widget.currentStreak} day streak 🔥",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color(0xFFFF6B35),
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SimpleQuickStatsWidgetCard(widget: DashboardWidget.QuickStatsWidget) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Quick Stats",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = widget.totalWorkouts.toString(),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Workouts",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "${widget.currentStreak}",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Streak",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = widget.recentPRs.size.toString(),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Recent PRs",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SimpleCycleProgressWidgetCard(widget: DashboardWidget.CycleProgressWidget) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Cycle Progress",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Text(
+                text = widget.cycle.userCycleName,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = widget.weekProgress,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = widget.sessionProgress,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            LinearProgressIndicator(
+                progress = widget.completionPercentage / 100f,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "${widget.completionPercentage.toInt()}% Complete",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+fun SimpleActivityHeatmapWidgetCard(widget: DashboardWidget.ActivityHeatmapWidget) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Activity",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "${widget.streakInfo.thisWeekCount}/${widget.streakInfo.weeklyTarget}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "This Week",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "${widget.streakInfo.longestStreak}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Best Streak",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+// End of simplified dashboard implementation

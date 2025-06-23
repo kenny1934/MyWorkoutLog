@@ -3,6 +3,7 @@ package com.example.myworkoutlog
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -472,5 +473,74 @@ class AnalyticsRepository(
                 } else null
             } else null
         }
+    }
+    
+    // DASHBOARD-SPECIFIC METHODS
+    
+    suspend fun getTotalWorkoutCount(): Int {
+        return loggedWorkoutDao.totalWorkoutCount()
+    }
+    
+    suspend fun getThisWeekWorkoutCount(): Int {
+        val today = LocalDate.now()
+        val startOfWeek = today.minusDays(today.dayOfWeek.value - 1L)
+        val endOfWeek = startOfWeek.plusDays(6)
+        
+        val startDate = startOfWeek.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val endDate = endOfWeek.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        
+        return loggedWorkoutDao.workoutCountBetweenDates(startDate, endDate)
+    }
+    
+    suspend fun getAverageWeeklyVolume(): Float {
+        val endDate = LocalDate.now()
+        val startDate = endDate.minusWeeks(12) // Last 12 weeks
+        
+        val startDateStr = startDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val endDateStr = endDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        
+        val workouts = loggedWorkoutDao.getWorkoutsByDateRange(startDateStr, endDateStr).first()
+        
+        if (workouts.isEmpty()) return 0f
+        
+        val weeklyVolumes = mutableMapOf<Int, Float>()
+        
+        workouts.forEach { workout ->
+            val workoutDate = LocalDate.parse(workout.date)
+            val weekOfYear = workoutDate.dayOfYear / 7 // Simplified week calculation
+            val volume = calculateTotalWorkoutVolume(workout)
+            
+            weeklyVolumes[weekOfYear] = (weeklyVolumes[weekOfYear] ?: 0f) + volume.toFloat()
+        }
+        
+        return if (weeklyVolumes.isNotEmpty()) {
+            weeklyVolumes.values.average().toFloat()
+        } else 0f
+    }
+    
+    suspend fun getVolumeData(startDate: LocalDate, endDate: LocalDate): List<VolumeDataPoint> {
+        val startDateStr = startDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val endDateStr = endDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        
+        // Group workouts by week and calculate weekly volume
+        val workouts = loggedWorkoutDao.getWorkoutsByDateRange(startDateStr, endDateStr).first()
+        val weeklyData = mutableMapOf<LocalDate, Double>()
+        
+        workouts.forEach { workout ->
+            val workoutDate = LocalDate.parse(workout.date)
+            val weekStart = workoutDate.minusDays(workoutDate.dayOfWeek.value - 1L)
+            val volume = calculateTotalWorkoutVolume(workout)
+            
+            weeklyData[weekStart] = (weeklyData[weekStart] ?: 0.0) + volume
+        }
+        
+        return weeklyData.map { (date, volume) ->
+            VolumeDataPoint(
+                date = date.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                totalVolume = volume,
+                workoutName = "Weekly Total",
+                cycleId = null
+            )
+        }.sortedBy { it.date }
     }
 }

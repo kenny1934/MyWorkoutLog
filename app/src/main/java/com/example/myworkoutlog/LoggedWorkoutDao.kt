@@ -158,4 +158,15 @@ interface LoggedWorkoutDao {
         LIMIT 10
     """)
     fun getRecentWorkoutsForPRAnalysis(exerciseId: String): Flow<List<LoggedWorkout>>
+    
+    // SIMPLE COUNT QUERIES (using distinct names to avoid conflicts)
+    
+    @Query("SELECT COUNT(*) FROM logged_workout_table")
+    fun totalWorkoutCount(): Int
+    
+    @Query("""
+        SELECT COUNT(*) FROM logged_workout_table 
+        WHERE date BETWEEN :startDate AND :endDate
+    """)
+    fun workoutCountBetweenDates(startDate: String, endDate: String): Int
 }

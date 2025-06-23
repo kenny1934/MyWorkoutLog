@@ -138,6 +138,26 @@ class MainActivity : ComponentActivity() {
         CloudBackupViewModelFactory(cloudBackupRepository)
     }
 
+    private val dashboardViewModel: DashboardViewModel by viewModels {
+        val analyticsRepository = AnalyticsRepository(
+            (application as WorkoutApplication).database.loggedWorkoutDao(),
+            (application as WorkoutApplication).database.activeCycleDao(),
+            (application as WorkoutApplication).database.personalRecordDao()
+        )
+        val widgetRepository = WidgetRepositorySimplified(
+            analyticsRepository,
+            (application as WorkoutApplication).database.personalRecordDao(),
+            (application as WorkoutApplication).database.loggedWorkoutDao(),
+            (application as WorkoutApplication).database.activeCycleDao(),
+            (application as WorkoutApplication).database.programTemplateDao()
+        )
+        DashboardViewModelFactory(
+            widgetRepository,
+            (application as WorkoutApplication).database.activeCycleDao(),
+            analyticsRepository
+        )
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -156,7 +176,8 @@ class MainActivity : ComponentActivity() {
                     analyticsViewModel = analyticsViewModel,
                     exportViewModel = exportViewModel,
                     importViewModel = importViewModel,
-                    cloudBackupViewModel = cloudBackupViewModel
+                    cloudBackupViewModel = cloudBackupViewModel,
+                    dashboardViewModel = dashboardViewModel
                 )
             }
         }
@@ -176,7 +197,8 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             analyticsViewModel: AnalyticsViewModel,
             exportViewModel: ExportViewModel,
             importViewModel: ImportViewModel,
-            cloudBackupViewModel: CloudBackupViewModel
+            cloudBackupViewModel: CloudBackupViewModel,
+            dashboardViewModel: DashboardViewModel
 ) {
     val navController = rememberNavController()
     Scaffold(
@@ -197,6 +219,7 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             exportViewModel = exportViewModel,
             importViewModel = importViewModel,
             cloudBackupViewModel = cloudBackupViewModel,
+            dashboardViewModel = dashboardViewModel,
             modifier = Modifier.padding(innerPadding)
         )
     }
@@ -218,6 +241,7 @@ fun AppNavHost(
     exportViewModel: ExportViewModel,
     importViewModel: ImportViewModel,
     cloudBackupViewModel: CloudBackupViewModel,
+    dashboardViewModel: DashboardViewModel,
     modifier: Modifier = Modifier
 ) {
     val weightUnit by settingsViewModel.weightUnit.collectAsStateWithLifecycle()
@@ -232,7 +256,8 @@ fun AppNavHost(
                 historyViewModel = historyViewModel,
                 activeCycleViewModel = activeCycleViewModel,
                 programViewModel = programViewModel,
-                navController = navController
+                navController = navController,
+                dashboardViewModel = dashboardViewModel
             )
         }
         composable(Screen.History.route) {
