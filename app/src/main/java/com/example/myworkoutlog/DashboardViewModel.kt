@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class DashboardViewModel(
     private val widgetRepository: WidgetRepositorySimplified,
     private val activeCycleDao: ActiveCycleDao,

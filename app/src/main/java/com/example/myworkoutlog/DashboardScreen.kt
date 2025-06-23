@@ -178,16 +178,7 @@ fun EnhancedDashboardScreen(
                     )
                     is DashboardWidget.VolumeProgressWidget -> SimpleVolumeProgressWidgetCard(widget)
                     is DashboardWidget.AchievementWidget -> SimpleAchievementWidgetCard(widget)
-                    else -> {
-                        // Fallback for other widget types
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Text(
-                                text = widget.title,
-                                modifier = Modifier.padding(16.dp),
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                        }
-                    }
+                    // All widget types are handled above
                 }
             }
             
@@ -1549,7 +1540,7 @@ fun SimpleAchievementWidgetCard(widget: DashboardWidget.AchievementWidget) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     LinearProgressIndicator(
-                        progress = milestone.progress.coerceIn(0f, 1f),
+                        progress = { milestone.progress.coerceIn(0f, 1f) },
                         modifier = Modifier.weight(1f),
                         color = MaterialTheme.colorScheme.primary,
                         trackColor = MaterialTheme.colorScheme.surfaceVariant
