@@ -40,7 +40,11 @@ object PrService {
                             weightUnit = workout.performedWeightUnit,
                             reps = set.reps,
                             weight = totalEffectiveWeight,
-                            durationSecs = null
+                            durationSecs = null,
+                            // NEW: Bodyweight breakdown fields
+                            bodyweightUsed = if (exerciseUsesBodyweight) userBodyweight else null,
+                            externalWeight = addedWeight,
+                            usesBodyweight = exerciseUsesBodyweight
                         )
                     )
 
@@ -55,7 +59,11 @@ object PrService {
                             weightUnit = workout.performedWeightUnit,
                             reps = set.reps,
                             weight = totalEffectiveWeight,
-                            durationSecs = null
+                            durationSecs = null,
+                            // NEW: Bodyweight breakdown fields
+                            bodyweightUsed = if (exerciseUsesBodyweight) userBodyweight else null,
+                            externalWeight = addedWeight,
+                            usesBodyweight = exerciseUsesBodyweight
                         )
                     )
                 }
@@ -73,7 +81,11 @@ object PrService {
                             weightUnit = null,
                             reps = null,
                             weight = null,
-                            durationSecs = set.secs
+                            durationSecs = set.secs,
+                            // NEW: Bodyweight breakdown fields (duration PRs may not use weights)
+                            bodyweightUsed = if (exerciseUsesBodyweight) userBodyweight else null,
+                            externalWeight = if (set.weight != null) set.weight else null,
+                            usesBodyweight = exerciseUsesBodyweight
                         )
                     )
                 }

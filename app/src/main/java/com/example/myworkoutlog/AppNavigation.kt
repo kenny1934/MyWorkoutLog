@@ -29,8 +29,12 @@ sealed class Screen(val route: String) {
         fun createRoute(workoutId: String) = "history_detail/$workoutId"
     }
 
-    // The route for managing program blueprints
-    data object ManagePrograms : Screen("manage_programs")
+    data object EditWorkout : Screen("edit_workout/{workoutId}") {
+        fun createRoute(workoutId: String) = "edit_workout/$workoutId"
+    }
+
+    // The route for managing program blueprints/templates
+    data object Programs : Screen("programs")
 
     // Route for the program editor screen
     data object ProgramEditor : Screen("program_editor/{programId}") {
@@ -44,4 +48,6 @@ sealed class Screen(val route: String) {
     data object Settings : Screen("settings")
 
     data object VolumeAnalysis : Screen("volume_analysis")
+    
+    data object Analytics : Screen("analytics")
 }

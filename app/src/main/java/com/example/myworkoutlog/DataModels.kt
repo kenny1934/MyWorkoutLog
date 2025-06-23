@@ -95,6 +95,16 @@ class Converters {
 
     @TypeConverter
     fun toPRType(value: String): PRType = PRType.valueOf(value)
+
+    @TypeConverter
+    fun fromProgramTemplate(value: ProgramTemplate): String {
+        return gson.toJson(value)
+    }
+
+    @TypeConverter
+    fun toProgramTemplate(value: String): ProgramTemplate {
+        return gson.fromJson(value, ProgramTemplate::class.java)
+    }
 }
 
 
@@ -184,6 +194,7 @@ data class LoggedWorkout(
     val activeProgramCycleId: String? = null,
     val programWeekDefinitionId: String? = null,
     val programSessionDefinitionId: String? = null,
+    val userCycleName: String? = null,
 
     val loggedExercises: List<LoggedExercise>,
     val workoutTemplateId: String? = null
@@ -217,14 +228,18 @@ data class ProgramTemplate(
 
 // Using a simple ID for the primary key, since we'll only have one row.
 @Entity(tableName = "active_program_cycle_table")
+@TypeConverters(Converters::class)
 data class ActiveProgramCycle(
     @PrimaryKey val id: Int = 1,
-    val programTemplateId: String,
+    val cycleUuid: String, // Unique identifier for this specific cycle instance
+    val programTemplateId: String, // Keep for reference
     val programTemplateName: String,
     val userCycleName: String, // e.g., "My Hypertrophy Cycle"
     val startDate: String,
     // Map of "weekId_sessionId" to "loggedWorkoutId"
-    val completedSessions: Map<String, String>
+    val completedSessions: Map<String, String>,
+    // Snapshot of the program template at cycle creation time
+    val cycleProgram: ProgramTemplate
 )
 
 // An enum to define the type of PR
@@ -247,6 +262,140 @@ data class PersonalRecord(
     val weightUnit: String?,
     // These values will be set depending on the PR type
     val reps: Int?,
-    val weight: Double?,
-    val durationSecs: Int?
+    val weight: Double?, // Total effective weight (bodyweight + external for bodyweight exercises)
+    val durationSecs: Int?,
+    // NEW: Bodyweight exercise breakdown fields
+    val bodyweightUsed: Double? = null, // User's bodyweight at time of PR
+    val externalWeight: Double? = null, // External/added weight only
+    val usesBodyweight: Boolean = false // Flag indicating if exercise uses bodyweight
 )
+
+// Data class for cycle workout count query results
+data class CycleWorkoutCount(
+    val activeProgramCycleId: String,
+    val workoutCount: Int
+)
+
+// Data class for smart pre-fill suggestions
+data class PerformanceSuggestion(
+    val suggestedWeight: Double? = null,
+    val suggestedReps: Int? = null,
+    val suggestedRir: Int? = null,
+    val confidence: Float = 0f, // 0.0 to 1.0 confidence level
+    val basedonLastWorkout: Boolean = false,
+    val daysAgo: Int? = null,
+    val progressionType: ProgressionType = ProgressionType.MAINTAIN
+)
+
+enum class ProgressionType {
+    INCREASE, // Suggest slight increase from last performance
+    MAINTAIN, // Suggest same as last performance
+    DECREASE  // Suggest slight decrease (deload/recovery)
+}
+
+// Analytics Data Classes for Tier 2 Advanced Features
+
+// Volume progression data point for charting
+data class VolumeDataPoint(
+    val date: String,
+    val totalVolume: Double, // weight * reps * sets
+    val workoutName: String? = null,
+    val cycleId: String? = null
+)
+
+// Exercise performance data point for trends
+data class ExercisePerformancePoint(
+    val date: String,
+    val exerciseId: String,
+    val exerciseName: String,
+    val bestWeight: Double? = null,
+    val bestReps: Int? = null,
+    val totalVolume: Double? = null,
+    val estimated1RM: Double? = null,
+    val workoutId: String,
+    val cycleId: String? = null
+)
+
+// Personal Record tracking
+data class PersonalRecordProgress(
+    val exerciseId: String,
+    val exerciseName: String,
+    val currentPR: PersonalRecord,
+    val previousPR: PersonalRecord? = null,
+    val improvement: Double? = null, // percentage or absolute improvement
+    val improvementType: PRImprovementType
+)
+
+enum class PRImprovementType {
+    WEIGHT_INCREASE,
+    REP_INCREASE,
+    DURATION_INCREASE,
+    NEW_PR,
+    NO_IMPROVEMENT
+}
+
+// Cycle comparison data
+data class CycleComparison(
+    val currentCycleId: String,
+    val previousCycleId: String? = null,
+    val programTemplateName: String,
+    val totalVolumeChange: Double? = null, // percentage change
+    val strengthGains: List<ExerciseStrengthGain>,
+    val completionRate: Double, // percentage of planned workouts completed
+    val averageWorkoutDuration: Long? = null // in minutes
+)
+
+data class ExerciseStrengthGain(
+    val exerciseId: String,
+    val exerciseName: String,
+    val strengthGainPercentage: Double? = null,
+    val weightIncrease: Double? = null,
+    val repIncrease: Int? = null
+)
+
+// Weekly/Monthly volume summary
+data class VolumeSummary(
+    val periodLabel: String, // "Week 1", "January 2024"
+    val startDate: String,
+    val endDate: String,
+    val totalVolume: Double,
+    val workoutCount: Int,
+    val averageVolumePerWorkout: Double,
+    val exerciseBreakdown: List<ExerciseVolumeBreakdown>
+)
+
+data class ExerciseVolumeBreakdown(
+    val exerciseId: String,
+    val exerciseName: String,
+    val muscleGroups: List<MuscleGroup>,
+    val totalVolume: Double,
+    val setCount: Int,
+    val averageWeight: Double? = null
+)
+
+// Muscle group volume distribution
+data class MuscleGroupVolume(
+    val muscleGroup: MuscleGroup,
+    val totalVolume: Double,
+    val percentage: Double, // of total weekly/monthly volume
+    val exerciseCount: Int
+)
+
+// Performance trend analysis
+data class PerformanceTrend(
+    val exerciseId: String,
+    val exerciseName: String,
+    val trendDirection: TrendDirection,
+    val trendStrength: Double, // 0.0 to 1.0, how strong the trend is
+    val dataPoints: List<ExercisePerformancePoint>,
+    val recommendedAction: String? = null
+)
+
+enum class TrendDirection {
+    STRONGLY_IMPROVING,
+    SLIGHTLY_IMPROVING,
+    STABLE,
+    SLIGHTLY_DECLINING,
+    STRONGLY_DECLINING,
+    INSUFFICIENT_DATA
+}

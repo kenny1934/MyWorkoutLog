@@ -23,11 +23,13 @@ class ActiveCycleViewModel(private val activeCycleDao: ActiveCycleDao) : ViewMod
     fun startCycle(program: ProgramTemplate, cycleName: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val newCycle = ActiveProgramCycle(
+                cycleUuid = UUID.randomUUID().toString(),
                 programTemplateId = program.id,
                 programTemplateName = program.name,
                 userCycleName = cycleName,
                 startDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
-                completedSessions = emptyMap()
+                completedSessions = emptyMap(),
+                cycleProgram = program // Snapshot the program template
             )
             activeCycleDao.setActiveCycle(newCycle)
         }

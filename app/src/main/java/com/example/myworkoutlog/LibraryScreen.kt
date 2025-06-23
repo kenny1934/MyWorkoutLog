@@ -37,7 +37,7 @@ fun LibraryScreen(onNavigate: (String) -> Unit) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onNavigate(Screen.ManagePrograms.route) },
+                .clickable { onNavigate(Screen.Programs.route) },
             elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Text("Manage Program Blueprints", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
@@ -57,6 +57,14 @@ fun LibraryScreen(onNavigate: (String) -> Unit) {
             elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Text("Volume Analysis", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
+        }
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onNavigate(Screen.Analytics.route) },
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Text("Advanced Analytics", modifier = Modifier.padding(16.dp), fontSize = 18.sp)
         }
         Card(
             modifier = Modifier

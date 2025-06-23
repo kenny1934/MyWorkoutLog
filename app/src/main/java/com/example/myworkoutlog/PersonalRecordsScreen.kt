@@ -102,6 +102,23 @@ fun PRCategoryRow(icon: ImageVector, title: String) {
     }
 }
 
+// Helper function to format weight display for bodyweight exercises
+fun formatWeightDisplay(pr: PersonalRecord): String {
+    val weightUnit = pr.weightUnit ?: "kg"
+    
+    return if (pr.usesBodyweight && pr.bodyweightUsed != null && pr.externalWeight != null) {
+        // Bodyweight exercise: show breakdown
+        if (pr.externalWeight > 0) {
+            "BW(${pr.bodyweightUsed.roundToInt()}$weightUnit) + ${pr.externalWeight.roundToInt()}$weightUnit = ${pr.weight?.roundToInt()}$weightUnit"
+        } else {
+            "BW(${pr.bodyweightUsed.roundToInt()}$weightUnit) = ${pr.weight?.roundToInt()}$weightUnit"
+        }
+    } else {
+        // Regular exercise: show total weight only
+        "${pr.weight?.roundToInt()}$weightUnit"
+    }
+}
+
 @Composable
 fun PRDetailRow(pr: PersonalRecord, onNavigateToWorkout: (String) -> Unit) {
     val weightUnit = pr.weightUnit ?: "kg"
@@ -111,11 +128,18 @@ fun PRDetailRow(pr: PersonalRecord, onNavigateToWorkout: (String) -> Unit) {
 
     val prText = when (pr.type) {
         PRType.MAX_WEIGHT_FOR_REPS -> "${pr.reps} reps"
-        PRType.MAX_REPS_AT_WEIGHT -> "@ ${pr.weight} $weightUnit"
+        PRType.MAX_REPS_AT_WEIGHT -> {
+            if (pr.usesBodyweight && pr.bodyweightUsed != null && pr.externalWeight != null) {
+                // For bodyweight exercises, show the breakdown in the context
+                "@ ${formatWeightDisplay(pr)}"
+            } else {
+                "@ ${pr.weight} $weightUnit"
+            }
+        }
         PRType.DURATION -> "Max Duration"
     }
     val prValue = when (pr.type) {
-        PRType.MAX_WEIGHT_FOR_REPS -> "${pr.weight} $weightUnit"
+        PRType.MAX_WEIGHT_FOR_REPS -> formatWeightDisplay(pr)
         PRType.MAX_REPS_AT_WEIGHT -> "${pr.reps} reps"
         PRType.DURATION -> "${pr.durationSecs}s"
     }
@@ -127,6 +151,17 @@ fun PRDetailRow(pr: PersonalRecord, onNavigateToWorkout: (String) -> Unit) {
             .padding(top = 8.dp, bottom = 4.dp, start = 8.dp), // Indent PRs
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Add bodyweight indicator icon
+        if (pr.usesBodyweight) {
+            Icon(
+                imageVector = Icons.Filled.Person,
+                contentDescription = "Bodyweight Exercise",
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+        }
+        
         Column(modifier = Modifier.weight(1f)) {
             Text(prText, style = MaterialTheme.typography.bodyLarge)
             Text(pr.date, style = MaterialTheme.typography.bodySmall, fontStyle = FontStyle.Italic)

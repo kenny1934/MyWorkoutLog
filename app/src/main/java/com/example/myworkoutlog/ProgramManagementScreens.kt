@@ -25,7 +25,8 @@ import java.util.*
 fun ManageProgramsScreen(
     programViewModel: ProgramViewModel,
     activeCycleViewModel: ActiveCycleViewModel,
-    onNavigateToProgram: (String) -> Unit
+    onNavigateToProgram: (String) -> Unit,
+    onNavigateToDashboard: () -> Unit = {}
 ) {
     val programs by programViewModel.allPrograms.collectAsStateWithLifecycle()
     var showCreateProgramDialog by remember { mutableStateOf(false) }
@@ -132,6 +133,7 @@ fun ManageProgramsScreen(
                             activeCycleViewModel.startCycle(programToStart, cycleName)
                             showStartCycleDialog = null
                             newName = ""
+                            onNavigateToDashboard()
                         }) { Text("Start") }
                     },
                     dismissButton = {

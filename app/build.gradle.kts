@@ -38,6 +38,19 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/DEPENDENCIES"
+            excludes += "/META-INF/LICENSE"
+            excludes += "/META-INF/LICENSE.txt"
+            excludes += "/META-INF/license.txt"
+            excludes += "/META-INF/NOTICE"
+            excludes += "/META-INF/NOTICE.txt"
+            excludes += "/META-INF/notice.txt"
+            excludes += "/META-INF/ASL2.0"
+        }
+    }
 }
 
 dependencies {
@@ -71,6 +84,24 @@ dependencies {
     implementation("com.patrykandpatrick.vico:compose-m3:1.14.0")
     // --- For User Preferences ---
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+    // --- Google Drive API for Cloud Backup ---
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
+    implementation("com.google.apis:google-api-services-drive:v3-rev20220815-2.0.0") {
+        exclude(group = "org.apache.httpcomponents")
+        exclude(group = "com.google.guava")
+    }
+    implementation("com.google.api-client:google-api-client-android:2.2.0") {
+        exclude(group = "org.apache.httpcomponents")
+        exclude(group = "com.google.guava")
+    }
+    implementation("com.google.http-client:google-http-client-gson:1.44.1") {
+        exclude(group = "org.apache.httpcomponents")
+    }
+    implementation("com.google.http-client:google-http-client-android:1.44.1") {
+        exclude(group = "org.apache.httpcomponents")
+    }
+    // --- Work Manager for Background Sync ---
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
