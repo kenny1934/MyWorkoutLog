@@ -71,6 +71,17 @@ dependencies {
     implementation("com.patrykandpatrick.vico:compose-m3:1.14.0")
     // --- For User Preferences ---
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+    // --- Google Drive API for Cloud Backup ---
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
+    implementation("com.google.apis:google-api-services-drive:v3-rev20220815-2.0.0")
+    implementation("com.google.api-client:google-api-client-android:2.2.0") {
+        exclude(group = "org.apache.httpcomponents")
+        exclude(group = "com.google.guava")
+    }
+    implementation("com.google.http-client:google-http-client-gson:1.44.1")
+    implementation("com.google.http-client:google-http-client-android:1.44.1")
+    // --- Work Manager for Background Sync ---
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -17,7 +17,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onNavigateToExport: () -> Unit = {},
-    onNavigateToImport: () -> Unit = {}
+    onNavigateToImport: () -> Unit = {},
+    onNavigateToCloudBackup: () -> Unit = {}
 ) {
     val weightUnit by viewModel.weightUnit.collectAsStateWithLifecycle()
     val options = listOf("kg", "lb")
@@ -151,35 +152,36 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.outlineVariant
                 )
 
-                // Backup & Restore Option (placeholder for future implementation)
+                // Cloud Backup & Restore Option
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clickable { onNavigateToCloudBackup() }
                         .padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Backup,
-                        contentDescription = "Backup & Restore",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        imageVector = Icons.Filled.Cloud,
+                        contentDescription = "Cloud Backup & Restore",
+                        tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            "Backup & Restore",
+                            "Cloud Backup & Restore",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            fontWeight = FontWeight.Medium
                         )
                         Text(
-                            "Coming soon - Cloud backup and restore",
+                            "Securely backup to Google Drive and restore on any device",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Text(
-                        "Coming Soon",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Icon(
+                        imageVector = Icons.Filled.ChevronRight,
+                        contentDescription = "Navigate to Cloud Backup",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

@@ -115,6 +115,29 @@ class MainActivity : ComponentActivity() {
         ImportViewModelFactory(importRepository)
     }
 
+    private val cloudBackupViewModel: CloudBackupViewModel by viewModels {
+        val cloudProvider = GoogleDriveCloudProvider(this)
+        val cloudBackupRepository = CloudBackupRepository(
+            this,
+            ExportRepository(
+                (application as WorkoutApplication).database.loggedWorkoutDao(),
+                (application as WorkoutApplication).database.exerciseDao(),
+                (application as WorkoutApplication).database.personalRecordDao(),
+                (application as WorkoutApplication).database.programTemplateDao(),
+                (application as WorkoutApplication).database.activeCycleDao()
+            ),
+            ImportRepository(
+                (application as WorkoutApplication).database.loggedWorkoutDao(),
+                (application as WorkoutApplication).database.exerciseDao(),
+                (application as WorkoutApplication).database.personalRecordDao(),
+                (application as WorkoutApplication).database.programTemplateDao(),
+                (application as WorkoutApplication).database.activeCycleDao()
+            ),
+            cloudProvider
+        )
+        CloudBackupViewModelFactory(cloudBackupRepository)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -132,7 +155,8 @@ class MainActivity : ComponentActivity() {
                     volumeViewModel = volumeViewModel,
                     analyticsViewModel = analyticsViewModel,
                     exportViewModel = exportViewModel,
-                    importViewModel = importViewModel
+                    importViewModel = importViewModel,
+                    cloudBackupViewModel = cloudBackupViewModel
                 )
             }
         }
@@ -151,7 +175,8 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             volumeViewModel: VolumeViewModel,
             analyticsViewModel: AnalyticsViewModel,
             exportViewModel: ExportViewModel,
-            importViewModel: ImportViewModel
+            importViewModel: ImportViewModel,
+            cloudBackupViewModel: CloudBackupViewModel
 ) {
     val navController = rememberNavController()
     Scaffold(
@@ -171,6 +196,7 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             analyticsViewModel = analyticsViewModel,
             exportViewModel = exportViewModel,
             importViewModel = importViewModel,
+            cloudBackupViewModel = cloudBackupViewModel,
             modifier = Modifier.padding(innerPadding)
         )
     }
@@ -191,6 +217,7 @@ fun AppNavHost(
     analyticsViewModel: AnalyticsViewModel,
     exportViewModel: ExportViewModel,
     importViewModel: ImportViewModel,
+    cloudBackupViewModel: CloudBackupViewModel,
     modifier: Modifier = Modifier
 ) {
     val weightUnit by settingsViewModel.weightUnit.collectAsStateWithLifecycle()
@@ -318,6 +345,9 @@ fun AppNavHost(
                 },
                 onNavigateToImport = {
                     navController.navigate("import")
+                },
+                onNavigateToCloudBackup = {
+                    navController.navigate("cloud_backup")
                 }
             )
         }
@@ -330,6 +360,12 @@ fun AppNavHost(
         composable("import") {
             ImportScreen(
                 viewModel = importViewModel,
+                onNavigateUp = { navController.navigateUp() }
+            )
+        }
+        composable("cloud_backup") {
+            CloudBackupScreen(
+                viewModel = cloudBackupViewModel,
                 onNavigateUp = { navController.navigateUp() }
             )
         }
