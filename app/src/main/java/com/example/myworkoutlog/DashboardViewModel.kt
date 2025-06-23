@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 
 class DashboardViewModel(
     private val widgetRepository: WidgetRepositorySimplified,
@@ -120,7 +121,9 @@ class DashboardViewModel(
             
             QuickActionType.COMPLETE_CYCLE -> {
                 // End the current cycle and navigate to analytics with cycle summary
-                activeCycleDao.clearActiveCycle()
+                viewModelScope.launch(Dispatchers.IO) {
+                    activeCycleDao.clear()
+                }
                 onNavigate(Screen.Analytics.route)
             }
             
