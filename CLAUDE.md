@@ -457,8 +457,35 @@ Following comprehensive testing and iterative bug fixing, all identified dashboa
 
 **The enhanced dashboard now provides world-class fitness app functionality matching premium commercial applications with comprehensive session management, intelligent progress tracking, and production-ready user experience.**
 
+## 🐛 Additional Dashboard Bugs Identified (Post-Testing)
+
+### **Status**: New Bugs Reported - Awaiting Fix Approval
+Following comprehensive testing of the enhanced dashboard implementation, additional bugs have been identified that require resolution:
+
+#### **🐛 Bug 7: Individual Workout Navigation Missing**
+**Issue**: In the main dashboard, individual workouts are clickable but do not lead to history screen to allow edits
+**Impact**: Users cannot access workout details or make post-session modifications from dashboard
+**Priority**: High - Core navigation functionality missing
+
+#### **🐛 Bug 8: Completed Cycle Management Missing**
+**Issue**: After finishing all sessions, the quick action still says 'start the next session', there is no way to end the current cycle and see analytics of the finished cycle and guide to start the next one
+**Impact**: 
+- No cycle completion workflow or celebration
+- Missing analytics for completed cycles  
+- No guidance for starting new cycles after completion
+- Users stuck in completed cycles without clear next steps
+**Priority**: High - Critical workflow gap for cycle completion
+
+#### **🐛 Bug 9: Bodyweight Chart Not Displaying**
+**Issue**: There is still no bodyweight chart in the dashboard despite entering bodyweight info every session
+**Impact**: Users cannot visualize bodyweight trends despite data being available
+**Priority**: Medium - Analytics visualization missing
+
+### **Analysis of New Bugs**
+These bugs reveal gaps in the dashboard's post-completion workflows and analytics visualization that need to be addressed for a complete user experience.
+
 ### **Ready for Tier 3 Phase 3**: Advanced Dashboard Features
-With the core dashboard architecture complete and all critical bugs resolved, the foundation is ready for advanced features like:
+With the core dashboard architecture complete and additional bugs to be resolved, the foundation is ready for advanced features like:
 - Enhanced analytics widgets with interactive charts
 - Smart workout recommendations and AI insights
 - Advanced progress visualization and goal tracking
