@@ -114,8 +114,8 @@ class WidgetRepositorySimplified(
             ))
         }
         
+        val (weekProgress, sessionProgress) = calculateCycleProgressText(activeCycle)
         emit(DashboardState(
-            val (weekProgress, sessionProgress) = calculateCycleProgressText(activeCycle)
             mode = DashboardMode.ActiveCycle(activeCycle, CycleProgress(
                 completionPercentage = progress,
                 weekProgress = weekProgress,
