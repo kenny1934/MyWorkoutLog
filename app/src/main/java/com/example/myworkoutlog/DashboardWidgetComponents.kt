@@ -47,7 +47,14 @@ fun DashboardWidgetCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
-        modifier = modifier,
+        modifier = modifier
+            .let { mod ->
+                if (onExpandToggle != null) {
+                    mod.clickable { onExpandToggle() }
+                } else {
+                    mod
+                }
+            },
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface

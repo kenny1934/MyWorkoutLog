@@ -618,7 +618,8 @@ fun SimpleCycleProgressWidgetCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 week.sessions.forEach { session ->
-                    val isCompleted = session.id in completedSessionIds
+                    val sessionKey = "${week.id}_${session.id}"
+                    val isCompleted = sessionKey in completedSessionIds
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
