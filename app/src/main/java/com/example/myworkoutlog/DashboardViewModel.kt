@@ -45,6 +45,10 @@ class DashboardViewModel(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
     
+    // Pull-to-refresh specific loading state
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+    
     // Error state for dashboard
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -63,6 +67,26 @@ class DashboardViewModel(
                 _error.value = e.message ?: "Unknown error occurred"
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+    
+    fun onPullToRefresh() {
+        viewModelScope.launch {
+            try {
+                _isRefreshing.value = true
+                _error.value = null
+                
+                // Trigger data refresh
+                _refreshTrigger.value = _refreshTrigger.value + 1
+                
+                // Add small delay to ensure smooth animation
+                kotlinx.coroutines.delay(500)
+                
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Failed to refresh dashboard"
+            } finally {
+                _isRefreshing.value = false
             }
         }
     }
