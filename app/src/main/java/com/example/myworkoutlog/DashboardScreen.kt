@@ -245,18 +245,92 @@ fun SimplePerformanceTrendWidgetCard(widget: DashboardWidget.PerformanceTrendWid
         title = "Performance Trends",
         isExpandable = widget.isExpandable,
         collapsedContent = {
-            Text(
-                text = "Performance overview placeholder",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Collapsed: Show overview with top exercise
+            Column {
+                if (widget.strengthGains.isNotEmpty()) {
+                    val topExercise = widget.strengthGains.first()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = topExercise.exerciseName,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "${topExercise.currentMax.toInt()}kg (${if (topExercise.improvementPercentage >= 0) "+" else ""}${topExercise.improvementPercentage.toInt()}%)",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (topExercise.improvementPercentage >= 0) 
+                                    MaterialTheme.colorScheme.primary 
+                                else MaterialTheme.colorScheme.error
+                            )
+                        }
+                        // Mini trend indicator
+                        Icon(
+                            imageVector = when {
+                                topExercise.improvementPercentage > 5 -> Icons.Default.TrendingUp
+                                topExercise.improvementPercentage < -5 -> Icons.Default.TrendingDown
+                                else -> Icons.Default.TrendingFlat
+                            },
+                            contentDescription = "Trend",
+                            tint = when {
+                                topExercise.improvementPercentage > 5 -> MaterialTheme.colorScheme.primary
+                                topExercise.improvementPercentage < -5 -> MaterialTheme.colorScheme.error
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    
+                    if (widget.strengthGains.size > 1) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Tap to see all ${widget.strengthGains.size} exercises",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                } else {
+                    Text(
+                        text = "No performance data available",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         },
         expandedContent = {
-            Text(
-                text = "Detailed performance analysis placeholder",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Expanded: Show all exercises with interactive chart
+            Column {
+                Text(
+                    text = "Performance Breakdown",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Interactive performance chart
+                InteractivePerformanceChart(
+                    strengthGains = widget.strengthGains,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Detailed exercise breakdown
+                widget.strengthGains.forEach { exercise ->
+                    ExercisePerformanceCard(
+                        exercise = exercise,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
         }
     )
 }
@@ -289,18 +363,102 @@ fun SimpleVolumeProgressWidgetCard(widget: DashboardWidget.VolumeProgressWidget)
         title = "Volume Progress",
         isExpandable = widget.isExpandable,
         collapsedContent = {
-            Text(
-                text = "Volume overview placeholder",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Collapsed: Show volume summary
+            Column {
+                if (widget.weeklyVolume.isNotEmpty()) {
+                    val latestVolume = widget.weeklyVolume.last()
+                    val previousVolume = widget.weeklyVolume.getOrNull(widget.weeklyVolume.size - 2)
+                    val volumeChange = if (previousVolume != null) {
+                        ((latestVolume.totalVolume - previousVolume.totalVolume) / previousVolume.totalVolume * 100).toFloat()
+                    } else 0f
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Latest Volume",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "${latestVolume.totalVolume.toInt()}kg",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            if (previousVolume != null) {
+                                Text(
+                                    text = "${if (volumeChange >= 0) "+" else ""}${volumeChange.toInt()}% from last week",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (volumeChange >= 0) 
+                                        MaterialTheme.colorScheme.primary 
+                                    else MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                        
+                        // Mini volume trend indicator
+                        Icon(
+                            imageVector = when {
+                                volumeChange > 5f -> Icons.Default.TrendingUp
+                                volumeChange < -5f -> Icons.Default.TrendingDown
+                                else -> Icons.Default.TrendingFlat
+                            },
+                            contentDescription = "Volume Trend",
+                            tint = when {
+                                volumeChange > 5f -> MaterialTheme.colorScheme.primary
+                                volumeChange < -5f -> MaterialTheme.colorScheme.error
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Tap to see ${widget.weeklyVolume.size} data points",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    Text(
+                        text = "No volume data available",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         },
         expandedContent = {
-            Text(
-                text = "Volume analysis placeholder",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Expanded: Show interactive volume chart and breakdown
+            Column {
+                Text(
+                    text = "Volume Progression",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Interactive volume chart
+                InteractiveVolumeChart(
+                    volumeData = widget.weeklyVolume,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Volume statistics
+                VolumeStatisticsCard(
+                    volumeData = widget.weeklyVolume,
+                    targetVolume = widget.targetVolume,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     )
 }
@@ -325,6 +483,339 @@ fun SimpleAchievementWidgetCard(widget: DashboardWidget.AchievementWidget) {
             )
         }
     )
+}
+
+// Interactive Chart Components - must be defined before they're used
+
+@Composable
+fun InteractivePerformanceChart(
+    strengthGains: List<ExerciseProgress>,
+    modifier: Modifier = Modifier
+) {
+    if (strengthGains.isEmpty()) {
+        Box(
+            modifier = modifier,
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "No performance data available",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        return
+    }
+
+    val chartEntryModelProducer = remember { ChartEntryModelProducer() }
+    var selectedExercise by remember { mutableStateOf<ExerciseProgress?>(null) }
+
+    // Prepare chart data
+    val chartEntries = strengthGains.mapIndexed { index, exercise ->
+        entryOf(index.toFloat(), exercise.improvementPercentage)
+    }
+
+    LaunchedEffect(strengthGains) {
+        chartEntryModelProducer.setEntries(chartEntries)
+    }
+
+    Column(modifier = modifier) {
+        // Chart
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Box(modifier = Modifier.padding(8.dp)) {
+                Chart(
+                    chart = lineChart(),
+                    chartModelProducer = chartEntryModelProducer,
+                    startAxis = rememberStartAxis(
+                        valueFormatter = AxisValueFormatter { value, _ -> "${value.toInt()}%" }
+                    ),
+                    bottomAxis = rememberBottomAxis(
+                        valueFormatter = AxisValueFormatter { value, _ ->
+                            strengthGains.getOrNull(value.toInt())?.exerciseName?.take(8) ?: ""
+                        }
+                    ),
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+
+        // Chart interaction feedback
+        selectedExercise?.let { exercise ->
+            Spacer(modifier = Modifier.height(12.dp))
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = exercise.exerciseName,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Improvement: ${if (exercise.improvementPercentage >= 0) "+" else ""}${exercise.improvementPercentage}%",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = "Current: ${exercise.currentMax}kg → Previous: ${exercise.previousMax}kg",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ExercisePerformanceCard(
+    exercise: ExerciseProgress,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = exercise.exerciseName,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "${exercise.previousMax.toInt()}kg → ${exercise.currentMax.toInt()}kg",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "${if (exercise.improvementPercentage >= 0) "+" else ""}${exercise.improvementPercentage.toInt()}%",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = if (exercise.improvementPercentage >= 0) 
+                        MaterialTheme.colorScheme.primary 
+                    else MaterialTheme.colorScheme.error
+                )
+                
+                Icon(
+                    imageVector = when {
+                        exercise.improvementPercentage > 5 -> Icons.Default.TrendingUp
+                        exercise.improvementPercentage < -5 -> Icons.Default.TrendingDown
+                        else -> Icons.Default.TrendingFlat
+                    },
+                    contentDescription = "Trend",
+                    tint = when {
+                        exercise.improvementPercentage > 5 -> MaterialTheme.colorScheme.primary
+                        exercise.improvementPercentage < -5 -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun InteractiveVolumeChart(
+    volumeData: List<VolumeDataPoint>,
+    modifier: Modifier = Modifier
+) {
+    if (volumeData.isEmpty()) {
+        Box(
+            modifier = modifier,
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "No volume data available",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        return
+    }
+
+    val chartEntryModelProducer = remember { ChartEntryModelProducer() }
+    var selectedDataPoint by remember { mutableStateOf<VolumeDataPoint?>(null) }
+
+    // Prepare chart data
+    val chartEntries = volumeData.mapIndexed { index, dataPoint ->
+        entryOf(index.toFloat(), dataPoint.totalVolume.toFloat())
+    }
+
+    LaunchedEffect(volumeData) {
+        chartEntryModelProducer.setEntries(chartEntries)
+    }
+
+    Column(modifier = modifier) {
+        // Chart
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Box(modifier = Modifier.padding(8.dp)) {
+                Chart(
+                    chart = lineChart(),
+                    chartModelProducer = chartEntryModelProducer,
+                    startAxis = rememberStartAxis(
+                        valueFormatter = AxisValueFormatter { value, _ -> "${(value / 1000).toInt()}k" }
+                    ),
+                    bottomAxis = rememberBottomAxis(
+                        valueFormatter = AxisValueFormatter { value, _ ->
+                            volumeData.getOrNull(value.toInt())?.date?.take(5) ?: ""
+                        }
+                    ),
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+
+        // Chart interaction feedback
+        selectedDataPoint?.let { dataPoint ->
+            Spacer(modifier = Modifier.height(12.dp))
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = dataPoint.date,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Volume: ${dataPoint.totalVolume.toInt()}kg",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun VolumeStatisticsCard(
+    volumeData: List<VolumeDataPoint>,
+    targetVolume: Float?,
+    modifier: Modifier = Modifier
+) {
+    if (volumeData.isEmpty()) {
+        Card(
+            modifier = modifier,
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No volume data available",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        return
+    }
+
+    val totalVolume = volumeData.sumOf { it.totalVolume }
+    val averageVolume = totalVolume / volumeData.size
+    val maxVolume = volumeData.maxOfOrNull { it.totalVolume } ?: 0.0
+    val minVolume = volumeData.minOfOrNull { it.totalVolume } ?: 0.0
+
+    Card(
+        modifier = modifier,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Volume Statistics",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                VolumeStatItem(
+                    label = "Average",
+                    value = "${averageVolume.toInt()}kg",
+                    modifier = Modifier.weight(1f)
+                )
+                VolumeStatItem(
+                    label = "Peak",
+                    value = "${maxVolume.toInt()}kg",
+                    modifier = Modifier.weight(1f)
+                )
+                VolumeStatItem(
+                    label = "Low",
+                    value = "${minVolume.toInt()}kg",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            
+            targetVolume?.let { target ->
+                Spacer(modifier = Modifier.height(12.dp))
+                val targetComparison = ((averageVolume / target.toDouble()) * 100).toInt()
+                VolumeStatItem(
+                    label = "vs Target",
+                    value = "$targetComparison%",
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun VolumeStatItem(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }
 
 // Legacy dashboard components - must be defined before they're used
@@ -689,6 +1180,6 @@ fun EnhancedDashboardScreen(
                 }
             }
         }
+        }
     }
-}
 }
