@@ -33,7 +33,8 @@ sealed class DashboardWidget(
     val id: String,
     val title: String,
     val priority: Int,
-    val isVisible: Boolean = true
+    val isVisible: Boolean = true,
+    val isExpandable: Boolean = false
 ) {
     data class WelcomeWidget(
         val greeting: String,
@@ -69,7 +70,7 @@ sealed class DashboardWidget(
         val strengthGains: List<ExerciseProgress>,
         val volumeTrend: ProgressTrend,
         val timeframe: String = "This Cycle"
-    ) : DashboardWidget("performance_trend", "Performance Trend", 3)
+    ) : DashboardWidget("performance_trend", "Performance Trend", 3, isExpandable = true)
     
     data class ActivityHeatmapWidget(
         val workoutDays: Map<LocalDate, WorkoutIntensity>,
@@ -81,18 +82,18 @@ sealed class DashboardWidget(
         val estimatedDuration: Int,
         val exercises: List<ExercisePreview>,
         val difficulty: SessionDifficulty
-    ) : DashboardWidget("next_session", "Next Session", 2)
+    ) : DashboardWidget("next_session", "Next Session", 2, isExpandable = true)
     
     data class AchievementWidget(
         val recentAchievements: List<Achievement>,
         val nextMilestone: Milestone?
-    ) : DashboardWidget("achievements", "Achievements", 5)
+    ) : DashboardWidget("achievements", "Achievements", 5, isExpandable = true)
     
     data class VolumeProgressWidget(
         val weeklyVolume: List<com.example.myworkoutlog.VolumeDataPoint>, // Use existing VolumeDataPoint
         val trend: ProgressTrend,
         val targetVolume: Float?
-    ) : DashboardWidget("volume_progress", "Volume Progress", 4)
+    ) : DashboardWidget("volume_progress", "Volume Progress", 4, isExpandable = true)
     
     data class BodyweightTrendWidget(
         val bodyweightData: List<BodyweightPoint>,
