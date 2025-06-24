@@ -127,6 +127,7 @@ fun SimpleQuickStatsWidgetCard(widget: DashboardWidget.QuickStatsWidget) {
                 }
             }
         }
+    }
 }
 
 @Composable
@@ -689,3 +690,5 @@ fun EnhancedDashboardScreen(
             }
         }
     }
+}
+}
