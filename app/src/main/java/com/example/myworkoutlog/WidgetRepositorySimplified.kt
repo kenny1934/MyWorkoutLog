@@ -78,15 +78,54 @@ class WidgetRepositorySimplified(
             ))
         }
         
-        // Performance trends widget
+        // Performance trends widget - always show with sample data if no real data
         val performanceTrends = getTopPerformanceTrends()
-        if (performanceTrends.isNotEmpty()) {
-            widgets.add(DashboardWidget.PerformanceTrendWidget(
-                strengthGains = performanceTrends,
-                volumeTrend = calculateOverallVolumeTrend(),
-                timeframe = "Last 30 Days"
-            ))
+        val finalPerformanceTrends = if (performanceTrends.isNotEmpty()) {
+            performanceTrends
+        } else {
+            // Create sample data for demonstration
+            listOf(
+                ExerciseProgress(
+                    exerciseName = "Bench Press",
+                    currentMax = 100f,
+                    previousMax = 95f,
+                    improvementPercentage = 5.3f,
+                    trend = ProgressTrend(
+                        direction = TrendDirection.SLIGHTLY_IMPROVING,
+                        percentage = 5.3f,
+                        description = "Improving"
+                    )
+                ),
+                ExerciseProgress(
+                    exerciseName = "Squat",
+                    currentMax = 120f,
+                    previousMax = 115f,
+                    improvementPercentage = 4.3f,
+                    trend = ProgressTrend(
+                        direction = TrendDirection.SLIGHTLY_IMPROVING,
+                        percentage = 4.3f,
+                        description = "Improving"
+                    )
+                ),
+                ExerciseProgress(
+                    exerciseName = "Deadlift",
+                    currentMax = 140f,
+                    previousMax = 135f,
+                    improvementPercentage = 3.7f,
+                    trend = ProgressTrend(
+                        direction = TrendDirection.SLIGHTLY_IMPROVING,
+                        percentage = 3.7f,
+                        description = "Improving"
+                    )
+                )
+            )
         }
+        
+        widgets.add(DashboardWidget.PerformanceTrendWidget(
+            strengthGains = finalPerformanceTrends,
+            volumeTrend = calculateOverallVolumeTrend(),
+            timeframe = if (performanceTrends.isNotEmpty()) "Last 30 Days" else "Sample Data"
+        ))
         
         // Volume progress widget
         val volumeData = getWeeklyVolumeData()
@@ -159,15 +198,54 @@ class WidgetRepositorySimplified(
             ))
         }
         
-        // Performance trends widget for active cycle
+        // Performance trends widget for active cycle - always show with sample data if no real data
         val performanceTrends = getTopPerformanceTrends()
-        if (performanceTrends.isNotEmpty()) {
-            widgets.add(DashboardWidget.PerformanceTrendWidget(
-                strengthGains = performanceTrends,
-                volumeTrend = calculateOverallVolumeTrend(),
-                timeframe = "This Cycle"
-            ))
+        val finalPerformanceTrends = if (performanceTrends.isNotEmpty()) {
+            performanceTrends
+        } else {
+            // Create sample data for demonstration
+            listOf(
+                ExerciseProgress(
+                    exerciseName = "Bench Press",
+                    currentMax = 100f,
+                    previousMax = 95f,
+                    improvementPercentage = 5.3f,
+                    trend = ProgressTrend(
+                        direction = TrendDirection.SLIGHTLY_IMPROVING,
+                        percentage = 5.3f,
+                        description = "Improving"
+                    )
+                ),
+                ExerciseProgress(
+                    exerciseName = "Squat",
+                    currentMax = 120f,
+                    previousMax = 115f,
+                    improvementPercentage = 4.3f,
+                    trend = ProgressTrend(
+                        direction = TrendDirection.SLIGHTLY_IMPROVING,
+                        percentage = 4.3f,
+                        description = "Improving"
+                    )
+                ),
+                ExerciseProgress(
+                    exerciseName = "Deadlift",
+                    currentMax = 140f,
+                    previousMax = 135f,
+                    improvementPercentage = 3.7f,
+                    trend = ProgressTrend(
+                        direction = TrendDirection.SLIGHTLY_IMPROVING,
+                        percentage = 3.7f,
+                        description = "Improving"
+                    )
+                )
+            )
         }
+        
+        widgets.add(DashboardWidget.PerformanceTrendWidget(
+            strengthGains = finalPerformanceTrends,
+            volumeTrend = calculateOverallVolumeTrend(),
+            timeframe = if (performanceTrends.isNotEmpty()) "This Cycle" else "Sample Data"
+        ))
         
         // Volume progress widget for active cycle
         val volumeData = getWeeklyVolumeData()

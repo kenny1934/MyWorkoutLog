@@ -31,6 +31,7 @@ import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
 import com.patrykandpatrick.vico.core.entry.entryOf
 import com.patrykandpatrick.vico.core.axis.AxisPosition
 import com.patrykandpatrick.vico.core.axis.formatter.AxisValueFormatter
+import java.time.LocalDate
 
 // Widget component definitions - must be defined before they're used
 
@@ -269,75 +270,96 @@ fun SimpleCycleProgressWidgetCard(widget: DashboardWidget.CycleProgressWidget, n
 
 @Composable
 fun SimpleActivityHeatmapWidgetCard(widget: DashboardWidget.ActivityHeatmapWidget) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Activity",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // Streak info
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "${widget.streakInfo.currentStreak}",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "Current Streak",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+    SimpleExpandableWidgetCard(
+        title = "Activity Heatmap",
+        isExpandable = widget.isExpandable,
+        collapsedContent = {
+            // Collapsed: Show streak info summary
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "${widget.streakInfo.currentStreak}",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Current Streak",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "${widget.streakInfo.thisWeekCount}",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "This Week",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "${widget.streakInfo.longestStreak}",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Best Streak",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "${widget.streakInfo.thisWeekCount}",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "This Week",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Spacer(modifier = Modifier.height(12.dp))
                 
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // Mini heatmap for collapsed state
+                ActivityHeatmapGrid(
+                    data = widget.workoutDays,
+                    modifier = Modifier.fillMaxWidth(),
+                    cellSize = 10.dp,
+                    spacing = 1.dp,
+                    weeksToShow = 12
+                )
+                
+                if (widget.isExpandable) {
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "${widget.streakInfo.longestStreak}",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "Best Streak",
+                        text = "Tap to see detailed activity pattern",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Simplified heatmap visualization
-            WorkoutHeatmapGrid(
-                workoutDays = widget.workoutDays,
-                modifier = Modifier.fillMaxWidth()
-            )
+        },
+        expandedContent = {
+            // Expanded: Show enhanced interactive heatmap
+            Column {
+                // Enhanced activity heatmap with yearly view option
+                EnhancedActivityHeatmap(
+                    workoutData = widget.workoutDays,
+                    showYearlyView = false,
+                    onDayClick = { date, intensity ->
+                        // Could navigate to day details or show more info
+                        // For now, just showing day details in the heatmap itself
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
-    }
+    )
 }
 
 @Composable
@@ -446,7 +468,10 @@ fun SimpleBodyweightTrendWidgetCard(widget: DashboardWidget.BodyweightTrendWidge
 }
 
 @Composable
-fun SimplePerformanceTrendWidgetCard(widget: DashboardWidget.PerformanceTrendWidget) {
+fun SimplePerformanceTrendWidgetCard(
+    widget: DashboardWidget.PerformanceTrendWidget,
+    navController: NavHostController
+) {
     SimpleExpandableWidgetCard(
         title = "Performance Trends",
         isExpandable = widget.isExpandable,
@@ -493,6 +518,19 @@ fun SimplePerformanceTrendWidgetCard(widget: DashboardWidget.PerformanceTrendWid
                     
                     if (widget.strengthGains.size > 1) {
                         Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Add mini sparkline for collapsed state - show actual weights
+                        val trendData = widget.strengthGains.map { it.currentMax }
+                        SparklineChart(
+                            data = trendData,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(40.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            fillArea = true
+                        )
+                        
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Tap to see all ${widget.strengthGains.size} exercises",
                             style = MaterialTheme.typography.bodySmall,
@@ -509,7 +547,7 @@ fun SimplePerformanceTrendWidgetCard(widget: DashboardWidget.PerformanceTrendWid
             }
         },
         expandedContent = {
-            // Expanded: Show all exercises with interactive chart
+            // Expanded: Show all exercises with enhanced interactive chart
             Column {
                 Text(
                     text = "Performance Breakdown",
@@ -518,12 +556,13 @@ fun SimplePerformanceTrendWidgetCard(widget: DashboardWidget.PerformanceTrendWid
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 
-                // Interactive performance chart
-                InteractivePerformanceChart(
+                // Enhanced interactive performance chart with drill-down capability
+                EnhancedInteractivePerformanceChart(
                     strengthGains = widget.strengthGains,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
+                    navController = navController,
+                    modifier = Modifier.fillMaxWidth(),
+                    showTooltips = true,
+                    enableDrillDown = true
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -673,7 +712,10 @@ fun SimpleNextSessionWidgetCard(widget: DashboardWidget.NextSessionWidget, navCo
 }
 
 @Composable
-fun SimpleVolumeProgressWidgetCard(widget: DashboardWidget.VolumeProgressWidget) {
+fun SimpleVolumeProgressWidgetCard(
+    widget: DashboardWidget.VolumeProgressWidget,
+    navController: NavHostController
+) {
     SimpleExpandableWidgetCard(
         title = "Volume Progress",
         isExpandable = widget.isExpandable,
@@ -748,7 +790,7 @@ fun SimpleVolumeProgressWidgetCard(widget: DashboardWidget.VolumeProgressWidget)
             }
         },
         expandedContent = {
-            // Expanded: Show interactive volume chart and breakdown
+            // Expanded: Show enhanced interactive volume chart and breakdown
             Column {
                 Text(
                     text = "Volume Progression",
@@ -757,21 +799,14 @@ fun SimpleVolumeProgressWidgetCard(widget: DashboardWidget.VolumeProgressWidget)
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 
-                // Interactive volume chart
-                InteractiveVolumeChart(
+                // Enhanced interactive volume chart with drill-down and comparison
+                EnhancedInteractiveVolumeChart(
                     volumeData = widget.weeklyVolume,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Volume statistics
-                VolumeStatisticsCard(
-                    volumeData = widget.weeklyVolume,
-                    targetVolume = widget.targetVolume,
-                    modifier = Modifier.fillMaxWidth()
+                    navController = navController,
+                    modifier = Modifier.fillMaxWidth(),
+                    showTooltips = true,
+                    enableDrillDown = true,
+                    showComparison = true
                 )
             }
         }
@@ -1500,12 +1535,18 @@ fun EnhancedDashboardScreen(
                     )
                     is DashboardWidget.ActivityHeatmapWidget -> SimpleActivityHeatmapWidgetCard(widget)
                     is DashboardWidget.BodyweightTrendWidget -> SimpleBodyweightTrendWidgetCard(widget)
-                    is DashboardWidget.PerformanceTrendWidget -> SimplePerformanceTrendWidgetCard(widget)
+                    is DashboardWidget.PerformanceTrendWidget -> SimplePerformanceTrendWidgetCard(
+                        widget = widget,
+                        navController = navController
+                    )
                     is DashboardWidget.NextSessionWidget -> SimpleNextSessionWidgetCard(
                         widget = widget,
                         navController = navController
                     )
-                    is DashboardWidget.VolumeProgressWidget -> SimpleVolumeProgressWidgetCard(widget)
+                    is DashboardWidget.VolumeProgressWidget -> SimpleVolumeProgressWidgetCard(
+                        widget = widget,
+                        navController = navController
+                    )
                     is DashboardWidget.AchievementWidget -> SimpleAchievementWidgetCard(widget)
                     // All widget types are handled above
                 }

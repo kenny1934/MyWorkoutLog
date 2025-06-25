@@ -75,7 +75,7 @@ sealed class DashboardWidget(
     data class ActivityHeatmapWidget(
         val workoutDays: Map<LocalDate, WorkoutIntensity>,
         val streakInfo: StreakInfo
-    ) : DashboardWidget("activity_heatmap", "Activity", 4)
+    ) : DashboardWidget("activity_heatmap", "Activity", 4, isExpandable = true)
     
     data class NextSessionWidget(
         val session: SessionInfo,
