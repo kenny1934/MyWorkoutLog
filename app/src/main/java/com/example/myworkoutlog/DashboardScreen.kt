@@ -645,7 +645,12 @@ fun SimpleNextSessionWidgetCard(widget: DashboardWidget.NextSessionWidget, navCo
                         // Navigate to workout logger with proper session details
                         if (widget.cycleId != null && widget.weekId != null && 
                             widget.sessionId != null && widget.templateId != null) {
-                            val route = "workoutLogger/${widget.templateId}/${widget.cycleId}/${widget.weekId}/${widget.sessionId}"
+                            val route = Screen.WorkoutLogger.createRoute(
+                                templateId = widget.templateId,
+                                cycleId = widget.cycleId,
+                                weekId = widget.weekId,
+                                sessionId = widget.sessionId
+                            )
                             navController.navigate(route)
                         } else {
                             // Fallback to library if navigation data is missing
