@@ -252,11 +252,12 @@ class WidgetRepositorySimplified(
     
     private fun calculateBasicCycleProgress(activeCycle: ActiveProgramCycle): Float {
         // Calculate actual progress based on completed sessions vs total sessions
+        // Return value between 0.0 and 1.0 for CircularProgressIndicator
         val totalSessions = activeCycle.cycleProgram.weeks.sumOf { it.sessions.size }
         val completedSessions = activeCycle.completedSessions.size
         
         return if (totalSessions > 0) {
-            (completedSessions.toFloat() / totalSessions.toFloat()) * 100f
+            completedSessions.toFloat() / totalSessions.toFloat()
         } else {
             0f
         }
@@ -394,6 +395,35 @@ class WidgetRepositorySimplified(
             return ProgressTrend(TrendDirection.INSUFFICIENT_DATA, 0f, "Not enough data")
         }
         
+        // Simple approach: compare most recent to oldest for small datasets
+        if (data.size < 14) {
+            val oldest = data.first().weight
+            val newest = data.last().weight
+            val changePercentage = ((newest - oldest) / oldest) * 100
+            
+            val direction = when {
+                changePercentage > 2f -> TrendDirection.STRONGLY_IMPROVING
+                changePercentage > 0.5f -> TrendDirection.SLIGHTLY_IMPROVING
+                changePercentage < -2f -> TrendDirection.STRONGLY_DECLINING
+                changePercentage < -0.5f -> TrendDirection.SLIGHTLY_DECLINING
+                else -> TrendDirection.STABLE
+            }
+            
+            return ProgressTrend(
+                direction = direction,
+                percentage = kotlin.math.abs(changePercentage),
+                description = when (direction) {
+                    TrendDirection.STRONGLY_IMPROVING -> "Significant increase"
+                    TrendDirection.SLIGHTLY_IMPROVING -> "Slight increase"
+                    TrendDirection.STRONGLY_DECLINING -> "Significant decrease"
+                    TrendDirection.SLIGHTLY_DECLINING -> "Slight decrease"
+                    TrendDirection.STABLE -> "Stable trend"
+                    else -> "No clear trend"
+                }
+            )
+        }
+        
+        // For larger datasets, use weekly comparison
         val recent = data.takeLast(7) // Last week
         val previous = data.dropLast(7).takeLast(7) // Previous week
         

@@ -642,8 +642,9 @@ fun SimpleNextSessionWidgetCard(widget: DashboardWidget.NextSessionWidget, navCo
                 // Start session button
                 Button(
                     onClick = { 
-                        // Navigate to workout logger - will need to implement proper navigation
-                        navController.navigate("workoutLogger")
+                        // Navigate to library to select a template for now
+                        // TODO: Implement direct session start when proper session management is ready
+                        navController.navigate("library")
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
