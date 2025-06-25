@@ -190,13 +190,17 @@ class WidgetRepositorySimplified(
         }
         
         // Next session widget for active cycle
-        val nextSession = getNextSessionInfo(activeCycle)
-        nextSession?.let { sessionInfo ->
+        val nextSessionData = getNextSessionWithNavigation(activeCycle)
+        nextSessionData?.let { (sessionInfo, weekId, sessionId) ->
             widgets.add(DashboardWidget.NextSessionWidget(
                 session = sessionInfo,
                 estimatedDuration = sessionInfo.estimatedDuration,
                 exercises = sessionInfo.exercises,
-                difficulty = sessionInfo.difficulty
+                difficulty = sessionInfo.difficulty,
+                cycleId = activeCycle.cycleUuid,
+                weekId = weekId,
+                sessionId = sessionId,
+                templateId = sessionInfo.templateId
             ))
         }
         
@@ -620,6 +624,27 @@ class WidgetRepositorySimplified(
         }
     }
     
+    private suspend fun getNextSessionWithNavigation(activeCycle: ActiveProgramCycle): Triple<SessionInfo, String, String>? {
+        return try {
+            val completedSessionIds = activeCycle.completedSessions.keys.toSet()
+            
+            // Find the next incomplete session
+            for (week in activeCycle.cycleProgram.weeks.sortedBy { it.order }) {
+                for (session in week.sessions.sortedBy { it.order }) {
+                    val sessionKey = "${week.id}_${session.id}"
+                    if (sessionKey !in completedSessionIds) {
+                        // Found the next session - get its details
+                        val sessionInfo = createSessionInfo(session, week, activeCycle)
+                        return sessionInfo?.let { Triple(it, week.id, session.id) }
+                    }
+                }
+            }
+            null // All sessions completed
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
     private suspend fun getNextSessionInfo(activeCycle: ActiveProgramCycle): SessionInfo? {
         return try {
             val completedSessionIds = activeCycle.completedSessions.keys.toSet()
@@ -685,7 +710,8 @@ class WidgetRepositorySimplified(
                 exercises = exercisePreviews,
                 estimatedDuration = estimatedDuration,
                 difficulty = difficulty,
-                targetVolume = null // Could be calculated if needed
+                targetVolume = null, // Could be calculated if needed
+                templateId = session.workoutTemplateId
             )
         } catch (e: Exception) {
             null

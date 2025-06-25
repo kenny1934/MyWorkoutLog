@@ -81,7 +81,11 @@ sealed class DashboardWidget(
         val session: SessionInfo,
         val estimatedDuration: Int,
         val exercises: List<ExercisePreview>,
-        val difficulty: SessionDifficulty
+        val difficulty: SessionDifficulty,
+        val cycleId: String? = null,
+        val weekId: String? = null,
+        val sessionId: String? = null,
+        val templateId: String? = null
     ) : DashboardWidget("next_session", "Next Session", 2, isExpandable = true)
     
     data class AchievementWidget(
@@ -119,7 +123,8 @@ data class SessionInfo(
     val exercises: List<ExercisePreview>,
     val estimatedDuration: Int, // minutes
     val difficulty: SessionDifficulty,
-    val targetVolume: Float?
+    val targetVolume: Float?,
+    val templateId: String? = null
 )
 
 data class ExercisePreview(

@@ -655,11 +655,11 @@ fun WorkoutHeatmapGrid(
 private fun getIntensityColor(intensity: Float): Color {
     val primaryColor = MaterialTheme.colorScheme.primary
     return when {
-        intensity <= 0f -> MaterialTheme.colorScheme.surfaceVariant
-        intensity <= 0.2f -> primaryColor.copy(alpha = 0.2f)
-        intensity <= 0.4f -> primaryColor.copy(alpha = 0.4f)
-        intensity <= 0.6f -> primaryColor.copy(alpha = 0.6f)
-        intensity <= 0.8f -> primaryColor.copy(alpha = 0.8f)
+        intensity <= 0f -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f) // More visible empty state
+        intensity <= 0.2f -> primaryColor.copy(alpha = 0.3f)
+        intensity <= 0.4f -> primaryColor.copy(alpha = 0.5f)
+        intensity <= 0.6f -> primaryColor.copy(alpha = 0.7f)
+        intensity <= 0.8f -> primaryColor.copy(alpha = 0.9f)
         else -> primaryColor
     }
 }

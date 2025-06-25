@@ -642,9 +642,15 @@ fun SimpleNextSessionWidgetCard(widget: DashboardWidget.NextSessionWidget, navCo
                 // Start session button
                 Button(
                     onClick = { 
-                        // Navigate to library to select a template for now
-                        // TODO: Implement direct session start when proper session management is ready
-                        navController.navigate("library")
+                        // Navigate to workout logger with proper session details
+                        if (widget.cycleId != null && widget.weekId != null && 
+                            widget.sessionId != null && widget.templateId != null) {
+                            val route = "workoutLogger/${widget.templateId}/${widget.cycleId}/${widget.weekId}/${widget.sessionId}"
+                            navController.navigate(route)
+                        } else {
+                            // Fallback to library if navigation data is missing
+                            navController.navigate("library")
+                        }
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
