@@ -9,6 +9,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.cos
 import kotlin.math.sin
+import java.time.LocalDate
 
 // Base widget card component
 @Composable
@@ -566,5 +570,437 @@ fun SimpleBodyweightWidgetCard(
                 modifier = Modifier.fillMaxWidth()
             )
         }
+    }
+}
+
+// Workout Heatmap Grid Component
+@Composable
+fun WorkoutHeatmapGrid(
+    workoutDays: Map<LocalDate, WorkoutIntensity>,
+    modifier: Modifier = Modifier
+) {
+    val today = LocalDate.now()
+    val startDate = today.minusDays(90) // Show last 90 days for simplicity
+    
+    Column(modifier = modifier) {
+        // Header showing current month
+        Text(
+            text = "Last 90 Days",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        
+        // Create a grid showing the last 90 days
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(7), // 7 days per week
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier.height(120.dp)
+        ) {
+            items(90) { dayOffset ->
+                val date = startDate.plusDays(dayOffset.toLong())
+                val intensity = workoutDays[date]?.intensity ?: 0f
+                
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .background(
+                            color = getIntensityColor(intensity),
+                            shape = RoundedCornerShape(2.dp)
+                        )
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Legend
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Less",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                for (i in 0..4) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(
+                                color = getIntensityColor(i / 4f),
+                                shape = RoundedCornerShape(1.dp)
+                            )
+                    )
+                }
+            }
+            
+            Text(
+                text = "More",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun getIntensityColor(intensity: Float): Color {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    return when {
+        intensity <= 0f -> MaterialTheme.colorScheme.surfaceVariant
+        intensity <= 0.2f -> primaryColor.copy(alpha = 0.2f)
+        intensity <= 0.4f -> primaryColor.copy(alpha = 0.4f)
+        intensity <= 0.6f -> primaryColor.copy(alpha = 0.6f)
+        intensity <= 0.8f -> primaryColor.copy(alpha = 0.8f)
+        else -> primaryColor
+    }
+}
+
+// Bodyweight Mini Chart Component
+@Composable
+fun BodyweightMiniChart(
+    data: List<BodyweightPoint>,
+    modifier: Modifier = Modifier
+) {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    
+    Canvas(modifier = modifier) {
+        if (data.isEmpty()) return@Canvas
+        
+        val canvasWidth = size.width
+        val canvasHeight = size.height
+        val padding = 8.dp.toPx()
+        
+        val plotWidth = canvasWidth - (padding * 2)
+        val plotHeight = canvasHeight - (padding * 2)
+        
+        // Find min/max weights for scaling
+        val minWeight = data.minOfOrNull { it.weight } ?: 0f
+        val maxWeight = data.maxOfOrNull { it.weight } ?: 100f
+        val weightRange = maxWeight - minWeight
+        
+        if (weightRange == 0f) return@Canvas
+        
+        // Create path for line chart
+        val path = androidx.compose.ui.graphics.Path()
+        
+        data.forEachIndexed { index, point ->
+            val x = padding + (index.toFloat() / (data.size - 1).toFloat()) * plotWidth
+            val y = padding + plotHeight - ((point.weight - minWeight) / weightRange) * plotHeight
+            
+            if (index == 0) {
+                path.moveTo(x, y)
+            } else {
+                path.lineTo(x, y)
+            }
+        }
+        
+        // Draw the line
+        drawPath(
+            path = path,
+            color = primaryColor,
+            style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
+        )
+        
+        // Draw points
+        data.forEachIndexed { index, point ->
+            val x = padding + (index.toFloat() / (data.size - 1).toFloat()) * plotWidth
+            val y = padding + plotHeight - ((point.weight - minWeight) / weightRange) * plotHeight
+            
+            drawCircle(
+                color = primaryColor,
+                radius = 3.dp.toPx(),
+                center = Offset(x, y)
+            )
+        }
+    }
+}
+
+// Achievement Card Component
+@Composable
+fun AchievementCard(
+    achievement: Achievement,
+    isCompact: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Achievement icon
+            Text(
+                text = achievement.icon,
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(end = 12.dp)
+            )
+            
+            // Achievement details
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = achievement.title,
+                    style = if (isCompact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                
+                if (!isCompact) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = achievement.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            // Category badge
+            Surface(
+                color = getCategoryColor(achievement.category),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                Text(
+                    text = achievement.category.name.take(3),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+        }
+    }
+}
+
+// Milestone Card Component
+@Composable
+fun MilestoneCard(
+    milestone: Milestone,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = milestone.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                
+                Text(
+                    text = "${(milestone.progress * 100).toInt()}%",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            LinearProgressIndicator(
+                progress = milestone.progress,
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+            
+            Spacer(modifier = Modifier.height(6.dp))
+            
+            Text(
+                text = milestone.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun getCategoryColor(category: AchievementCategory): Color {
+    return when (category) {
+        AchievementCategory.STRENGTH -> Color(0xFFE53E3E)
+        AchievementCategory.VOLUME -> Color(0xFF3182CE)
+        AchievementCategory.CONSISTENCY -> Color(0xFF38A169)
+        AchievementCategory.MILESTONE -> Color(0xFFD69E2E)
+        AchievementCategory.SPECIAL -> Color(0xFF805AD5)
+    }
+}
+
+// Difficulty Badge Component
+@Composable
+fun DifficultyBadge(
+    difficulty: SessionDifficulty,
+    modifier: Modifier = Modifier
+) {
+    val (color, label, dots) = when (difficulty) {
+        SessionDifficulty.LIGHT -> Triple(Color(0xFF4CAF50), "Light", 1)
+        SessionDifficulty.MODERATE -> Triple(Color(0xFFFF9800), "Moderate", 2)
+        SessionDifficulty.HARD -> Triple(Color(0xFFFF5722), "Hard", 3)
+        SessionDifficulty.VERY_HARD -> Triple(Color(0xFFF44336), "Very Hard", 4)
+    }
+    
+    Surface(
+        modifier = modifier,
+        color = color.copy(alpha = 0.1f),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            // Difficulty dots
+            repeat(4) { index ->
+                Box(
+                    modifier = Modifier
+                        .size(4.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (index < dots) color else color.copy(alpha = 0.3f)
+                        )
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(2.dp))
+            
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = color,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+// Exercise Preview Card Component
+@Composable
+fun ExercisePreviewCard(
+    exercise: ExercisePreview,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Exercise icon based on muscle group
+            Surface(
+                modifier = Modifier.size(32.dp),
+                shape = CircleShape,
+                color = getMuscleGroupColor(exercise.muscleGroup).copy(alpha = 0.2f)
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = getMuscleGroupIcon(exercise.muscleGroup),
+                        contentDescription = exercise.muscleGroup.name,
+                        modifier = Modifier.size(16.dp),
+                        tint = getMuscleGroupColor(exercise.muscleGroup)
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            // Exercise details
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = exercise.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${exercise.sets} sets × ${exercise.reps} reps",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            // Weight info if available
+            exercise.weight?.let { weight ->
+                Text(
+                    text = "${weight.toInt()}kg",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun getMuscleGroupColor(muscleGroup: MuscleGroup): Color {
+    return when (muscleGroup) {
+        MuscleGroup.CHEST -> Color(0xFFE53E3E)
+        MuscleGroup.BACK -> Color(0xFF3182CE)
+        MuscleGroup.SHOULDERS -> Color(0xFFED8936)
+        MuscleGroup.BICEPS -> Color(0xFF805AD5)
+        MuscleGroup.TRICEPS -> Color(0xFF805AD5)
+        MuscleGroup.QUADS -> Color(0xFF38A169)
+        MuscleGroup.HAMSTRINGS -> Color(0xFF38A169)
+        MuscleGroup.GLUTES -> Color(0xFF38A169)
+        MuscleGroup.CALVES -> Color(0xFF38A169)
+        MuscleGroup.ABS -> Color(0xFFD69E2E)
+        MuscleGroup.FOREARMS -> Color(0xFF805AD5)
+        MuscleGroup.TRAPS -> Color(0xFFED8936)
+        MuscleGroup.LATS -> Color(0xFF3182CE)
+        MuscleGroup.OTHER -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+}
+
+@Composable
+private fun getMuscleGroupIcon(muscleGroup: MuscleGroup): ImageVector {
+    return when (muscleGroup) {
+        MuscleGroup.CHEST -> Icons.Default.FitnessCenter
+        MuscleGroup.BACK -> Icons.Default.FitnessCenter
+        MuscleGroup.SHOULDERS -> Icons.Default.FitnessCenter
+        MuscleGroup.BICEPS -> Icons.Default.FitnessCenter
+        MuscleGroup.TRICEPS -> Icons.Default.FitnessCenter
+        MuscleGroup.QUADS -> Icons.Default.DirectionsRun
+        MuscleGroup.HAMSTRINGS -> Icons.Default.DirectionsRun
+        MuscleGroup.GLUTES -> Icons.Default.DirectionsRun
+        MuscleGroup.CALVES -> Icons.Default.DirectionsRun
+        MuscleGroup.ABS -> Icons.Default.FitnessCenter
+        MuscleGroup.FOREARMS -> Icons.Default.FitnessCenter
+        MuscleGroup.TRAPS -> Icons.Default.FitnessCenter
+        MuscleGroup.LATS -> Icons.Default.FitnessCenter
+        MuscleGroup.OTHER -> Icons.Default.FitnessCenter
     }
 }

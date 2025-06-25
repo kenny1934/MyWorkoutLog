@@ -108,15 +108,11 @@ class WidgetRepositorySimplified(
             ))
         }
         
-        // Activity heatmap (simplified)
+        // Activity heatmap
+        val activityData = getActivityHeatmapData()
         widgets.add(DashboardWidget.ActivityHeatmapWidget(
-            workoutDays = emptyMap(),
-            streakInfo = StreakInfo(
-                currentStreak = streak,
-                longestStreak = streak,
-                weeklyTarget = 4,
-                thisWeekCount = 2
-            )
+            workoutDays = activityData,
+            streakInfo = getStreakInfo()
         ))
         
         emit(DashboardState(
@@ -203,6 +199,13 @@ class WidgetRepositorySimplified(
                 difficulty = sessionInfo.difficulty
             ))
         }
+        
+        // Activity heatmap for active cycle
+        val activityData = getActivityHeatmapData()
+        widgets.add(DashboardWidget.ActivityHeatmapWidget(
+            workoutDays = activityData,
+            streakInfo = getStreakInfo()
+        ))
         
         emit(DashboardState(
             mode = DashboardMode.ActiveCycle(activeCycle, CycleProgress(
@@ -843,6 +846,153 @@ class WidgetRepositorySimplified(
                 else -> "Insufficient data for trend"
             }
         )
+    }
+    
+    // Activity Heatmap Data Generation
+    private suspend fun getActivityHeatmapData(): Map<LocalDate, WorkoutIntensity> {
+        return try {
+            val workouts = loggedWorkoutDao.getAllLoggedWorkouts().first()
+            val heatmapData = mutableMapOf<LocalDate, WorkoutIntensity>()
+            
+            // Get workout data for the last 365 days (one year)
+            val oneYearAgo = LocalDate.now().minusDays(365)
+            
+            workouts.forEach { workout ->
+                try {
+                    val workoutDate = LocalDate.parse(workout.date)
+                    if (workoutDate.isAfter(oneYearAgo)) {
+                        // Calculate workout intensity
+                        val volume = workout.loggedExercises.sumOf { exercise ->
+                            exercise.sets.sumOf { set ->
+                                (set.weight ?: 0.0) * (set.reps ?: 0)
+                            }
+                        }.toFloat()
+                        
+                        val exerciseCount = workout.loggedExercises.size
+                        val setCount = workout.loggedExercises.sumOf { it.sets.size }
+                        
+                        // Calculate intensity level (0.0 to 1.0)
+                        val baseIntensity = when {
+                            exerciseCount >= 8 && setCount >= 25 -> 1.0f
+                            exerciseCount >= 6 && setCount >= 20 -> 0.8f
+                            exerciseCount >= 4 && setCount >= 15 -> 0.6f
+                            exerciseCount >= 2 && setCount >= 10 -> 0.4f
+                            else -> 0.2f
+                        }
+                        
+                        // Adjust based on volume
+                        val volumeMultiplier = when {
+                            volume > 15000 -> 1.0f
+                            volume > 10000 -> 0.9f
+                            volume > 5000 -> 0.8f
+                            volume > 2000 -> 0.7f
+                            else -> 0.6f
+                        }
+                        
+                        val finalIntensity = (baseIntensity * volumeMultiplier).coerceIn(0.1f, 1.0f)
+                        
+                        heatmapData[workoutDate] = WorkoutIntensity(
+                            date = workoutDate,
+                            intensity = finalIntensity,
+                            volume = volume,
+                            duration = 60 // Default duration, could be calculated if tracked
+                        )
+                    }
+                } catch (e: Exception) {
+                    // Skip invalid dates
+                }
+            }
+            
+            heatmapData
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
+    
+    // Streak Information Calculation
+    private suspend fun getStreakInfo(): StreakInfo {
+        return try {
+            val workouts = loggedWorkoutDao.getAllLoggedWorkouts().first()
+            val workoutDates = workouts.mapNotNull { workout ->
+                try {
+                    LocalDate.parse(workout.date)
+                } catch (e: Exception) {
+                    null
+                }
+            }.sorted()
+            
+            // Calculate current streak
+            var currentStreak = 0
+            var longestStreak = 0
+            var tempStreak = 0
+            var lastDate: LocalDate? = null
+            
+            val today = LocalDate.now()
+            val reversedDates = workoutDates.reversed()
+            
+            // Check if we worked out yesterday or today for current streak
+            val mostRecentDate = reversedDates.firstOrNull()
+            if (mostRecentDate != null) {
+                val daysSinceLastWorkout = java.time.temporal.ChronoUnit.DAYS.between(mostRecentDate, today)
+                if (daysSinceLastWorkout <= 1) {
+                    // Start counting current streak
+                    currentStreak = 1
+                    lastDate = mostRecentDate
+                    
+                    // Count consecutive days backwards
+                    for (i in 1 until reversedDates.size) {
+                        val currentDate = reversedDates[i]
+                        val daysDiff = java.time.temporal.ChronoUnit.DAYS.between(currentDate, lastDate!!)
+                        if (daysDiff == 1L) {
+                            currentStreak++
+                            lastDate = currentDate
+                        } else {
+                            break
+                        }
+                    }
+                }
+            }
+            
+            // Calculate longest streak
+            tempStreak = 1
+            lastDate = null
+            
+            for (date in workoutDates) {
+                if (lastDate == null) {
+                    lastDate = date
+                } else {
+                    val daysDiff = java.time.temporal.ChronoUnit.DAYS.between(lastDate, date)
+                    if (daysDiff == 1L) {
+                        tempStreak++
+                    } else {
+                        longestStreak = maxOf(longestStreak, tempStreak)
+                        tempStreak = 1
+                    }
+                    lastDate = date
+                }
+            }
+            longestStreak = maxOf(longestStreak, tempStreak)
+            
+            // Calculate this week's workout count
+            val startOfWeek = today.minusDays(today.dayOfWeek.value - 1L)
+            val thisWeekCount = workoutDates.count { date ->
+                !date.isBefore(startOfWeek) && !date.isAfter(today)
+            }
+            
+            StreakInfo(
+                currentStreak = currentStreak,
+                longestStreak = longestStreak,
+                weeklyTarget = 4, // Default target, could be user-configurable
+                thisWeekCount = thisWeekCount
+            )
+        } catch (e: Exception) {
+            StreakInfo(
+                currentStreak = 0,
+                longestStreak = 0,
+                weeklyTarget = 4,
+                thisWeekCount = 0
+            )
+        }
     }
 }
 

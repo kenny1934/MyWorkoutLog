@@ -185,12 +185,84 @@ fun SimpleCycleProgressWidgetCard(widget: DashboardWidget.CycleProgressWidget, n
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Cycle implementation placeholder",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Circular Progress Indicator
+                Box(
+                    modifier = Modifier.size(80.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        progress = widget.completionPercentage,
+                        modifier = Modifier.fillMaxSize(),
+                        strokeWidth = 8.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                    Text(
+                        text = "${(widget.completionPercentage * 100).toInt()}%",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                // Progress Details
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = widget.weekProgress,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = widget.sessionProgress,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Quick action button
+                    widget.nextSession?.let {
+                        ElevatedButton(
+                            onClick = { 
+                                navController.navigate("workoutLogger/${widget.cycle.cycleUuid}")
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.PlayArrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Start Next Session")
+                        }
+                    } ?: run {
+                        OutlinedButton(
+                            onClick = { 
+                                navController.navigate("analytics")
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Analytics,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("View Analytics")
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -207,11 +279,62 @@ fun SimpleActivityHeatmapWidgetCard(widget: DashboardWidget.ActivityHeatmapWidge
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Activity tracking placeholder",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Streak info
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "${widget.streakInfo.currentStreak}",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Current Streak",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "${widget.streakInfo.thisWeekCount}",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "This Week",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "${widget.streakInfo.longestStreak}",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Best Streak",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Simplified heatmap visualization
+            WorkoutHeatmapGrid(
+                workoutDays = widget.workoutDays,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
@@ -224,17 +347,100 @@ fun SimpleBodyweightTrendWidgetCard(widget: DashboardWidget.BodyweightTrendWidge
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Bodyweight Trend",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Trend analysis placeholder",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Bodyweight Trend",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                
+                TrendIndicator(
+                    trend = widget.trend,
+                    showPercentage = true
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            if (widget.bodyweightData.isNotEmpty()) {
+                // Show trend summary
+                val currentWeight = widget.bodyweightData.lastOrNull()?.weight
+                val previousWeight = widget.bodyweightData.firstOrNull()?.weight
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "${currentWeight?.toInt() ?: 0} kg",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Current",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
+                    if (currentWeight != null && previousWeight != null) {
+                        val change = currentWeight - previousWeight
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "${if (change >= 0) "+" else ""}${String.format("%.1f", change)} kg",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = when {
+                                    change > 0 -> Color(0xFF4CAF50)
+                                    change < 0 -> Color(0xFFF44336)
+                                    else -> MaterialTheme.colorScheme.onSurface
+                                }
+                            )
+                            Text(
+                                text = "Change",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "${widget.bodyweightData.size}",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Entries",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Simple trend visualization
+                BodyweightMiniChart(
+                    data = widget.bodyweightData,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(40.dp)
+                )
+            } else {
+                Text(
+                    text = "No bodyweight data available",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -341,18 +547,115 @@ fun SimpleNextSessionWidgetCard(widget: DashboardWidget.NextSessionWidget, navCo
         title = "Next Session",
         isExpandable = widget.isExpandable,
         collapsedContent = {
-            Text(
-                text = "Next session overview placeholder",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Collapsed: Show session overview
+            Column {
+                Text(
+                    text = widget.session.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = widget.session.weekLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Filled.Timer,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "${widget.estimatedDuration} min",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
+                    DifficultyBadge(difficulty = widget.difficulty)
+                }
+            }
         },
         expandedContent = {
-            Text(
-                text = "Session details placeholder",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Expanded: Show detailed session preview
+            Column {
+                // Session header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = widget.session.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = widget.session.weekLabel,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
+                    DifficultyBadge(difficulty = widget.difficulty)
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Exercise previews
+                Text(
+                    text = "Exercises (${widget.exercises.size})",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                widget.exercises.take(5).forEach { exercise ->
+                    ExercisePreviewCard(exercise = exercise)
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+                
+                if (widget.exercises.size > 5) {
+                    Text(
+                        text = "... and ${widget.exercises.size - 5} more exercises",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Start session button
+                Button(
+                    onClick = { 
+                        // Navigate to workout logger - will need to implement proper navigation
+                        navController.navigate("workoutLogger")
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Start Session")
+                }
+            }
         }
     )
 }
@@ -469,18 +772,56 @@ fun SimpleAchievementWidgetCard(widget: DashboardWidget.AchievementWidget) {
         title = "Achievements",
         isExpandable = widget.isExpandable,
         collapsedContent = {
-            Text(
-                text = "Achievements overview placeholder",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (widget.recentAchievements.isNotEmpty()) {
+                // Show the most recent achievement
+                val recentAchievement = widget.recentAchievements.first()
+                AchievementCard(
+                    achievement = recentAchievement,
+                    isCompact = true
+                )
+            } else {
+                Text(
+                    text = "Keep training to unlock achievements!",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         },
         expandedContent = {
-            Text(
-                text = "Achievement details placeholder",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Recent achievements
+                if (widget.recentAchievements.isNotEmpty()) {
+                    Text(
+                        text = "Recent Achievements",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    
+                    widget.recentAchievements.forEach { achievement ->
+                        AchievementCard(
+                            achievement = achievement,
+                            isCompact = false
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                
+                // Next milestone
+                widget.nextMilestone?.let { milestone ->
+                    Text(
+                        text = "Next Milestone",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    
+                    MilestoneCard(milestone = milestone)
+                }
+            }
         }
     )
 }
