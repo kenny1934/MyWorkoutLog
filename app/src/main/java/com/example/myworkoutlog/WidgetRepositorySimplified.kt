@@ -562,146 +562,62 @@ class WidgetRepositorySimplified(
                 .take(3)
                 .map { it.key to it.value.first }
             
-            // Calculate progress for each exercise
+            // Use Analytics methods for consistent trend calculation
             topExercises.mapNotNull { (exerciseId, exerciseName) ->
-                calculateExerciseProgress(exerciseId, exerciseName, workouts)
+                convertAnalyticsTrendToExerciseProgress(exerciseId, exerciseName)
             }
         } catch (e: Exception) {
             emptyList()
         }
     }
     
-    private fun calculateExerciseProgress(
-        exerciseId: String, 
-        exerciseName: String, 
-        workouts: List<LoggedWorkout>
+    private suspend fun convertAnalyticsTrendToExerciseProgress(
+        exerciseId: String,
+        exerciseName: String
     ): ExerciseProgress? {
-        try {
-            val exerciseWorkouts = workouts.filter { workout ->
-                workout.loggedExercises.any { it.exerciseId == exerciseId }
-            }.sortedBy { it.date }
+        return try {
+            // Use Analytics repository for consistent trend calculation
+            val performanceTrend = analyticsRepository.getExercisePerformanceTrend(exerciseId).first()
             
-            if (exerciseWorkouts.size < 2) return null
-            
-            // Get recent and previous best performances - more flexible for small datasets
-            val recentWorkouts = exerciseWorkouts.takeLast(kotlin.math.max(1, exerciseWorkouts.size / 2))
-            val previousWorkouts = exerciseWorkouts.dropLast(recentWorkouts.size)
-            
-            if (previousWorkouts.isEmpty()) {
-                // For very small datasets, compare first half vs second half
-                val mid = exerciseWorkouts.size / 2
-                val firstHalf = exerciseWorkouts.take(mid)
-                val secondHalf = exerciseWorkouts.drop(mid)
+            performanceTrend?.let { trend ->
+                // Extract current and previous performance from Analytics data
+                val dataPoints = trend.dataPoints.sortedBy { it.date }
+                if (dataPoints.size < 2) return null
                 
-                if (firstHalf.isEmpty() || secondHalf.isEmpty()) return null
+                val currentPoint = dataPoints.last()
+                val previousPoint = dataPoints[dataPoints.size - 2]
                 
-                val recentBest = findBestPerformance(secondHalf, exerciseId)
-                val previousBest = findBestPerformance(firstHalf, exerciseId)
+                val currentMax = currentPoint.estimated1RM?.toFloat() ?: currentPoint.bestWeight?.toFloat() ?: 0f
+                val previousMax = previousPoint.estimated1RM?.toFloat() ?: previousPoint.bestWeight?.toFloat() ?: 0f
                 
-                if (recentBest == null || previousBest == null) return null
+                if (currentMax == 0f || previousMax == 0f) return null
                 
-                val improvement = ((recentBest - previousBest) / previousBest) * 100
+                val improvementPercentage = ((currentMax - previousMax) / previousMax) * 100
                 
-                val trendDirection = when {
-                    improvement > 5f -> TrendDirection.STRONGLY_IMPROVING
-                    improvement > 1f -> TrendDirection.SLIGHTLY_IMPROVING
-                    improvement < -5f -> TrendDirection.STRONGLY_DECLINING
-                    improvement < -1f -> TrendDirection.SLIGHTLY_DECLINING
-                    else -> TrendDirection.STABLE
-                }
-                
-                return ExerciseProgress(
+                ExerciseProgress(
                     exerciseName = exerciseName,
-                    currentMax = recentBest,
-                    previousMax = previousBest,
-                    improvementPercentage = improvement,
+                    currentMax = currentMax,
+                    previousMax = previousMax,
+                    improvementPercentage = improvementPercentage,
                     trend = ProgressTrend(
-                        direction = trendDirection,
-                        percentage = kotlin.math.abs(improvement),
-                        description = when (trendDirection) {
+                        direction = trend.trendDirection,
+                        percentage = kotlin.math.abs(improvementPercentage),
+                        description = when (trend.trendDirection) {
                             TrendDirection.STRONGLY_IMPROVING -> "Great progress!"
                             TrendDirection.SLIGHTLY_IMPROVING -> "Steady gains"
                             TrendDirection.STRONGLY_DECLINING -> "Needs attention"
                             TrendDirection.SLIGHTLY_DECLINING -> "Slight decline"
-                            else -> "Maintaining"
+                            TrendDirection.STABLE -> "Maintaining"
+                            else -> "Insufficient data"
                         }
                     )
                 )
             }
-            
-            val recentBest = findBestPerformance(recentWorkouts, exerciseId)
-            val previousBest = findBestPerformance(previousWorkouts, exerciseId)
-            
-            if (recentBest == null || previousBest == null) return null
-            
-            val improvement = ((recentBest - previousBest) / previousBest) * 100
-            
-            val trendDirection = when {
-                improvement > 5f -> TrendDirection.STRONGLY_IMPROVING
-                improvement > 1f -> TrendDirection.SLIGHTLY_IMPROVING
-                improvement < -5f -> TrendDirection.STRONGLY_DECLINING
-                improvement < -1f -> TrendDirection.SLIGHTLY_DECLINING
-                else -> TrendDirection.STABLE
-            }
-            
-            return ExerciseProgress(
-                exerciseName = exerciseName,
-                currentMax = recentBest,
-                previousMax = previousBest,
-                improvementPercentage = improvement,
-                trend = ProgressTrend(
-                    direction = trendDirection,
-                    percentage = kotlin.math.abs(improvement),
-                    description = when (trendDirection) {
-                        TrendDirection.STRONGLY_IMPROVING -> "Great progress!"
-                        TrendDirection.SLIGHTLY_IMPROVING -> "Steady gains"
-                        TrendDirection.STRONGLY_DECLINING -> "Needs attention"
-                        TrendDirection.SLIGHTLY_DECLINING -> "Slight decline"
-                        else -> "Maintaining"
-                    }
-                )
-            )
         } catch (e: Exception) {
-            return null
+            null
         }
     }
     
-    private fun findBestPerformance(workouts: List<LoggedWorkout>, exerciseId: String): Float? {
-        var bestEstimated1RM = 0f
-        var bestReps = 0 // For bodyweight exercises without external weight
-        var hasWeightedSets = false
-        
-        workouts.forEach { workout ->
-            workout.loggedExercises.forEach { exercise ->
-                if (exercise.exerciseId == exerciseId) {
-                    exercise.sets.forEach { set ->
-                        if (set.reps != null && set.reps!! > 0) {
-                            if (set.weight != null && set.weight!! > 0) {
-                                // Weighted exercise: use 1RM estimation
-                                hasWeightedSets = true
-                                val estimated1RM = set.weight!! * (1 + set.reps!! / 30f)
-                                if (estimated1RM > bestEstimated1RM) {
-                                    bestEstimated1RM = estimated1RM.toFloat()
-                                }
-                            } else {
-                                // Bodyweight exercise: track best reps
-                                if (set.reps!! > bestReps) {
-                                    bestReps = set.reps!!
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Return best performance: prioritize weighted sets, fall back to reps for bodyweight
-        return when {
-            hasWeightedSets && bestEstimated1RM > 0 -> bestEstimated1RM
-            !hasWeightedSets && bestReps > 0 -> bestReps.toFloat()
-            else -> null
-        }
-    }
     
     private suspend fun calculateOverallVolumeTrend(): ProgressTrend {
         return try {
@@ -953,41 +869,10 @@ class WidgetRepositorySimplified(
     
     private suspend fun getWeeklyVolumeData(): List<VolumeDataPoint> {
         return try {
-            val workouts = loggedWorkoutDao.getAllLoggedWorkouts().first()
-            if (workouts.isEmpty()) return emptyList()
-            
-            // Group workouts by week and calculate weekly volume
-            val weeklyVolumeMap = mutableMapOf<String, Double>()
-            val dateFormatter = java.time.format.DateTimeFormatter.ISO_LOCAL_DATE
-            
-            workouts.forEach { workout ->
-                try {
-                    val workoutDate = java.time.LocalDate.parse(workout.date, dateFormatter)
-                    // Get the start of the week (Monday)
-                    val weekStart = workoutDate.minusDays(workoutDate.dayOfWeek.value - 1L)
-                    val weekKey = weekStart.format(dateFormatter)
-                    
-                    val workoutVolume = workout.loggedExercises.sumOf { exercise ->
-                        exercise.sets.sumOf { set ->
-                            (set.weight ?: 0.0) * (set.reps ?: 0)
-                        }
-                    }
-                    
-                    weeklyVolumeMap[weekKey] = (weeklyVolumeMap[weekKey] ?: 0.0) + workoutVolume
-                } catch (e: Exception) {
-                    // Skip workouts with invalid dates
-                }
-            }
-            
-            // Convert to VolumeDataPoint list and sort by date
-            weeklyVolumeMap.map { (weekStart, volume) ->
-                VolumeDataPoint(
-                    date = weekStart,
-                    totalVolume = volume,
-                    workoutName = "Weekly Total",
-                    cycleId = null
-                )
-            }.sortedBy { it.date }.takeLast(8) // Last 8 weeks
+            // Use Analytics repository for consistent volume calculation
+            val endDate = LocalDate.now()
+            val startDate = endDate.minusWeeks(8) // Last 8 weeks
+            analyticsRepository.getVolumeData(startDate, endDate)
         } catch (e: Exception) {
             emptyList()
         }
