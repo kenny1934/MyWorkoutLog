@@ -121,43 +121,78 @@ fun EnhancedInteractivePerformanceChart(
         
         Spacer(modifier = Modifier.height(8.dp))
         
-        // Enhanced performance chart - using working Analytics pattern
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .clickable { 
-                    if (enableDrillDown) {
-                        navController.navigate("analytics")
-                    }
-                },
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        // Enhanced performance display - cleaner card layout for multiple exercises
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Box(modifier = Modifier.padding(16.dp)) {
-                Chart(
-                    chart = columnChart(),
-                    chartModelProducer = chartEntryModelProducer,
-                    startAxis = rememberStartAxis(title = "Improvement (%)"),
-                    bottomAxis = rememberBottomAxis(
-                        title = "Exercises",
-                        valueFormatter = { value, _ ->
-                            val index = value.toInt()
-                            if (index < strengthGains.size) {
-                                strengthGains[index].exerciseName.take(8) // Truncate long names
-                            } else {
-                                "Exercise ${index + 1}"
+            strengthGains.take(5).forEach { gain ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            if (enableDrillDown) {
+                                navController.navigate("analytics")
                             }
-                        }
+                        },
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                     ),
-                    modifier = Modifier.height(200.dp),
-                    chartScrollState = chartScrollState
-                )
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = gain.exerciseName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "${gain.previousMax.toInt()}kg → ${gain.currentMax.toInt()}kg",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "${if (gain.improvementPercentage >= 0) "+" else ""}${gain.improvementPercentage.toInt()}%",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = if (gain.improvementPercentage >= 0) 
+                                    MaterialTheme.colorScheme.primary 
+                                else 
+                                    MaterialTheme.colorScheme.error
+                            )
+                            Icon(
+                                imageVector = if (gain.improvementPercentage >= 0) 
+                                    Icons.Default.TrendingUp 
+                                else 
+                                    Icons.Default.TrendingDown,
+                                contentDescription = null,
+                                tint = if (gain.improvementPercentage >= 0) 
+                                    MaterialTheme.colorScheme.primary 
+                                else 
+                                    MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
         
         if (strengthGains.isNotEmpty()) {
             Text(
-                text = "Tap chart to view detailed analytics",
+                text = "Tap to see all ${strengthGains.size} exercises",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
