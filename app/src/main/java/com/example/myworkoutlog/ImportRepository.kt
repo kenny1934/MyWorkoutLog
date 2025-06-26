@@ -1128,6 +1128,8 @@ class ImportRepository(
                     val existing = allTemplates.find { it.name == template.name }
                     if (existing != null) {
                         skipped++
+                        // Add debug info for template skipping
+                        errorMessages.add("Skipped duplicate template: ${template.name} (ID: ${template.id})")
                         return@forEach
                     }
                 }
