@@ -40,6 +40,7 @@ import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
 import com.patrykandpatrick.vico.compose.chart.line.lineChart
+import com.patrykandpatrick.vico.compose.chart.scroll.rememberChartScrollState
 import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
 import com.patrykandpatrick.vico.core.entry.entryOf
 import com.patrykandpatrick.vico.core.axis.formatter.AxisValueFormatter
@@ -57,6 +58,7 @@ fun EnhancedInteractivePerformanceChart(
     enableDrillDown: Boolean = true
 ) {
     val chartEntryModelProducer = remember { ChartEntryModelProducer() }
+    val chartScrollState = rememberChartScrollState()
     
     // Convert real exercise data to chart entries
     val chartEntries = if (strengthGains.isNotEmpty()) {
@@ -136,7 +138,8 @@ fun EnhancedInteractivePerformanceChart(
                     chartModelProducer = chartEntryModelProducer,
                     startAxis = rememberStartAxis(title = "Weight (kg)"),
                     bottomAxis = rememberBottomAxis(title = "Exercise Progress"),
-                    modifier = Modifier.height(200.dp)
+                    modifier = Modifier.height(200.dp),
+                    chartScrollState = chartScrollState
                 )
             }
         }
@@ -161,6 +164,7 @@ fun EnhancedInteractiveVolumeChart(
     showComparison: Boolean = false
 ) {
     val chartEntryModelProducer = remember { ChartEntryModelProducer() }
+    val chartScrollState = rememberChartScrollState()
     
     // Convert volume data to chart entries
     val chartEntries = if (volumeData.isNotEmpty()) {
@@ -251,7 +255,8 @@ fun EnhancedInteractiveVolumeChart(
                     chartModelProducer = chartEntryModelProducer,
                     startAxis = rememberStartAxis(title = "Volume (kg)"),
                     bottomAxis = rememberBottomAxis(title = "Weeks"),
-                    modifier = Modifier.height(200.dp)
+                    modifier = Modifier.height(200.dp),
+                    chartScrollState = chartScrollState
                 )
             }
         }

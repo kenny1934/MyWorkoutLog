@@ -583,11 +583,51 @@ class WidgetRepositorySimplified(
             
             if (exerciseWorkouts.size < 2) return null
             
-            // Get recent and previous best performances
-            val recentWorkouts = exerciseWorkouts.takeLast(5)
-            val previousWorkouts = exerciseWorkouts.dropLast(5).takeLast(5)
+            // Get recent and previous best performances - more flexible for small datasets
+            val recentWorkouts = exerciseWorkouts.takeLast(kotlin.math.max(1, exerciseWorkouts.size / 2))
+            val previousWorkouts = exerciseWorkouts.dropLast(recentWorkouts.size)
             
-            if (previousWorkouts.isEmpty()) return null
+            if (previousWorkouts.isEmpty()) {
+                // For very small datasets, compare first half vs second half
+                val mid = exerciseWorkouts.size / 2
+                val firstHalf = exerciseWorkouts.take(mid)
+                val secondHalf = exerciseWorkouts.drop(mid)
+                
+                if (firstHalf.isEmpty() || secondHalf.isEmpty()) return null
+                
+                val recentBest = findBestPerformance(secondHalf, exerciseId)
+                val previousBest = findBestPerformance(firstHalf, exerciseId)
+                
+                if (recentBest == null || previousBest == null) return null
+                
+                val improvement = ((recentBest - previousBest) / previousBest) * 100
+                
+                val trendDirection = when {
+                    improvement > 5f -> TrendDirection.STRONGLY_IMPROVING
+                    improvement > 1f -> TrendDirection.SLIGHTLY_IMPROVING
+                    improvement < -5f -> TrendDirection.STRONGLY_DECLINING
+                    improvement < -1f -> TrendDirection.SLIGHTLY_DECLINING
+                    else -> TrendDirection.STABLE
+                }
+                
+                return ExerciseProgress(
+                    exerciseName = exerciseName,
+                    currentMax = recentBest,
+                    previousMax = previousBest,
+                    improvementPercentage = improvement,
+                    trend = ProgressTrend(
+                        direction = trendDirection,
+                        percentage = kotlin.math.abs(improvement),
+                        description = when (trendDirection) {
+                            TrendDirection.STRONGLY_IMPROVING -> "Great progress!"
+                            TrendDirection.SLIGHTLY_IMPROVING -> "Steady gains"
+                            TrendDirection.STRONGLY_DECLINING -> "Needs attention"
+                            TrendDirection.SLIGHTLY_DECLINING -> "Slight decline"
+                            else -> "Maintaining"
+                        }
+                    )
+                )
+            }
             
             val recentBest = findBestPerformance(recentWorkouts, exerciseId)
             val previousBest = findBestPerformance(previousWorkouts, exerciseId)
@@ -628,16 +668,26 @@ class WidgetRepositorySimplified(
     
     private fun findBestPerformance(workouts: List<LoggedWorkout>, exerciseId: String): Float? {
         var bestEstimated1RM = 0f
+        var bestReps = 0 // For bodyweight exercises without external weight
+        var hasWeightedSets = false
         
         workouts.forEach { workout ->
             workout.loggedExercises.forEach { exercise ->
                 if (exercise.exerciseId == exerciseId) {
                     exercise.sets.forEach { set ->
-                        if (set.weight != null && set.reps != null && set.reps!! > 0) {
-                            // Simple 1RM estimation: weight * (1 + reps/30)
-                            val estimated1RM = set.weight!! * (1 + set.reps!! / 30f)
-                            if (estimated1RM > bestEstimated1RM) {
-                                bestEstimated1RM = estimated1RM.toFloat()
+                        if (set.reps != null && set.reps!! > 0) {
+                            if (set.weight != null && set.weight!! > 0) {
+                                // Weighted exercise: use 1RM estimation
+                                hasWeightedSets = true
+                                val estimated1RM = set.weight!! * (1 + set.reps!! / 30f)
+                                if (estimated1RM > bestEstimated1RM) {
+                                    bestEstimated1RM = estimated1RM.toFloat()
+                                }
+                            } else {
+                                // Bodyweight exercise: track best reps
+                                if (set.reps!! > bestReps) {
+                                    bestReps = set.reps!!
+                                }
                             }
                         }
                     }
@@ -645,7 +695,12 @@ class WidgetRepositorySimplified(
             }
         }
         
-        return if (bestEstimated1RM > 0) bestEstimated1RM else null
+        // Return best performance: prioritize weighted sets, fall back to reps for bodyweight
+        return when {
+            hasWeightedSets && bestEstimated1RM > 0 -> bestEstimated1RM
+            !hasWeightedSets && bestReps > 0 -> bestReps.toFloat()
+            else -> null
+        }
     }
     
     private suspend fun calculateOverallVolumeTrend(): ProgressTrend {
