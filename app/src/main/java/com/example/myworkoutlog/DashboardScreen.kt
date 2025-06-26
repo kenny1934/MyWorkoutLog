@@ -549,12 +549,13 @@ fun SimplePerformanceTrendWidgetCard(
             }
         },
         expandedContent = {
-            // Expanded: Show all exercises with enhanced interactive chart
+            // Expanded: Show enhanced interactive chart only (no duplicate cards)
             Column {
                 Text(
                     text = "Performance Breakdown",
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 
@@ -566,17 +567,6 @@ fun SimplePerformanceTrendWidgetCard(
                     showTooltips = true,
                     enableDrillDown = true
                 )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Detailed exercise breakdown
-                widget.strengthGains.forEach { exercise ->
-                    ExercisePerformanceCard(
-                        exercise = exercise,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
             }
         }
     )
