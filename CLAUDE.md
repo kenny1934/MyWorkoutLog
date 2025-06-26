@@ -47,12 +47,13 @@
 9. **Chart Direction Bug**: Corrected trend line and bar chart direction to match improvement calculations
 10. **Chart X-Axis Labels**: Added proper exercise names instead of index numbers for better readability
 11. **Multiple Exercise Display**: Replaced bar chart with card-based layout for clearer multi-exercise visualization
+12. **Duplicate Widget Content**: Fixed expandable performance widget showing same exercise data twice in collapsed+expanded states
 
 **WorkoutTemplate Import (RESOLVED)**:
-12. **Unknown Template Display**: Added comprehensive WorkoutTemplate import support to ImportRepository
-13. **Missing Sample Templates**: Enhanced sample_calisthenics_data.json with calisthenics workout templates
-14. **Program Template Integration**: Added proper program templates that reference workout templates
-15. **Import Data Type Support**: Added WORKOUT_TEMPLATES enum support throughout import system
+13. **Unknown Template Display**: Added comprehensive WorkoutTemplate import support to ImportRepository
+14. **Missing Sample Templates**: Enhanced sample_calisthenics_data.json with calisthenics workout templates
+15. **Program Template Integration**: Added proper program templates that reference workout templates
+16. **Import Data Type Support**: Added WORKOUT_TEMPLATES enum support throughout import system
 
 **All Issues Resolved**: Dashboard uses clear card-based visualization, shows correct trends, import includes workout templates, program blueprints display proper session names
 
