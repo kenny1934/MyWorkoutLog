@@ -209,7 +209,7 @@ class CloudBackupRepository(
                     validateBeforeImport = true
                 )
                 
-                val importResult = importRepository.importData(importOptions)
+                val importResult = importRepository.importData(context, importOptions)
                 
                 emit(CloudResult.Loading(1.0f))
                 

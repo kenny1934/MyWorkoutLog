@@ -1,5 +1,7 @@
 package com.example.myworkoutlog
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -13,6 +15,7 @@ import kotlinx.coroutines.withContext
 data class ImportUiState(
     val isLoading: Boolean = false,
     val selectedFile: String? = null,
+    val selectedUri: Uri? = null,
     val importMode: ImportMode = ImportMode.MERGE,
     val dataType: ImportDataType = ImportDataType.AUTO_DETECT,
     val skipDuplicates: Boolean = true,
@@ -45,7 +48,8 @@ enum class ImportStage {
 }
 
 class ImportViewModel(
-    private val importRepository: ImportRepository
+    private val importRepository: ImportRepository,
+    private val context: Context
 ) : ViewModel() {
 
     // --- UI State ---
@@ -54,9 +58,24 @@ class ImportViewModel(
 
     // --- UI Actions ---
 
-    fun selectFile(filePath: String) {
+    fun selectFile(uri: Uri) {
+        // Get display name for UI
+        val displayName = try {
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (nameIndex != -1 && cursor.moveToFirst()) {
+                    cursor.getString(nameIndex)
+                } else {
+                    uri.toString()
+                }
+            } ?: uri.toString()
+        } catch (e: Exception) {
+            uri.toString()
+        }
+        
         _uiState.value = _uiState.value.copy(
-            selectedFile = filePath,
+            selectedFile = displayName,
+            selectedUri = uri,
             importSummary = null,
             validationReport = null,
             importResult = null,
@@ -102,7 +121,7 @@ class ImportViewModel(
     // --- File Operations ---
 
     private fun validateFile() {
-        val filePath = _uiState.value.selectedFile ?: return
+        val uri = _uiState.value.selectedUri ?: return
         
         _uiState.value = _uiState.value.copy(
             isLoading = true,
@@ -113,12 +132,12 @@ class ImportViewModel(
         viewModelScope.launch {
             try {
                 val validationReport = withContext(Dispatchers.IO) {
-                    importRepository.validateImportFile(filePath, _uiState.value.dataType)
+                    importRepository.validateImportFile(context, uri, _uiState.value.dataType)
                 }
 
                 val importSummary = if (validationReport.isValid) {
                     withContext(Dispatchers.IO) {
-                        importRepository.getImportSummary(filePath)
+                        importRepository.getImportSummary(context, uri)
                     }
                 } else null
 
@@ -144,9 +163,9 @@ class ImportViewModel(
 
     fun performImport() {
         val currentState = _uiState.value
-        val filePath = currentState.selectedFile
+        val uri = currentState.selectedUri
         
-        if (filePath == null) {
+        if (uri == null) {
             _uiState.value = currentState.copy(error = "No file selected")
             return
         }
@@ -173,14 +192,14 @@ class ImportViewModel(
                 val importOptions = ImportOptions(
                     mode = currentState.importMode,
                     dataType = currentState.dataType,
-                    filePath = filePath,
+                    uri = uri,
                     allowSchemaUpgrade = currentState.allowSchemaUpgrade,
                     skipDuplicates = currentState.skipDuplicates,
                     validateBeforeImport = true
                 )
 
                 val result = withContext(Dispatchers.IO) {
-                    importRepository.importData(importOptions)
+                    importRepository.importData(context, importOptions)
                 }
 
                 // Update progress to completed
@@ -219,9 +238,9 @@ class ImportViewModel(
 
     fun validateOnly() {
         val currentState = _uiState.value
-        val filePath = currentState.selectedFile
+        val uri = currentState.selectedUri
         
-        if (filePath == null) {
+        if (uri == null) {
             _uiState.value = currentState.copy(error = "No file selected")
             return
         }
@@ -237,14 +256,14 @@ class ImportViewModel(
                 val importOptions = ImportOptions(
                     mode = ImportMode.VALIDATE_ONLY,
                     dataType = currentState.dataType,
-                    filePath = filePath,
+                    uri = uri,
                     allowSchemaUpgrade = currentState.allowSchemaUpgrade,
                     skipDuplicates = currentState.skipDuplicates,
                     validateBeforeImport = true
                 )
 
                 val result = withContext(Dispatchers.IO) {
-                    importRepository.importData(importOptions)
+                    importRepository.importData(context, importOptions)
                 }
 
                 _uiState.value = currentState.copy(
@@ -335,12 +354,13 @@ data class FileInfo(
 
 // Factory for creating ImportViewModel
 class ImportViewModelFactory(
-    private val importRepository: ImportRepository
+    private val importRepository: ImportRepository,
+    private val context: Context
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ImportViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ImportViewModel(importRepository) as T
+            return ImportViewModel(importRepository, context) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

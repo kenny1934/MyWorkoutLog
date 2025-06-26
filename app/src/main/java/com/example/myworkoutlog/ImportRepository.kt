@@ -1,5 +1,7 @@
 package com.example.myworkoutlog
 
+import android.content.Context
+import android.net.Uri
 import kotlinx.coroutines.flow.first
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
@@ -7,6 +9,7 @@ import com.google.gson.reflect.TypeToken
 import java.io.File
 import java.io.FileReader
 import java.io.BufferedReader
+import java.io.InputStreamReader
 
 // Import modes
 enum class ImportMode {
@@ -57,7 +60,8 @@ enum class IssueType {
 data class ImportOptions(
     val mode: ImportMode,
     val dataType: ImportDataType = ImportDataType.AUTO_DETECT,
-    val filePath: String,
+    val filePath: String? = null,
+    val uri: Uri? = null,
     val allowSchemaUpgrade: Boolean = true,
     val skipDuplicates: Boolean = true,
     val validateBeforeImport: Boolean = true
@@ -73,12 +77,89 @@ class ImportRepository(
 
     private val gson = Gson()
 
+    // Helper methods for file/URI handling
+    private fun createReader(context: Context?, filePath: String?, uri: Uri?): BufferedReader {
+        return when {
+            uri != null && context != null -> {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                    ?: throw Exception("Cannot open URI: $uri")
+                BufferedReader(InputStreamReader(inputStream))
+            }
+            filePath != null -> {
+                val file = File(filePath)
+                if (!file.exists()) {
+                    throw Exception("File not found: $filePath")
+                }
+                BufferedReader(FileReader(file))
+            }
+            else -> throw Exception("No valid file path or URI provided")
+        }
+    }
+
+    private fun createTempFileFromUri(context: Context, uri: Uri): File {
+        val tempFile = File.createTempFile("import_", ".json", context.cacheDir)
+        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+            tempFile.outputStream().use { outputStream ->
+                inputStream.copyTo(outputStream)
+            }
+        } ?: throw Exception("Cannot read from URI: $uri")
+        return tempFile
+    }
+
     // MAIN IMPORT FUNCTIONS
 
-    suspend fun importData(options: ImportOptions): ImportResult {
+    // URI-based validation method
+    suspend fun validateImportFile(context: Context, uri: Uri, expectedType: ImportDataType = ImportDataType.AUTO_DETECT): ValidationReport {
+        return try {
+            // Get file name/extension from URI
+            val fileName = try {
+                context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex != -1 && cursor.moveToFirst()) {
+                        cursor.getString(nameIndex)
+                    } else {
+                        null
+                    }
+                }
+            } catch (e: Exception) {
+                null
+            } ?: uri.toString()
+
+            when {
+                fileName.endsWith(".json", ignoreCase = true) -> validateJSONFile(context, uri, expectedType)
+                fileName.endsWith(".csv", ignoreCase = true) -> validateCSVFile(context, uri, expectedType)
+                else -> ValidationReport(
+                    isValid = false,
+                    dataType = ImportDataType.AUTO_DETECT,
+                    totalRecords = 0,
+                    schemaVersion = null,
+                    appVersion = null,
+                    exportDate = null,
+                    issues = listOf(ValidationIssue(IssueType.ERROR, "Unsupported file format. Only JSON and CSV are supported."))
+                )
+            }
+
+        } catch (e: Exception) {
+            ValidationReport(
+                isValid = false,
+                dataType = ImportDataType.AUTO_DETECT,
+                totalRecords = 0,
+                schemaVersion = null,
+                appVersion = null,
+                exportDate = null,
+                issues = listOf(ValidationIssue(IssueType.ERROR, "Validation failed: ${e.message}"))
+            )
+        }
+    }
+
+    suspend fun importData(context: Context, options: ImportOptions): ImportResult {
         return try {
             // First validate the file
-            val validationResult = validateImportFile(options.filePath, options.dataType)
+            val validationResult = when {
+                options.uri != null -> validateImportFile(context, options.uri, options.dataType)
+                options.filePath != null -> validateImportFile(options.filePath, options.dataType)
+                else -> return ImportResult(success = false, errors = listOf("No file path or URI provided"))
+            }
             
             if (!validationResult.isValid) {
                 return ImportResult(
@@ -98,12 +179,20 @@ class ImportRepository(
             }
 
             // Perform the actual import
+            val importOptions = if (options.uri != null && options.filePath == null) {
+                // Convert URI to temporary file path for existing import methods
+                val tempFile = createTempFileFromUri(context, options.uri)
+                options.copy(filePath = tempFile.absolutePath)
+            } else {
+                options
+            }
+            
             when (validationResult.dataType) {
-                ImportDataType.WORKOUTS -> importWorkouts(options)
-                ImportDataType.EXERCISES -> importExercises(options)
-                ImportDataType.PERSONAL_RECORDS -> importPersonalRecords(options)
-                ImportDataType.PROGRAM_TEMPLATES -> importProgramTemplates(options)
-                ImportDataType.COMPLETE_BACKUP -> importCompleteBackup(options)
+                ImportDataType.WORKOUTS -> importWorkouts(importOptions)
+                ImportDataType.EXERCISES -> importExercises(importOptions)
+                ImportDataType.PERSONAL_RECORDS -> importPersonalRecords(importOptions)
+                ImportDataType.PROGRAM_TEMPLATES -> importProgramTemplates(importOptions)
+                ImportDataType.COMPLETE_BACKUP -> importCompleteBackup(importOptions)
                 ImportDataType.AUTO_DETECT -> {
                     return ImportResult(
                         success = false,
@@ -250,6 +339,106 @@ class ImportRepository(
         }
     }
 
+    // URI-based JSON validation method
+    private fun validateJSONFile(context: Context, uri: Uri, expectedType: ImportDataType): ValidationReport {
+        return try {
+            val jsonContent = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                inputStream.bufferedReader().readText()
+            } ?: throw Exception("Cannot read from URI: $uri")
+            
+            val jsonObject = gson.fromJson(jsonContent, Map::class.java) as Map<String, Any>
+            
+            // Extract metadata
+            val metadata = jsonObject["metadata"] as? Map<String, Any>
+            val exportType = metadata?.get("exportType") as? String
+            val schemaVersion = metadata?.get("schemaVersion") as? String
+            val appVersion = metadata?.get("appVersion") as? String
+            val exportDate = metadata?.get("exportDate") as? String
+            
+            // Determine data type
+            val detectedType = when (exportType) {
+                "workouts" -> ImportDataType.WORKOUTS
+                "exercises" -> ImportDataType.EXERCISES
+                "personal_records" -> ImportDataType.PERSONAL_RECORDS
+                "program_templates" -> ImportDataType.PROGRAM_TEMPLATES
+                "complete_backup" -> ImportDataType.COMPLETE_BACKUP
+                else -> ImportDataType.AUTO_DETECT
+            }
+
+            // Validate data type matches expected
+            val issues = mutableListOf<ValidationIssue>()
+            if (expectedType != ImportDataType.AUTO_DETECT && detectedType != expectedType) {
+                issues.add(ValidationIssue(
+                    IssueType.WARNING,
+                    "Expected $expectedType but found $detectedType"
+                ))
+            }
+
+            // Check schema version compatibility
+            val currentSchemaVersion = "19"
+            if (schemaVersion != null && schemaVersion != currentSchemaVersion) {
+                if (schemaVersion.toIntOrNull() ?: 0 > currentSchemaVersion.toInt()) {
+                    issues.add(ValidationIssue(
+                        IssueType.ERROR,
+                        "Schema version $schemaVersion is newer than supported version $currentSchemaVersion"
+                    ))
+                } else {
+                    issues.add(ValidationIssue(
+                        IssueType.WARNING,
+                        "Schema version $schemaVersion is older than current version $currentSchemaVersion. Data migration may be required."
+                    ))
+                }
+            }
+
+            // Count records
+            val recordCount = when (detectedType) {
+                ImportDataType.WORKOUTS -> (jsonObject["workouts"] as? List<*>)?.size ?: 0
+                ImportDataType.EXERCISES -> (jsonObject["exercises"] as? List<*>)?.size ?: 0
+                ImportDataType.PERSONAL_RECORDS -> (jsonObject["personalRecords"] as? List<*>)?.size ?: 0
+                ImportDataType.PROGRAM_TEMPLATES -> (jsonObject["programTemplates"] as? List<*>)?.size ?: 0
+                ImportDataType.COMPLETE_BACKUP -> {
+                    val workouts = (jsonObject["workouts"] as? List<*>)?.size ?: 0
+                    val exercises = (jsonObject["exercises"] as? List<*>)?.size ?: 0
+                    val prs = (jsonObject["personalRecords"] as? List<*>)?.size ?: 0
+                    val programs = (jsonObject["programTemplates"] as? List<*>)?.size ?: 0
+                    workouts + exercises + prs + programs
+                }
+                else -> 0
+            }
+
+            ValidationReport(
+                isValid = issues.none { it.type == IssueType.ERROR },
+                dataType = detectedType,
+                totalRecords = recordCount,
+                schemaVersion = schemaVersion,
+                appVersion = appVersion,
+                exportDate = exportDate,
+                issues = issues
+            )
+
+        } catch (e: JsonSyntaxException) {
+            ValidationReport(
+                isValid = false,
+                dataType = ImportDataType.AUTO_DETECT,
+                totalRecords = 0,
+                schemaVersion = null,
+                appVersion = null,
+                exportDate = null,
+                issues = listOf(ValidationIssue(IssueType.ERROR, "Invalid JSON format: ${e.message}"))
+            )
+        } catch (e: Exception) {
+            ValidationReport(
+                isValid = false,
+                dataType = ImportDataType.AUTO_DETECT,
+                totalRecords = 0,
+                schemaVersion = null,
+                appVersion = null,
+                exportDate = null,
+                issues = listOf(ValidationIssue(IssueType.ERROR, "Validation failed: ${e.message}"))
+            )
+        }
+    }
+
     private fun validateCSVFile(file: File, expectedType: ImportDataType): ValidationReport {
         return try {
             val reader = BufferedReader(FileReader(file))
@@ -293,6 +482,50 @@ class ImportRepository(
                 } else {
                     emptyList()
                 }
+            )
+
+        } catch (e: Exception) {
+            ValidationReport(
+                isValid = false,
+                dataType = ImportDataType.AUTO_DETECT,
+                totalRecords = 0,
+                schemaVersion = null,
+                appVersion = null,
+                exportDate = null,
+                issues = listOf(ValidationIssue(IssueType.ERROR, "CSV validation failed: ${e.message}"))
+            )
+        }
+    }
+
+    // URI-based CSV validation method  
+    private fun validateCSVFile(context: Context, uri: Uri, expectedType: ImportDataType): ValidationReport {
+        return try {
+            val firstLine = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                inputStream.bufferedReader().readLine()
+            } ?: throw Exception("Cannot read from URI: $uri")
+
+            if (firstLine.isBlank()) {
+                return ValidationReport(
+                    isValid = false,
+                    dataType = ImportDataType.AUTO_DETECT,
+                    totalRecords = 0,
+                    schemaVersion = null,
+                    appVersion = null,
+                    exportDate = null,
+                    issues = listOf(ValidationIssue(IssueType.ERROR, "CSV file appears to be empty"))
+                )
+            }
+
+            // For CSV validation, we do basic format checking
+            // More sophisticated CSV validation could be added here
+            ValidationReport(
+                isValid = true,
+                dataType = expectedType,
+                totalRecords = 1, // CSV validation doesn't count all records to avoid loading entire file
+                schemaVersion = null,
+                appVersion = null,
+                exportDate = null,
+                issues = listOf(ValidationIssue(IssueType.INFO, "CSV format detected, detailed validation will occur during import"))
             )
 
         } catch (e: Exception) {
@@ -807,6 +1040,27 @@ class ImportRepository(
     suspend fun getImportSummary(filePath: String): ImportSummary? {
         return try {
             val validation = validateImportFile(filePath)
+            if (validation.isValid) {
+                ImportSummary(
+                    dataType = validation.dataType,
+                    totalRecords = validation.totalRecords,
+                    schemaVersion = validation.schemaVersion,
+                    appVersion = validation.appVersion,
+                    exportDate = validation.exportDate,
+                    isCompatible = validation.issues.none { it.type == IssueType.ERROR }
+                )
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // URI-based import summary method
+    suspend fun getImportSummary(context: Context, uri: Uri): ImportSummary? {
+        return try {
+            val validation = validateImportFile(context, uri)
             if (validation.isValid) {
                 ImportSummary(
                     dataType = validation.dataType,

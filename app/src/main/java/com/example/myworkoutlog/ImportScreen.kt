@@ -40,9 +40,8 @@ fun ImportScreen(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         result.data?.data?.let { uri ->
-            // Convert URI to file path (this is simplified - real implementation would need proper URI handling)
-            val filePath = uri.path ?: uri.toString()
-            viewModel.selectFile(filePath)
+            // Pass the URI directly to the ViewModel - let it handle content URIs properly
+            viewModel.selectFile(uri)
         }
     }
 
