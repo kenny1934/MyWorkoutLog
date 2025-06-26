@@ -38,17 +38,15 @@
 2. **Bodyweight Exercise Support**: Fixed `findBestPerformance()` to handle exercises without external weight
 3. **Small Dataset Handling**: Improved exercise progress calculation for limited workout history
 4. **Trend Calculation Consistency**: Unified Dashboard and Analytics to use same trend algorithms
+5. **Chart Visualization**: Replaced confusing bar chart with clear card layout for multiple exercises
 
 **Import Functionality (RESOLVED)**:
-5. **Android Content URI Handling**: Fixed file picker to handle content URIs instead of invalid file paths
-6. **Import File Access**: Added URI-based validation and temporary file creation for Android storage framework
-7. **Sample Data**: Created progressive workout data for testing trend calculations with clean data
-
-**Chart Visualization (RESOLVED)**:
-8. **Performance Breakdown Chart**: Fixed bar chart to show improvement percentages instead of absolute weights
+6. **Android Content URI Handling**: Fixed file picker to handle content URIs instead of invalid file paths
+7. **Import File Access**: Added URI-based validation and temporary file creation for Android storage framework
+8. **Sample Data**: Created progressive workout data for testing trend calculations with clean data
 9. **Chart Direction Bug**: Corrected trend line and bar chart direction to match improvement calculations
 10. **Chart X-Axis Labels**: Added proper exercise names instead of index numbers for better readability
-11. **Multiple Exercise Display**: Enhanced chart to properly handle multiple exercises with percentage comparisons
+11. **Multiple Exercise Display**: Replaced bar chart with card-based layout for clearer multi-exercise visualization
 
 **WorkoutTemplate Import (RESOLVED)**:
 12. **Unknown Template Display**: Added comprehensive WorkoutTemplate import support to ImportRepository
@@ -56,14 +54,14 @@
 14. **Program Template Integration**: Added proper program templates that reference workout templates
 15. **Import Data Type Support**: Added WORKOUT_TEMPLATES enum support throughout import system
 
-**All Issues Resolved**: Dashboard charts show correct trends, import includes workout templates, program blueprints display proper session names
+**All Issues Resolved**: Dashboard uses clear card-based visualization, shows correct trends, import includes workout templates, program blueprints display proper session names
 
 ### **📋 Technical Implementation Status**
-- InteractiveChartComponents.kt: Enhanced with percentage-based chart visualizations and proper X-axis labeling
+- InteractiveChartComponents.kt: Enhanced with card-based multi-exercise visualization and proper trend indicators
 - WidgetRepositorySimplified.kt: Now uses Analytics repository for unified trend calculations
 - DashboardScreen.kt: Enhanced widget cards with navigation integration
 - ImportRepository.kt: Added content URI support + comprehensive WorkoutTemplate import functionality
 - ImportViewModel.kt: Updated to process Android document picker URIs + WORKOUT_TEMPLATES data type support
 - sample_calisthenics_data.json: Comprehensive calisthenics data with workout templates and progressive program blueprints
 
-**Status**: Production-ready dashboard with accurate chart visualizations, complete import system supporting workout templates, and comprehensive calisthenics sample data for testing.
+**Status**: Production-ready dashboard with card-based exercise visualization, complete import system supporting workout templates, and comprehensive calisthenics sample data for testing.
