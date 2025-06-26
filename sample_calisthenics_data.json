@@ -1,0 +1,897 @@
+{
+  "metadata": {
+    "exportType": "complete_backup",
+    "exportDate": "2024-06-26 14:30:45",
+    "appVersion": "1.0.0",
+    "schemaVersion": "19",
+    "dateRange": "all_data"
+  },
+  "exercises": [
+    {
+      "id": "ex_pull_ups",
+      "name": "Pull-ups",
+      "usesBodyweight": true,
+      "targetMuscleGroups": ["BACK", "BICEPS", "LATS"],
+      "equipment": ["OTHER"],
+      "notes": "Standard overhand grip pull-ups"
+    },
+    {
+      "id": "ex_chin_ups",
+      "name": "Chin-ups",
+      "usesBodyweight": true,
+      "targetMuscleGroups": ["BACK", "BICEPS", "LATS"],
+      "equipment": ["OTHER"],
+      "notes": "Underhand grip pull-ups"
+    },
+    {
+      "id": "ex_push_ups",
+      "name": "Push-ups",
+      "usesBodyweight": true,
+      "targetMuscleGroups": ["CHEST", "TRICEPS", "SHOULDERS"],
+      "equipment": ["OTHER"],
+      "notes": "Standard push-up position"
+    },
+    {
+      "id": "ex_diamond_push_ups",
+      "name": "Diamond Push-ups",
+      "usesBodyweight": true,
+      "targetMuscleGroups": ["TRICEPS", "CHEST", "SHOULDERS"],
+      "equipment": ["OTHER"],
+      "notes": "Hands in diamond position for tricep focus"
+    },
+    {
+      "id": "ex_dips",
+      "name": "Parallel Bar Dips",
+      "usesBodyweight": true,
+      "targetMuscleGroups": ["TRICEPS", "CHEST", "SHOULDERS"],
+      "equipment": ["PARALLETTES"],
+      "notes": "Parallel bar or ring dips"
+    },
+    {
+      "id": "ex_pistol_squats",
+      "name": "Pistol Squats",
+      "usesBodyweight": true,
+      "targetMuscleGroups": ["QUADS", "GLUTES", "HAMSTRINGS"],
+      "equipment": ["OTHER"],
+      "notes": "Single leg squats"
+    },
+    {
+      "id": "ex_archer_push_ups",
+      "name": "Archer Push-ups",
+      "usesBodyweight": true,
+      "targetMuscleGroups": ["CHEST", "TRICEPS", "SHOULDERS"],
+      "equipment": ["OTHER"],
+      "notes": "Unilateral push-up variation"
+    },
+    {
+      "id": "ex_muscle_ups",
+      "name": "Muscle-ups",
+      "usesBodyweight": true,
+      "targetMuscleGroups": ["BACK", "CHEST", "TRICEPS", "LATS"],
+      "equipment": ["RINGS"],
+      "notes": "Full pull-up to dip transition"
+    },
+    {
+      "id": "ex_handstand_push_ups",
+      "name": "Handstand Push-ups",
+      "usesBodyweight": true,
+      "targetMuscleGroups": ["SHOULDERS", "TRICEPS"],
+      "equipment": ["OTHER"],
+      "notes": "Inverted push-ups against wall"
+    },
+    {
+      "id": "ex_l_sit",
+      "name": "L-sit",
+      "usesBodyweight": true,
+      "targetMuscleGroups": ["ABS", "SHOULDERS"],
+      "equipment": ["PARALLETTES"],
+      "notes": "Static hold with legs extended"
+    },
+    {
+      "id": "ex_weighted_pull_ups",
+      "name": "Weighted Pull-ups",
+      "usesBodyweight": true,
+      "targetMuscleGroups": ["BACK", "BICEPS", "LATS"],
+      "equipment": ["OTHER"],
+      "notes": "Pull-ups with additional weight"
+    },
+    {
+      "id": "ex_weighted_dips",
+      "name": "Weighted Dips",
+      "usesBodyweight": true,
+      "targetMuscleGroups": ["TRICEPS", "CHEST", "SHOULDERS"],
+      "equipment": ["PARALLETTES"],
+      "notes": "Dips with additional weight"
+    }
+  ],
+  "programTemplates": [
+    {
+      "id": "program_calisthenics_strength",
+      "name": "Calisthenics Strength Foundation",
+      "description": "6-week progressive calisthenics program focusing on fundamental movements and weighted progressions",
+      "weeks": [
+        {
+          "id": "week_1",
+          "weekLabel": "Week 1: Foundation Building",
+          "order": 1,
+          "sessions": [
+            {
+              "id": "session_1_push",
+              "sessionName": "Upper Push",
+              "workoutTemplateId": "template_upper_push",
+              "order": 1
+            },
+            {
+              "id": "session_1_pull",
+              "sessionName": "Upper Pull",
+              "workoutTemplateId": "template_upper_push",
+              "order": 2
+            },
+            {
+              "id": "session_1_legs",
+              "sessionName": "Lower Body & Core",
+              "workoutTemplateId": "template_upper_push",
+              "order": 3
+            }
+          ]
+        },
+        {
+          "id": "week_2",
+          "weekLabel": "Week 2: Volume Increase",
+          "order": 2,
+          "sessions": [
+            {
+              "id": "session_2_push",
+              "sessionName": "Upper Push",
+              "workoutTemplateId": "template_upper_push",
+              "order": 1
+            },
+            {
+              "id": "session_2_pull",
+              "sessionName": "Upper Pull",
+              "workoutTemplateId": "template_upper_push",
+              "order": 2
+            },
+            {
+              "id": "session_2_legs",
+              "sessionName": "Lower Body & Core",
+              "workoutTemplateId": "template_upper_push",
+              "order": 3
+            }
+          ]
+        },
+        {
+          "id": "week_3",
+          "weekLabel": "Week 3: Intensity Phase",
+          "order": 3,
+          "sessions": [
+            {
+              "id": "session_3_push",
+              "sessionName": "Upper Push",
+              "workoutTemplateId": "template_upper_push",
+              "order": 1
+            },
+            {
+              "id": "session_3_pull",
+              "sessionName": "Upper Pull",
+              "workoutTemplateId": "template_upper_push",
+              "order": 2
+            },
+            {
+              "id": "session_3_legs",
+              "sessionName": "Lower Body & Core",
+              "workoutTemplateId": "template_upper_push",
+              "order": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "workoutTemplates": [
+    {
+      "id": "template_upper_push",
+      "name": "Upper Push - Calisthenics",
+      "description": "Pushing movements with bodyweight and weighted variations",
+      "templateExercises": [
+        {
+          "id": "te_push_ups_1",
+          "exerciseId": "ex_push_ups",
+          "exerciseName": "Push-ups",
+          "targetMuscleGroups": ["CHEST", "TRICEPS", "SHOULDERS"],
+          "equipment": ["OTHER"],
+          "order": 1,
+          "sets": [
+            {
+              "id": "ts_pu_1_1",
+              "targetReps": "8-12",
+              "targetSecs": null,
+              "targetRIR": "2-3",
+              "notes": "Focus on form"
+            },
+            {
+              "id": "ts_pu_1_2",
+              "targetReps": "8-12",
+              "targetSecs": null,
+              "targetRIR": "2-3",
+              "notes": ""
+            },
+            {
+              "id": "ts_pu_1_3",
+              "targetReps": "8-12",
+              "targetSecs": null,
+              "targetRIR": "2-3",
+              "notes": ""
+            }
+          ],
+          "notes": "Build pushing strength foundation"
+        },
+        {
+          "id": "te_dips_1",
+          "exerciseId": "ex_dips",
+          "exerciseName": "Parallel Bar Dips",
+          "targetMuscleGroups": ["TRICEPS", "CHEST", "SHOULDERS"],
+          "equipment": ["PARALLETTES"],
+          "order": 2,
+          "sets": [
+            {
+              "id": "ts_dips_1_1",
+              "targetReps": "5-8",
+              "targetSecs": null,
+              "targetRIR": "2-3",
+              "notes": "Control the descent"
+            },
+            {
+              "id": "ts_dips_1_2",
+              "targetReps": "5-8",
+              "targetSecs": null,
+              "targetRIR": "2-3",
+              "notes": ""
+            }
+          ],
+          "notes": "Focus on full range of motion"
+        }
+      ]
+    },
+    {
+      "id": "template_upper_pull",
+      "name": "Upper Pull - Calisthenics",
+      "description": "Pulling movements with progressive overload",
+      "templateExercises": [
+        {
+          "id": "te_pull_ups_1",
+          "exerciseId": "ex_pull_ups",
+          "exerciseName": "Pull-ups",
+          "targetMuscleGroups": ["BACK", "BICEPS", "LATS"],
+          "equipment": ["OTHER"],
+          "order": 1,
+          "sets": [
+            {
+              "id": "ts_pu_1_1",
+              "targetReps": "5-8",
+              "targetSecs": null,
+              "targetRIR": "2-3",
+              "notes": "Dead hang start"
+            },
+            {
+              "id": "ts_pu_1_2",
+              "targetReps": "5-8",
+              "targetSecs": null,
+              "targetRIR": "2-3",
+              "notes": ""
+            },
+            {
+              "id": "ts_pu_1_3",
+              "targetReps": "5-8",
+              "targetSecs": null,
+              "targetRIR": "2-3",
+              "notes": ""
+            }
+          ],
+          "notes": "Core pulling movement"
+        },
+        {
+          "id": "te_chin_ups_1",
+          "exerciseId": "ex_chin_ups",
+          "exerciseName": "Chin-ups",
+          "targetMuscleGroups": ["BACK", "BICEPS", "LATS"],
+          "equipment": ["OTHER"],
+          "order": 2,
+          "sets": [
+            {
+              "id": "ts_cu_1_1",
+              "targetReps": "6-10",
+              "targetSecs": null,
+              "targetRIR": "2-3",
+              "notes": "Bicep emphasis"
+            },
+            {
+              "id": "ts_cu_1_2",
+              "targetReps": "6-10",
+              "targetSecs": null,
+              "targetRIR": "2-3",
+              "notes": ""
+            }
+          ],
+          "notes": "Underhand grip variation"
+        }
+      ]
+    },
+    {
+      "id": "template_lower_core",
+      "name": "Lower Body & Core - Calisthenics",
+      "description": "Lower body strength and core stability",
+      "templateExercises": [
+        {
+          "id": "te_pistol_1",
+          "exerciseId": "ex_pistol_squats",
+          "exerciseName": "Pistol Squats",
+          "targetMuscleGroups": ["QUADS", "GLUTES", "HAMSTRINGS"],
+          "equipment": ["OTHER"],
+          "order": 1,
+          "sets": [
+            {
+              "id": "ts_pistol_1_1",
+              "targetReps": "3-5",
+              "targetSecs": null,
+              "targetRIR": "2-3",
+              "notes": "Each leg, assisted if needed"
+            },
+            {
+              "id": "ts_pistol_1_2",
+              "targetReps": "3-5",
+              "targetSecs": null,
+              "targetRIR": "2-3",
+              "notes": "Each leg"
+            }
+          ],
+          "notes": "Single leg strength"
+        },
+        {
+          "id": "te_l_sit_1",
+          "exerciseId": "ex_l_sit",
+          "exerciseName": "L-sit",
+          "targetMuscleGroups": ["ABS", "SHOULDERS"],
+          "equipment": ["PARALLETTES"],
+          "order": 2,
+          "sets": [
+            {
+              "id": "ts_lsit_1_1",
+              "targetReps": null,
+              "targetSecs": "10-20",
+              "targetRIR": "2-3",
+              "notes": "Hold for time"
+            },
+            {
+              "id": "ts_lsit_1_2",
+              "targetReps": null,
+              "targetSecs": "10-20",
+              "targetRIR": "2-3",
+              "notes": ""
+            }
+          ],
+          "notes": "Core strength and shoulder stability"
+        }
+      ]
+    }
+  ],
+  "activeCycle": {
+    "id": 1,
+    "cycleUuid": "cycle_calisthenics_2024",
+    "programTemplateId": "program_calisthenics_strength",
+    "programTemplateName": "Calisthenics Strength Foundation",
+    "userCycleName": "Spring Calisthenics Block",
+    "startDate": "2024-05-01",
+    "completedSessions": {
+      "week_1_session_1_push": "workout_001",
+      "week_1_session_1_pull": "workout_002",
+      "week_1_session_1_legs": "workout_003",
+      "week_2_session_2_push": "workout_004",
+      "week_2_session_2_pull": "workout_005",
+      "week_2_session_2_legs": "workout_006",
+      "week_3_session_3_push": "workout_007"
+    },
+    "cycleProgram": {
+      "id": "program_calisthenics_strength",
+      "name": "Calisthenics Strength Foundation",
+      "description": "6-week progressive calisthenics program focusing on fundamental movements and weighted progressions",
+      "weeks": [
+        {
+          "id": "week_1",
+          "weekLabel": "Week 1: Foundation Building",
+          "order": 1,
+          "sessions": [
+            {
+              "id": "session_1_push",
+              "sessionName": "Upper Push",
+              "workoutTemplateId": "template_upper_push",
+              "order": 1
+            },
+            {
+              "id": "session_1_pull",
+              "sessionName": "Upper Pull",
+              "workoutTemplateId": "template_upper_push",
+              "order": 2
+            },
+            {
+              "id": "session_1_legs",
+              "sessionName": "Lower Body & Core",
+              "workoutTemplateId": "template_upper_push",
+              "order": 3
+            }
+          ]
+        },
+        {
+          "id": "week_2",
+          "weekLabel": "Week 2: Volume Increase",
+          "order": 2,
+          "sessions": [
+            {
+              "id": "session_2_push",
+              "sessionName": "Upper Push",
+              "workoutTemplateId": "template_upper_push",
+              "order": 1
+            },
+            {
+              "id": "session_2_pull",
+              "sessionName": "Upper Pull",
+              "workoutTemplateId": "template_upper_push",
+              "order": 2
+            },
+            {
+              "id": "session_2_legs",
+              "sessionName": "Lower Body & Core",
+              "workoutTemplateId": "template_upper_push",
+              "order": 3
+            }
+          ]
+        },
+        {
+          "id": "week_3",
+          "weekLabel": "Week 3: Intensity Phase",
+          "order": 3,
+          "sessions": [
+            {
+              "id": "session_3_push",
+              "sessionName": "Upper Push",
+              "workoutTemplateId": "template_upper_push",
+              "order": 1
+            },
+            {
+              "id": "session_3_pull",
+              "sessionName": "Upper Pull",
+              "workoutTemplateId": "template_upper_push",
+              "order": 2
+            },
+            {
+              "id": "session_3_legs",
+              "sessionName": "Lower Body & Core",
+              "workoutTemplateId": "template_upper_push",
+              "order": 3
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "workouts": [
+    {
+      "id": "workout_001",
+      "date": "2024-05-01",
+      "name": "Upper Push - Week 1",
+      "overallComments": "Starting calisthenics program",
+      "startTimestamp": 1714564800000,
+      "endTimestamp": 1714568400000,
+      "bodyweight": 74.5,
+      "performedWeightUnit": "kg",
+      "activeProgramCycleId": "cycle_calisthenics_2024",
+      "programWeekDefinitionId": "week_1",
+      "programSessionDefinitionId": "session_1_push",
+      "userCycleName": "Spring Calisthenics Block",
+      "workoutTemplateId": "template_upper_push",
+      "loggedExercises": [
+        {
+          "id": "logged_ex_001",
+          "exerciseId": "ex_push_ups",
+          "exerciseName": "Push-ups",
+          "targetMuscleGroups": ["CHEST", "TRICEPS", "SHOULDERS"],
+          "equipment": ["OTHER"],
+          "isSubstitute": false,
+          "sets": [
+            {"id": "set_001", "reps": 10, "weight": 74.5, "bodyweightUsed": 74.5, "externalWeight": 0.0, "rir": 3, "targetReps": "8-12"},
+            {"id": "set_002", "reps": 9, "weight": 74.5, "bodyweightUsed": 74.5, "externalWeight": 0.0, "rir": 2, "targetReps": "8-12"},
+            {"id": "set_003", "reps": 8, "weight": 74.5, "bodyweightUsed": 74.5, "externalWeight": 0.0, "rir": 2, "targetReps": "8-12"}
+          ]
+        },
+        {
+          "id": "logged_ex_002",
+          "exerciseId": "ex_dips",
+          "exerciseName": "Parallel Bar Dips",
+          "targetMuscleGroups": ["TRICEPS", "CHEST", "SHOULDERS"],
+          "equipment": ["PARALLETTES"],
+          "isSubstitute": false,
+          "sets": [
+            {"id": "set_004", "reps": 6, "weight": 74.5, "bodyweightUsed": 74.5, "externalWeight": 0.0, "rir": 3, "targetReps": "5-8"},
+            {"id": "set_005", "reps": 5, "weight": 74.5, "bodyweightUsed": 74.5, "externalWeight": 0.0, "rir": 2, "targetReps": "5-8"}
+          ]
+        },
+        {
+          "id": "logged_ex_003",
+          "exerciseId": "ex_diamond_push_ups",
+          "exerciseName": "Diamond Push-ups",
+          "targetMuscleGroups": ["TRICEPS", "CHEST", "SHOULDERS"],
+          "equipment": ["OTHER"],
+          "isSubstitute": false,
+          "sets": [
+            {"id": "set_006", "reps": 7, "weight": 74.5, "bodyweightUsed": 74.5, "externalWeight": 0.0, "rir": 2, "targetReps": "5-10"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "workout_002",
+      "date": "2024-05-03",
+      "name": "Upper Pull - Week 1",
+      "overallComments": "Good pulling session",
+      "startTimestamp": 1714737600000,
+      "endTimestamp": 1714741200000,
+      "bodyweight": 74.7,
+      "performedWeightUnit": "kg",
+      "activeProgramCycleId": "cycle_calisthenics_2024",
+      "programWeekDefinitionId": "week_1",
+      "programSessionDefinitionId": "session_1_pull",
+      "userCycleName": "Spring Calisthenics Block",
+      "workoutTemplateId": "template_upper_push",
+      "loggedExercises": [
+        {
+          "id": "logged_ex_004",
+          "exerciseId": "ex_pull_ups",
+          "exerciseName": "Pull-ups",
+          "targetMuscleGroups": ["BACK", "BICEPS", "LATS"],
+          "equipment": ["OTHER"],
+          "isSubstitute": false,
+          "sets": [
+            {"id": "set_007", "reps": 6, "weight": 74.7, "bodyweightUsed": 74.7, "externalWeight": 0.0, "rir": 3, "targetReps": "5-8"},
+            {"id": "set_008", "reps": 5, "weight": 74.7, "bodyweightUsed": 74.7, "externalWeight": 0.0, "rir": 2, "targetReps": "5-8"},
+            {"id": "set_009", "reps": 5, "weight": 74.7, "bodyweightUsed": 74.7, "externalWeight": 0.0, "rir": 2, "targetReps": "5-8"}
+          ]
+        },
+        {
+          "id": "logged_ex_005",
+          "exerciseId": "ex_chin_ups",
+          "exerciseName": "Chin-ups",
+          "targetMuscleGroups": ["BACK", "BICEPS", "LATS"],
+          "equipment": ["OTHER"],
+          "isSubstitute": false,
+          "sets": [
+            {"id": "set_010", "reps": 8, "weight": 74.7, "bodyweightUsed": 74.7, "externalWeight": 0.0, "rir": 3, "targetReps": "6-10"},
+            {"id": "set_011", "reps": 7, "weight": 74.7, "bodyweightUsed": 74.7, "externalWeight": 0.0, "rir": 2, "targetReps": "6-10"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "workout_003",
+      "date": "2024-05-05",
+      "name": "Lower Body & Core - Week 1",
+      "overallComments": "Challenging single leg work",
+      "startTimestamp": 1714910400000,
+      "endTimestamp": 1714914000000,
+      "bodyweight": 74.6,
+      "performedWeightUnit": "kg",
+      "activeProgramCycleId": "cycle_calisthenics_2024",
+      "programWeekDefinitionId": "week_1",
+      "programSessionDefinitionId": "session_1_legs",
+      "userCycleName": "Spring Calisthenics Block",
+      "workoutTemplateId": "template_upper_push",
+      "loggedExercises": [
+        {
+          "id": "logged_ex_006",
+          "exerciseId": "ex_pistol_squats",
+          "exerciseName": "Pistol Squats",
+          "targetMuscleGroups": ["QUADS", "GLUTES", "HAMSTRINGS"],
+          "equipment": ["OTHER"],
+          "isSubstitute": false,
+          "sets": [
+            {"id": "set_012", "reps": 4, "weight": 74.6, "bodyweightUsed": 74.6, "externalWeight": 0.0, "rir": 3, "targetReps": "3-5", "notes": "Each leg"},
+            {"id": "set_013", "reps": 3, "weight": 74.6, "bodyweightUsed": 74.6, "externalWeight": 0.0, "rir": 2, "targetReps": "3-5", "notes": "Each leg"}
+          ]
+        },
+        {
+          "id": "logged_ex_007",
+          "exerciseId": "ex_l_sit",
+          "exerciseName": "L-sit",
+          "targetMuscleGroups": ["ABS", "SHOULDERS"],
+          "equipment": ["PARALLETTES"],
+          "isSubstitute": false,
+          "sets": [
+            {"id": "set_014", "reps": null, "weight": 74.6, "bodyweightUsed": 74.6, "externalWeight": 0.0, "rir": 3, "targetSecs": "10-20", "duration": 12},
+            {"id": "set_015", "reps": null, "weight": 74.6, "bodyweightUsed": 74.6, "externalWeight": 0.0, "rir": 2, "targetSecs": "10-20", "duration": 10}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "workout_004",
+      "date": "2024-05-08",
+      "name": "Upper Push - Week 2",
+      "overallComments": "Volume increase feeling good",
+      "startTimestamp": 1715169600000,
+      "endTimestamp": 1715173200000,
+      "bodyweight": 74.8,
+      "performedWeightUnit": "kg",
+      "activeProgramCycleId": "cycle_calisthenics_2024",
+      "programWeekDefinitionId": "week_2",
+      "programSessionDefinitionId": "session_2_push",
+      "userCycleName": "Spring Calisthenics Block",
+      "workoutTemplateId": "template_upper_push",
+      "loggedExercises": [
+        {
+          "id": "logged_ex_008",
+          "exerciseId": "ex_push_ups",
+          "exerciseName": "Push-ups",
+          "targetMuscleGroups": ["CHEST", "TRICEPS", "SHOULDERS"],
+          "equipment": ["OTHER"],
+          "isSubstitute": false,
+          "sets": [
+            {"id": "set_016", "reps": 12, "weight": 74.8, "bodyweightUsed": 74.8, "externalWeight": 0.0, "rir": 3, "targetReps": "10-15"},
+            {"id": "set_017", "reps": 11, "weight": 74.8, "bodyweightUsed": 74.8, "externalWeight": 0.0, "rir": 2, "targetReps": "10-15"},
+            {"id": "set_018", "reps": 10, "weight": 74.8, "bodyweightUsed": 74.8, "externalWeight": 0.0, "rir": 2, "targetReps": "10-15"},
+            {"id": "set_019", "reps": 9, "weight": 74.8, "bodyweightUsed": 74.8, "externalWeight": 0.0, "rir": 2, "targetReps": "8-12"}
+          ]
+        },
+        {
+          "id": "logged_ex_009",
+          "exerciseId": "ex_dips",
+          "exerciseName": "Parallel Bar Dips",
+          "targetMuscleGroups": ["TRICEPS", "CHEST", "SHOULDERS"],
+          "equipment": ["PARALLETTES"],
+          "isSubstitute": false,
+          "sets": [
+            {"id": "set_020", "reps": 8, "weight": 74.8, "bodyweightUsed": 74.8, "externalWeight": 0.0, "rir": 3, "targetReps": "6-10"},
+            {"id": "set_021", "reps": 7, "weight": 74.8, "bodyweightUsed": 74.8, "externalWeight": 0.0, "rir": 2, "targetReps": "6-10"},
+            {"id": "set_022", "reps": 6, "weight": 74.8, "bodyweightUsed": 74.8, "externalWeight": 0.0, "rir": 2, "targetReps": "6-10"}
+          ]
+        },
+        {
+          "id": "logged_ex_010",
+          "exerciseId": "ex_archer_push_ups",
+          "exerciseName": "Archer Push-ups",
+          "targetMuscleGroups": ["CHEST", "TRICEPS", "SHOULDERS"],
+          "equipment": ["OTHER"],
+          "isSubstitute": false,
+          "sets": [
+            {"id": "set_023", "reps": 4, "weight": 74.8, "bodyweightUsed": 74.8, "externalWeight": 0.0, "rir": 2, "targetReps": "3-6", "notes": "Each side"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "workout_005",
+      "date": "2024-05-10",
+      "name": "Upper Pull - Week 2",
+      "overallComments": "First weighted pull-ups!",
+      "startTimestamp": 1715342400000,
+      "endTimestamp": 1715346000000,
+      "bodyweight": 74.9,
+      "performedWeightUnit": "kg",
+      "activeProgramCycleId": "cycle_calisthenics_2024",
+      "programWeekDefinitionId": "week_2",
+      "programSessionDefinitionId": "session_2_pull",
+      "userCycleName": "Spring Calisthenics Block",
+      "workoutTemplateId": "template_upper_push",
+      "loggedExercises": [
+        {
+          "id": "logged_ex_011",
+          "exerciseId": "ex_pull_ups",
+          "exerciseName": "Pull-ups",
+          "targetMuscleGroups": ["BACK", "BICEPS", "LATS"],
+          "equipment": ["OTHER"],
+          "isSubstitute": false,
+          "sets": [
+            {"id": "set_024", "reps": 8, "weight": 74.9, "bodyweightUsed": 74.9, "externalWeight": 0.0, "rir": 3, "targetReps": "6-10"},
+            {"id": "set_025", "reps": 7, "weight": 74.9, "bodyweightUsed": 74.9, "externalWeight": 0.0, "rir": 2, "targetReps": "6-10"},
+            {"id": "set_026", "reps": 6, "weight": 74.9, "bodyweightUsed": 74.9, "externalWeight": 0.0, "rir": 2, "targetReps": "6-10"},
+            {"id": "set_027", "reps": 6, "weight": 74.9, "bodyweightUsed": 74.9, "externalWeight": 0.0, "rir": 2, "targetReps": "5-8"}
+          ]
+        },
+        {
+          "id": "logged_ex_012",
+          "exerciseId": "ex_weighted_pull_ups",
+          "exerciseName": "Weighted Pull-ups",
+          "targetMuscleGroups": ["BACK", "BICEPS", "LATS"],
+          "equipment": ["OTHER"],
+          "isSubstitute": false,
+          "sets": [
+            {"id": "set_028", "reps": 4, "weight": 79.9, "bodyweightUsed": 74.9, "externalWeight": 5.0, "rir": 3, "targetReps": "3-5"},
+            {"id": "set_029", "reps": 3, "weight": 79.9, "bodyweightUsed": 74.9, "externalWeight": 5.0, "rir": 2, "targetReps": "3-5"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "workout_006",
+      "date": "2024-05-12",
+      "name": "Lower Body & Core - Week 2",
+      "overallComments": "Pistol squat progression",
+      "startTimestamp": 1715515200000,
+      "endTimestamp": 1715518800000,
+      "bodyweight": 75.0,
+      "performedWeightUnit": "kg",
+      "activeProgramCycleId": "cycle_calisthenics_2024",
+      "programWeekDefinitionId": "week_2",
+      "programSessionDefinitionId": "session_2_legs",
+      "userCycleName": "Spring Calisthenics Block",
+      "workoutTemplateId": "template_upper_push",
+      "loggedExercises": [
+        {
+          "id": "logged_ex_013",
+          "exerciseId": "ex_pistol_squats",
+          "exerciseName": "Pistol Squats",
+          "targetMuscleGroups": ["QUADS", "GLUTES", "HAMSTRINGS"],
+          "equipment": ["OTHER"],
+          "isSubstitute": false,
+          "sets": [
+            {"id": "set_030", "reps": 5, "weight": 75.0, "bodyweightUsed": 75.0, "externalWeight": 0.0, "rir": 3, "targetReps": "4-6", "notes": "Each leg"},
+            {"id": "set_031", "reps": 4, "weight": 75.0, "bodyweightUsed": 75.0, "externalWeight": 0.0, "rir": 2, "targetReps": "4-6", "notes": "Each leg"},
+            {"id": "set_032", "reps": 4, "weight": 75.0, "bodyweightUsed": 75.0, "externalWeight": 0.0, "rir": 2, "targetReps": "3-5", "notes": "Each leg"}
+          ]
+        },
+        {
+          "id": "logged_ex_014",
+          "exerciseId": "ex_l_sit",
+          "exerciseName": "L-sit",
+          "targetMuscleGroups": ["ABS", "SHOULDERS"],
+          "equipment": ["PARALLETTES"],
+          "isSubstitute": false,
+          "sets": [
+            {"id": "set_033", "reps": null, "weight": 75.0, "bodyweightUsed": 75.0, "externalWeight": 0.0, "rir": 3, "targetSecs": "15-25", "duration": 18},
+            {"id": "set_034", "reps": null, "weight": 75.0, "bodyweightUsed": 75.0, "externalWeight": 0.0, "rir": 2, "targetSecs": "15-25", "duration": 16},
+            {"id": "set_035", "reps": null, "weight": 75.0, "bodyweightUsed": 75.0, "externalWeight": 0.0, "rir": 2, "targetSecs": "10-15", "duration": 12}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "workout_007",
+      "date": "2024-05-15",
+      "name": "Upper Push - Week 3",
+      "overallComments": "Weighted dips and handstand progression",
+      "startTimestamp": 1715774400000,
+      "endTimestamp": 1715778000000,
+      "bodyweight": 75.2,
+      "performedWeightUnit": "kg",
+      "activeProgramCycleId": "cycle_calisthenics_2024",
+      "programWeekDefinitionId": "week_3",
+      "programSessionDefinitionId": "session_3_push",
+      "userCycleName": "Spring Calisthenics Block",
+      "workoutTemplateId": "template_upper_push",
+      "loggedExercises": [
+        {
+          "id": "logged_ex_015",
+          "exerciseId": "ex_weighted_dips",
+          "exerciseName": "Weighted Dips",
+          "targetMuscleGroups": ["TRICEPS", "CHEST", "SHOULDERS"],
+          "equipment": ["PARALLETTES"],
+          "isSubstitute": false,
+          "sets": [
+            {"id": "set_036", "reps": 6, "weight": 82.2, "bodyweightUsed": 75.2, "externalWeight": 7.0, "rir": 3, "targetReps": "5-8"},
+            {"id": "set_037", "reps": 5, "weight": 82.2, "bodyweightUsed": 75.2, "externalWeight": 7.0, "rir": 2, "targetReps": "5-8"},
+            {"id": "set_038", "reps": 5, "weight": 82.2, "bodyweightUsed": 75.2, "externalWeight": 7.0, "rir": 2, "targetReps": "4-6"}
+          ]
+        },
+        {
+          "id": "logged_ex_016",
+          "exerciseId": "ex_handstand_push_ups",
+          "exerciseName": "Handstand Push-ups",
+          "targetMuscleGroups": ["SHOULDERS", "TRICEPS"],
+          "equipment": ["OTHER"],
+          "isSubstitute": false,
+          "sets": [
+            {"id": "set_039", "reps": 3, "weight": 75.2, "bodyweightUsed": 75.2, "externalWeight": 0.0, "rir": 3, "targetReps": "2-5"},
+            {"id": "set_040", "reps": 2, "weight": 75.2, "bodyweightUsed": 75.2, "externalWeight": 0.0, "rir": 2, "targetReps": "2-5"}
+          ]
+        },
+        {
+          "id": "logged_ex_017",
+          "exerciseId": "ex_archer_push_ups",
+          "exerciseName": "Archer Push-ups",
+          "targetMuscleGroups": ["CHEST", "TRICEPS", "SHOULDERS"],
+          "equipment": ["OTHER"],
+          "isSubstitute": false,
+          "sets": [
+            {"id": "set_041", "reps": 6, "weight": 75.2, "bodyweightUsed": 75.2, "externalWeight": 0.0, "rir": 2, "targetReps": "4-8", "notes": "Each side"},
+            {"id": "set_042", "reps": 5, "weight": 75.2, "bodyweightUsed": 75.2, "externalWeight": 0.0, "rir": 1, "targetReps": "3-6", "notes": "Each side"}
+          ]
+        }
+      ]
+    }
+  ],
+  "personalRecords": [
+    {
+      "id": "pr_001",
+      "exerciseId": "ex_pull_ups",
+      "exerciseName": "Pull-ups",
+      "date": "2024-05-10",
+      "loggedWorkoutId": "workout_005",
+      "type": "MAX_REPS_AT_WEIGHT",
+      "weightUnit": "kg",
+      "reps": 8,
+      "weight": 74.9,
+      "bodyweightUsed": 74.9,
+      "externalWeight": 0.0,
+      "usesBodyweight": true
+    },
+    {
+      "id": "pr_002",
+      "exerciseId": "ex_weighted_pull_ups",
+      "exerciseName": "Weighted Pull-ups",
+      "date": "2024-05-10",
+      "loggedWorkoutId": "workout_005",
+      "type": "MAX_WEIGHT_FOR_REPS",
+      "weightUnit": "kg",
+      "reps": 4,
+      "weight": 79.9,
+      "bodyweightUsed": 74.9,
+      "externalWeight": 5.0,
+      "usesBodyweight": true
+    },
+    {
+      "id": "pr_003",
+      "exerciseId": "ex_push_ups",
+      "exerciseName": "Push-ups",
+      "date": "2024-05-08",
+      "loggedWorkoutId": "workout_004",
+      "type": "MAX_REPS_AT_WEIGHT",
+      "weightUnit": "kg",
+      "reps": 12,
+      "weight": 74.8,
+      "bodyweightUsed": 74.8,
+      "externalWeight": 0.0,
+      "usesBodyweight": true
+    },
+    {
+      "id": "pr_004",
+      "exerciseId": "ex_weighted_dips",
+      "exerciseName": "Weighted Dips",
+      "date": "2024-05-15",
+      "loggedWorkoutId": "workout_007",
+      "type": "MAX_WEIGHT_FOR_REPS",
+      "weightUnit": "kg",
+      "reps": 6,
+      "weight": 82.2,
+      "bodyweightUsed": 75.2,
+      "externalWeight": 7.0,
+      "usesBodyweight": true
+    },
+    {
+      "id": "pr_005",
+      "exerciseId": "ex_pistol_squats",
+      "exerciseName": "Pistol Squats",
+      "date": "2024-05-12",
+      "loggedWorkoutId": "workout_006",
+      "type": "MAX_REPS_AT_WEIGHT",
+      "weightUnit": "kg",
+      "reps": 5,
+      "weight": 75.0,
+      "bodyweightUsed": 75.0,
+      "externalWeight": 0.0,
+      "usesBodyweight": true
+    },
+    {
+      "id": "pr_006",
+      "exerciseId": "ex_l_sit",
+      "exerciseName": "L-sit",
+      "date": "2024-05-12",
+      "loggedWorkoutId": "workout_006",
+      "type": "DURATION",
+      "weightUnit": "kg",
+      "reps": null,
+      "weight": 75.0,
+      "bodyweightUsed": 75.0,
+      "externalWeight": 0.0,
+      "usesBodyweight": true,
+      "duration": 18
+    }
+  ]
+}

@@ -295,6 +295,7 @@ class ImportViewModel(
             ImportDataType.EXERCISES -> "Import exercise library with muscle groups and equipment information"
             ImportDataType.PERSONAL_RECORDS -> "Import personal record achievements and progress milestones"
             ImportDataType.PROGRAM_TEMPLATES -> "Import workout program templates and training plans"
+            ImportDataType.WORKOUT_TEMPLATES -> "Import individual workout templates and exercise configurations"
             ImportDataType.COMPLETE_BACKUP -> "Import complete database backup with all data types"
             ImportDataType.AUTO_DETECT -> "Automatically detect data type from file content"
         }

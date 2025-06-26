@@ -40,6 +40,7 @@ import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
 import com.patrykandpatrick.vico.compose.chart.line.lineChart
+import com.patrykandpatrick.vico.compose.chart.column.columnChart
 import com.patrykandpatrick.vico.compose.chart.scroll.rememberChartScrollState
 import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
 import com.patrykandpatrick.vico.core.entry.entryOf
@@ -60,19 +61,19 @@ fun EnhancedInteractivePerformanceChart(
     val chartEntryModelProducer = remember { ChartEntryModelProducer() }
     val chartScrollState = rememberChartScrollState()
     
-    // Convert real exercise data to chart entries
+    // Convert real exercise data to chart entries - using improvement percentage for trend direction
     val chartEntries = if (strengthGains.isNotEmpty()) {
         strengthGains.mapIndexed { index, gain ->
-            entryOf(index.toFloat(), gain.currentMax)
+            entryOf(index.toFloat(), gain.improvementPercentage)
         }
     } else {
-        // Fallback sample data if no real data - more visible progression
+        // Fallback sample data if no real data - improvement percentages
         listOf(
-            entryOf(0f, 100f),
-            entryOf(1f, 110f), 
-            entryOf(2f, 105f),
-            entryOf(3f, 125f),
-            entryOf(4f, 130f)
+            entryOf(0f, 5f),
+            entryOf(1f, 12f), 
+            entryOf(2f, -3f),
+            entryOf(3f, 18f),
+            entryOf(4f, 8f)
         )
     }
     
@@ -102,7 +103,7 @@ fun EnhancedInteractivePerformanceChart(
                         },
                         label = { 
                             Text(
-                                text = "${gain.exerciseName}: ${gain.currentMax.toInt()}kg",
+                                text = "${gain.exerciseName}: ${if (gain.improvementPercentage >= 0) "+" else ""}${gain.improvementPercentage.toInt()}%",
                                 style = MaterialTheme.typography.labelSmall
                             ) 
                         },
@@ -134,10 +135,20 @@ fun EnhancedInteractivePerformanceChart(
         ) {
             Box(modifier = Modifier.padding(16.dp)) {
                 Chart(
-                    chart = lineChart(),
+                    chart = columnChart(),
                     chartModelProducer = chartEntryModelProducer,
-                    startAxis = rememberStartAxis(title = "Weight (kg)"),
-                    bottomAxis = rememberBottomAxis(title = "Exercise Progress"),
+                    startAxis = rememberStartAxis(title = "Improvement (%)"),
+                    bottomAxis = rememberBottomAxis(
+                        title = "Exercises",
+                        valueFormatter = { value, _ ->
+                            val index = value.toInt()
+                            if (index < strengthGains.size) {
+                                strengthGains[index].exerciseName.take(8) // Truncate long names
+                            } else {
+                                "Exercise ${index + 1}"
+                            }
+                        }
+                    ),
                     modifier = Modifier.height(200.dp),
                     chartScrollState = chartScrollState
                 )
