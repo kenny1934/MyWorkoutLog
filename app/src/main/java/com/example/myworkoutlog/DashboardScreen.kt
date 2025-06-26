@@ -519,14 +519,16 @@ fun SimplePerformanceTrendWidgetCard(
                     if (widget.strengthGains.size > 1) {
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        // Add mini sparkline for collapsed state - show actual weights
-                        val trendData = widget.strengthGains.map { it.currentMax }
+                        // Show trend for the top exercise using previous->current progression
+                        val trendData = listOf(topExercise.previousMax, topExercise.currentMax)
                         SparklineChart(
                             data = trendData,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(40.dp),
-                            color = MaterialTheme.colorScheme.primary,
+                            color = if (topExercise.improvementPercentage >= 0) 
+                                MaterialTheme.colorScheme.primary 
+                            else MaterialTheme.colorScheme.error,
                             fillArea = true
                         )
                         
