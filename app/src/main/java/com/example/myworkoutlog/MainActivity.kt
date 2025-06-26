@@ -110,9 +110,10 @@ class MainActivity : ComponentActivity() {
             (application as WorkoutApplication).database.exerciseDao(),
             (application as WorkoutApplication).database.personalRecordDao(),
             (application as WorkoutApplication).database.programTemplateDao(),
+            (application as WorkoutApplication).database.workoutTemplateDao(),
             (application as WorkoutApplication).database.activeCycleDao()
         )
-        ImportViewModelFactory(importRepository)
+        ImportViewModelFactory(importRepository, this)
     }
 
     private val cloudBackupViewModel: CloudBackupViewModel by viewModels {
@@ -131,6 +132,7 @@ class MainActivity : ComponentActivity() {
                 (application as WorkoutApplication).database.exerciseDao(),
                 (application as WorkoutApplication).database.personalRecordDao(),
                 (application as WorkoutApplication).database.programTemplateDao(),
+                (application as WorkoutApplication).database.workoutTemplateDao(),
                 (application as WorkoutApplication).database.activeCycleDao()
             ),
             cloudProvider

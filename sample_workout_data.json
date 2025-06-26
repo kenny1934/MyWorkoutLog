@@ -408,5 +408,245 @@
       "externalWeight": 10.0,
       "usesBodyweight": true
     }
+  ],
+  "workoutTemplates": [
+    {
+      "id": "template_push_day",
+      "name": "Push Day",
+      "description": "Chest, shoulders, and triceps focused workout",
+      "templateExercises": [
+        {
+          "id": "template_ex_001",
+          "exerciseId": "ex_bench_press",
+          "exerciseName": "Bench Press",
+          "targetMuscleGroups": ["CHEST", "TRICEPS", "SHOULDERS"],
+          "equipment": ["BARBELL"],
+          "sets": [
+            {
+              "id": "template_set_001",
+              "targetReps": "8-10",
+              "targetRIR": "2-3",
+              "notes": "Focus on controlled movement"
+            },
+            {
+              "id": "template_set_002",
+              "targetReps": "8-10",
+              "targetRIR": "2-3"
+            },
+            {
+              "id": "template_set_003",
+              "targetReps": "8-10",
+              "targetRIR": "1-2"
+            }
+          ],
+          "order": 1,
+          "notes": "Primary chest movement"
+        }
+      ]
+    },
+    {
+      "id": "template_legs_day",
+      "name": "Legs Day",
+      "description": "Quad and glute focused leg workout",
+      "templateExercises": [
+        {
+          "id": "template_ex_002",
+          "exerciseId": "ex_squat",
+          "exerciseName": "Squat",
+          "targetMuscleGroups": ["QUADS", "GLUTES", "HAMSTRINGS"],
+          "equipment": ["BARBELL"],
+          "sets": [
+            {
+              "id": "template_set_004",
+              "targetReps": "8-12",
+              "targetRIR": "2-3",
+              "notes": "Focus on depth and control"
+            },
+            {
+              "id": "template_set_005",
+              "targetReps": "8-12",
+              "targetRIR": "2-3"
+            },
+            {
+              "id": "template_set_006",
+              "targetReps": "8-12",
+              "targetRIR": "1-2"
+            }
+          ],
+          "order": 1,
+          "notes": "Primary leg movement"
+        }
+      ]
+    },
+    {
+      "id": "template_pull_day",
+      "name": "Pull Day",
+      "description": "Back and biceps focused workout",
+      "templateExercises": [
+        {
+          "id": "template_ex_003",
+          "exerciseId": "ex_pull_ups",
+          "exerciseName": "Pull-ups",
+          "targetMuscleGroups": ["BACK", "BICEPS", "LATS"],
+          "equipment": ["OTHER"],
+          "sets": [
+            {
+              "id": "template_set_007",
+              "targetReps": "10-15",
+              "targetRIR": "2-3",
+              "notes": "Add weight as needed"
+            },
+            {
+              "id": "template_set_008",
+              "targetReps": "10-15",
+              "targetRIR": "2-3"
+            },
+            {
+              "id": "template_set_009",
+              "targetReps": "10-15",
+              "targetRIR": "1-2"
+            }
+          ],
+          "order": 1,
+          "notes": "Primary back movement"
+        },
+        {
+          "id": "template_ex_004",
+          "exerciseId": "ex_deadlift",
+          "exerciseName": "Deadlift",
+          "targetMuscleGroups": ["HAMSTRINGS", "GLUTES", "BACK", "TRAPS"],
+          "equipment": ["BARBELL"],
+          "sets": [
+            {
+              "id": "template_set_010",
+              "targetReps": "3-5",
+              "targetRIR": "2-3",
+              "notes": "Heavy compound movement"
+            },
+            {
+              "id": "template_set_011",
+              "targetReps": "3-5",
+              "targetRIR": "2-3"
+            },
+            {
+              "id": "template_set_012",
+              "targetReps": "3-5",
+              "targetRIR": "1-2"
+            }
+          ],
+          "order": 2,
+          "notes": "Posterior chain focus"
+        }
+      ]
+    }
+  ],
+  "programTemplates": [
+    {
+      "id": "program_push_pull_legs",
+      "name": "Push Pull Legs",
+      "description": "3-day per week strength program focusing on compound movements",
+      "weeks": [
+        {
+          "id": "week_1",
+          "weekLabel": "Week 1: Foundation",
+          "sessions": [
+            {
+              "id": "session_1",
+              "sessionName": "Push Day",
+              "workoutTemplateId": "template_push_day",
+              "order": 1
+            },
+            {
+              "id": "session_2", 
+              "sessionName": "Legs Day",
+              "workoutTemplateId": "template_legs_day",
+              "order": 2
+            },
+            {
+              "id": "session_3",
+              "sessionName": "Pull Day",
+              "workoutTemplateId": "template_pull_day",
+              "order": 3
+            }
+          ],
+          "order": 1
+        },
+        {
+          "id": "week_2",
+          "weekLabel": "Week 2: Progression",
+          "sessions": [
+            {
+              "id": "session_4",
+              "sessionName": "Push Day",
+              "workoutTemplateId": "template_push_day",
+              "order": 1
+            },
+            {
+              "id": "session_5",
+              "sessionName": "Legs Day", 
+              "workoutTemplateId": "template_legs_day",
+              "order": 2
+            },
+            {
+              "id": "session_6",
+              "sessionName": "Pull Day",
+              "workoutTemplateId": "template_pull_day",
+              "order": 3
+            }
+          ],
+          "order": 2
+        },
+        {
+          "id": "week_3",
+          "weekLabel": "Week 3: Intensity",
+          "sessions": [
+            {
+              "id": "session_7",
+              "sessionName": "Push Day",
+              "workoutTemplateId": "template_push_day",
+              "order": 1
+            },
+            {
+              "id": "session_8",
+              "sessionName": "Legs Day",
+              "workoutTemplateId": "template_legs_day", 
+              "order": 2
+            },
+            {
+              "id": "session_9",
+              "sessionName": "Pull Day",
+              "workoutTemplateId": "template_pull_day",
+              "order": 3
+            }
+          ],
+          "order": 3
+        },
+        {
+          "id": "week_4",
+          "weekLabel": "Week 4: Peak",
+          "sessions": [
+            {
+              "id": "session_10",
+              "sessionName": "Push Day",
+              "workoutTemplateId": "template_push_day",
+              "order": 1
+            },
+            {
+              "id": "session_11",
+              "sessionName": "Legs Day",
+              "workoutTemplateId": "template_legs_day",
+              "order": 2
+            },
+            {
+              "id": "session_12",
+              "sessionName": "Pull Day",
+              "workoutTemplateId": "template_pull_day",
+              "order": 3
+            }
+          ],
+          "order": 4
+        }
+      ]
+    }
   ]
 }

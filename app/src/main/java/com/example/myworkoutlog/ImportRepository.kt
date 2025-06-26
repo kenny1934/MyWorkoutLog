@@ -20,7 +20,7 @@ enum class ImportMode {
 
 // Import data types
 enum class ImportDataType {
-    WORKOUTS, EXERCISES, PERSONAL_RECORDS, PROGRAM_TEMPLATES, COMPLETE_BACKUP, AUTO_DETECT
+    WORKOUTS, EXERCISES, PERSONAL_RECORDS, PROGRAM_TEMPLATES, WORKOUT_TEMPLATES, COMPLETE_BACKUP, AUTO_DETECT
 }
 
 // Import result data class
@@ -72,6 +72,7 @@ class ImportRepository(
     private val exerciseDao: ExerciseDao,
     private val personalRecordDao: PersonalRecordDao,
     private val programDao: ProgramTemplateDao,
+    private val workoutTemplateDao: WorkoutTemplateDao,
     private val activeCycleDao: ActiveCycleDao
 ) {
 
@@ -192,6 +193,7 @@ class ImportRepository(
                 ImportDataType.EXERCISES -> importExercises(importOptions)
                 ImportDataType.PERSONAL_RECORDS -> importPersonalRecords(importOptions)
                 ImportDataType.PROGRAM_TEMPLATES -> importProgramTemplates(importOptions)
+                ImportDataType.WORKOUT_TEMPLATES -> importWorkoutTemplates(importOptions)
                 ImportDataType.COMPLETE_BACKUP -> importCompleteBackup(importOptions)
                 ImportDataType.AUTO_DETECT -> {
                     return ImportResult(
@@ -271,6 +273,7 @@ class ImportRepository(
                 "exercises" -> ImportDataType.EXERCISES
                 "personal_records" -> ImportDataType.PERSONAL_RECORDS
                 "program_templates" -> ImportDataType.PROGRAM_TEMPLATES
+                "workout_templates" -> ImportDataType.WORKOUT_TEMPLATES
                 "complete_backup" -> ImportDataType.COMPLETE_BACKUP
                 else -> ImportDataType.AUTO_DETECT
             }
@@ -306,12 +309,14 @@ class ImportRepository(
                 ImportDataType.EXERCISES -> (jsonObject["exercises"] as? List<*>)?.size ?: 0
                 ImportDataType.PERSONAL_RECORDS -> (jsonObject["personalRecords"] as? List<*>)?.size ?: 0
                 ImportDataType.PROGRAM_TEMPLATES -> (jsonObject["programTemplates"] as? List<*>)?.size ?: 0
+                ImportDataType.WORKOUT_TEMPLATES -> (jsonObject["workoutTemplates"] as? List<*>)?.size ?: 0
                 ImportDataType.COMPLETE_BACKUP -> {
                     val workouts = (jsonObject["workouts"] as? List<*>)?.size ?: 0
                     val exercises = (jsonObject["exercises"] as? List<*>)?.size ?: 0
                     val prs = (jsonObject["personalRecords"] as? List<*>)?.size ?: 0
                     val programs = (jsonObject["programTemplates"] as? List<*>)?.size ?: 0
-                    workouts + exercises + prs + programs
+                    val templates = (jsonObject["workoutTemplates"] as? List<*>)?.size ?: 0
+                    workouts + exercises + prs + programs + templates
                 }
                 else -> 0
             }
@@ -361,6 +366,7 @@ class ImportRepository(
                 "exercises" -> ImportDataType.EXERCISES
                 "personal_records" -> ImportDataType.PERSONAL_RECORDS
                 "program_templates" -> ImportDataType.PROGRAM_TEMPLATES
+                "workout_templates" -> ImportDataType.WORKOUT_TEMPLATES
                 "complete_backup" -> ImportDataType.COMPLETE_BACKUP
                 else -> ImportDataType.AUTO_DETECT
             }
@@ -396,12 +402,14 @@ class ImportRepository(
                 ImportDataType.EXERCISES -> (jsonObject["exercises"] as? List<*>)?.size ?: 0
                 ImportDataType.PERSONAL_RECORDS -> (jsonObject["personalRecords"] as? List<*>)?.size ?: 0
                 ImportDataType.PROGRAM_TEMPLATES -> (jsonObject["programTemplates"] as? List<*>)?.size ?: 0
+                ImportDataType.WORKOUT_TEMPLATES -> (jsonObject["workoutTemplates"] as? List<*>)?.size ?: 0
                 ImportDataType.COMPLETE_BACKUP -> {
                     val workouts = (jsonObject["workouts"] as? List<*>)?.size ?: 0
                     val exercises = (jsonObject["exercises"] as? List<*>)?.size ?: 0
                     val prs = (jsonObject["personalRecords"] as? List<*>)?.size ?: 0
                     val programs = (jsonObject["programTemplates"] as? List<*>)?.size ?: 0
-                    workouts + exercises + prs + programs
+                    val templates = (jsonObject["workoutTemplates"] as? List<*>)?.size ?: 0
+                    workouts + exercises + prs + programs + templates
                 }
                 else -> 0
             }
@@ -785,6 +793,66 @@ class ImportRepository(
         }
     }
 
+    private suspend fun importWorkoutTemplates(options: ImportOptions): ImportResult {
+        try {
+            val jsonContent = File(options.filePath).readText()
+            val jsonObject = gson.fromJson(jsonContent, Map::class.java) as Map<String, Any>
+            val templatesData = jsonObject["workoutTemplates"] as List<Map<String, Any>>
+            
+            var imported = 0
+            var skipped = 0
+            var errors = 0
+            val errorMessages = mutableListOf<String>()
+
+            templatesData.forEach { templateMap ->
+                try {
+                    val template = gson.fromJson(gson.toJson(templateMap), WorkoutTemplate::class.java)
+                    
+                    if (options.skipDuplicates) {
+                        // Check if template already exists by name
+                        val allTemplates = workoutTemplateDao.getAllTemplates().first()
+                        val existing = allTemplates.find { it.name == template.name }
+                        if (existing != null) {
+                            skipped++
+                            return@forEach
+                        }
+                    }
+                    
+                    when (options.mode) {
+                        ImportMode.MERGE -> {
+                            workoutTemplateDao.insert(template)
+                            imported++
+                        }
+                        ImportMode.REPLACE -> {
+                            workoutTemplateDao.insert(template) // Room will replace due to OnConflictStrategy.REPLACE
+                            imported++
+                        }
+                        ImportMode.VALIDATE_ONLY -> {
+                            // Already validated, nothing to do
+                        }
+                    }
+                } catch (e: Exception) {
+                    errors++
+                    errorMessages.add("Workout template import error: ${e.message}")
+                }
+            }
+
+            return ImportResult(
+                success = errors == 0,
+                importedRecords = imported,
+                skippedRecords = skipped,
+                errorRecords = errors,
+                errors = errorMessages
+            )
+
+        } catch (e: Exception) {
+            return ImportResult(
+                success = false,
+                errors = listOf("Workout templates import failed: ${e.message}")
+            )
+        }
+    }
+
     private suspend fun importCompleteBackup(options: ImportOptions): ImportResult {
         try {
             val jsonContent = File(options.filePath).readText()
@@ -823,6 +891,16 @@ class ImportRepository(
                 totalSkipped += prResult.skippedRecords
                 totalErrors += prResult.errorRecords
                 allErrorMessages.addAll(prResult.errors)
+            }
+
+            // Import workout templates if present (before program templates)
+            (jsonObject["workoutTemplates"] as? List<Map<String, Any>>)?.let { templatesData ->
+                val templateOptions = options.copy(dataType = ImportDataType.WORKOUT_TEMPLATES)
+                val templateResult = importWorkoutTemplatesFromData(templatesData, templateOptions)
+                totalImported += templateResult.importedRecords
+                totalSkipped += templateResult.skippedRecords
+                totalErrors += templateResult.errorRecords
+                allErrorMessages.addAll(templateResult.errors)
             }
 
             // Import program templates if present
@@ -1023,6 +1101,51 @@ class ImportRepository(
             } catch (e: Exception) {
                 errors++
                 errorMessages.add("Program template import error: ${e.message}")
+            }
+        }
+
+        return ImportResult(
+            success = errors == 0,
+            importedRecords = imported,
+            skippedRecords = skipped,
+            errorRecords = errors,
+            errors = errorMessages
+        )
+    }
+
+    private suspend fun importWorkoutTemplatesFromData(templatesData: List<Map<String, Any>>, options: ImportOptions): ImportResult {
+        var imported = 0
+        var skipped = 0
+        var errors = 0
+        val errorMessages = mutableListOf<String>()
+
+        templatesData.forEach { templateMap ->
+            try {
+                val template = gson.fromJson(gson.toJson(templateMap), WorkoutTemplate::class.java)
+                
+                if (options.skipDuplicates) {
+                    val allTemplates = workoutTemplateDao.getAllTemplates().first()
+                    val existing = allTemplates.find { it.name == template.name }
+                    if (existing != null) {
+                        skipped++
+                        return@forEach
+                    }
+                }
+                
+                when (options.mode) {
+                    ImportMode.MERGE -> {
+                        workoutTemplateDao.insert(template)
+                        imported++
+                    }
+                    ImportMode.REPLACE -> {
+                        workoutTemplateDao.insert(template)
+                        imported++
+                    }
+                    ImportMode.VALIDATE_ONLY -> { /* Nothing to do */ }
+                }
+            } catch (e: Exception) {
+                errors++
+                errorMessages.add("Workout template import error: ${e.message}")
             }
         }
 
