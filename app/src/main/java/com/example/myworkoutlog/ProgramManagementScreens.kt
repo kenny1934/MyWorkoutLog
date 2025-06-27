@@ -3,6 +3,7 @@
 package com.example.myworkoutlog
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,10 +16,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.util.*
 
@@ -232,12 +241,54 @@ fun ProgramEditorScreen(
                                 }
                             }
                             Spacer(Modifier.height(8.dp))
-                            // Enhanced session cards with drag & drop (placeholder for now)
-                            week.sessions.sortedBy { it.order }.forEach { session ->
+                            // Enhanced session cards with drag & drop
+                            val sortedSessions = week.sessions.sortedBy { it.order }
+                            var draggedSessionId by remember { mutableStateOf<String?>(null) }
+                            var dragOffset by remember { mutableStateOf(Offset.Zero) }
+                            
+                            sortedSessions.forEach { session ->
                                 SessionCard(
                                     session = session,
                                     template = allWorkoutTemplates.find { it.id == session.workoutTemplateId },
                                     allTemplates = allWorkoutTemplates,
+                                    isDragging = draggedSessionId == session.id,
+                                    onDragStart = {
+                                        draggedSessionId = session.id
+                                        dragOffset = Offset.Zero
+                                    },
+                                    onDragEnd = {
+                                        draggedSessionId?.let { draggedId ->
+                                            // Calculate the new position based on drag offset
+                                            val draggedSessionIndex = sortedSessions.indexOfFirst { it.id == draggedId }
+                                            val cardHeight = 80 // Approximate card height in dp
+                                            val pixelsPerCard = cardHeight * 3 // Account for spacing
+                                            val positionChange = (dragOffset.y / pixelsPerCard).toInt()
+                                            val newIndex = (draggedSessionIndex + positionChange).coerceIn(0, sortedSessions.size - 1)
+                                            
+                                            if (newIndex != draggedSessionIndex) {
+                                                // Reorder sessions
+                                                val reorderedSessions = sortedSessions.toMutableList()
+                                                val draggedSession = reorderedSessions.removeAt(draggedSessionIndex)
+                                                reorderedSessions.add(newIndex, draggedSession)
+                                                
+                                                // Update orders
+                                                val updatedSessions = reorderedSessions.mapIndexed { index, s ->
+                                                    s.copy(order = index + 1)
+                                                }
+                                                
+                                                editedWeeks = editedWeeks.map { w ->
+                                                    if (w.id == week.id) {
+                                                        w.copy(sessions = updatedSessions)
+                                                    } else w
+                                                }
+                                            }
+                                        }
+                                        draggedSessionId = null
+                                        dragOffset = Offset.Zero
+                                    },
+                                    onDrag = { dragAmount ->
+                                        dragOffset = dragOffset.plus(dragAmount)
+                                    },
                                     onSessionUpdated = { updatedSession ->
                                         editedWeeks = editedWeeks.map { w ->
                                             if (w.id == week.id) {
@@ -328,17 +379,34 @@ fun SessionCard(
     template: WorkoutTemplate?,
     allTemplates: List<WorkoutTemplate>,
     onSessionUpdated: (ProgramSessionDefinition) -> Unit,
-    onSessionDeleted: (ProgramSessionDefinition) -> Unit
+    onSessionDeleted: (ProgramSessionDefinition) -> Unit,
+    isDragging: Boolean = false,
+    onDragStart: (() -> Unit)? = null,
+    onDragEnd: (() -> Unit)? = null,
+    onDrag: ((Offset) -> Unit)? = null
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showTemplateDropdown by remember { mutableStateOf(false) }
+    val hapticFeedback = LocalHapticFeedback.current
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                // Visual feedback during drag
+                scaleX = if (isDragging) 1.05f else 1f
+                scaleY = if (isDragging) 1.05f else 1f
+                alpha = if (isDragging) 0.9f else 1f
+            }
+            .zIndex(if (isDragging) 1f else 0f),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isDragging) 8.dp else 2.dp
+        ),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
+                alpha = if (isDragging) 0.8f else 0.5f
+            )
         )
     ) {
         Row(
@@ -347,12 +415,29 @@ fun SessionCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Drag handle (for future drag & drop)
+            // Interactive drag handle
             Icon(
                 imageVector = Icons.Default.DragIndicator,
-                contentDescription = "Reorder",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
+                contentDescription = "Drag to reorder",
+                tint = if (isDragging) 
+                    MaterialTheme.colorScheme.primary 
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .size(20.dp)
+                    .pointerInput(session.id) {
+                        detectDragGestures(
+                            onDragStart = { offset ->
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onDragStart?.invoke()
+                            },
+                            onDragEnd = {
+                                onDragEnd?.invoke()
+                            },
+                            onDrag = { change, dragAmount ->
+                                onDrag?.invoke(dragAmount)
+                            }
+                        )
+                    }
             )
             
             Spacer(modifier = Modifier.width(8.dp))

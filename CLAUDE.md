@@ -60,7 +60,7 @@
 18. **Enhanced Session Management**: Transformed basic text-based session display into interactive SessionCard components
 19. **Individual Session Controls**: Added edit/delete buttons for each session with confirmation dialogs  
 20. **Template Selection**: Implemented dropdown for changing workout templates after session creation
-21. **Session Reordering**: Added up/down arrow controls for intuitive session order management
+21. **Session Layout Optimization**: Fixed text layout issues and simplified action controls pending drag & drop implementation
 22. **Visual Session Indicators**: Session order badges, template preview with exercise counts, drag handles
 
 **All Issues Resolved**: Dashboard uses clear card-based visualization, shows correct trends, import includes workout templates with proper ID mapping, program blueprints feature modern session management with full CRUD operations
