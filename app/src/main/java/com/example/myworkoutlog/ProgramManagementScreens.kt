@@ -232,9 +232,8 @@ fun ProgramEditorScreen(
                                 }
                             }
                             Spacer(Modifier.height(8.dp))
-                            // Enhanced session cards
-                            val sortedSessions = week.sessions.sortedBy { it.order }
-                            sortedSessions.forEachIndexed { index, session ->
+                            // Enhanced session cards with drag & drop (placeholder for now)
+                            week.sessions.sortedBy { it.order }.forEach { session ->
                                 SessionCard(
                                     session = session,
                                     template = allWorkoutTemplates.find { it.id == session.workoutTemplateId },
@@ -259,43 +258,7 @@ fun ProgramEditorScreen(
                                                 w.copy(sessions = reorderedSessions)
                                             } else w
                                         }
-                                    },
-                                    onMoveUp = if (index > 0) {
-                                        {
-                                            editedWeeks = editedWeeks.map { w ->
-                                                if (w.id == week.id) {
-                                                    val sessions = w.sessions.toMutableList()
-                                                    val currentIndex = sessions.indexOfFirst { it.id == session.id }
-                                                    if (currentIndex > 0) {
-                                                        // Swap with previous session
-                                                        val temp = sessions[currentIndex].copy(order = currentIndex)
-                                                        sessions[currentIndex] = sessions[currentIndex - 1].copy(order = currentIndex + 1)
-                                                        sessions[currentIndex - 1] = temp
-                                                    }
-                                                    w.copy(sessions = sessions)
-                                                } else w
-                                            }
-                                        }
-                                    } else null,
-                                    onMoveDown = if (index < sortedSessions.size - 1) {
-                                        {
-                                            editedWeeks = editedWeeks.map { w ->
-                                                if (w.id == week.id) {
-                                                    val sessions = w.sessions.toMutableList()
-                                                    val currentIndex = sessions.indexOfFirst { it.id == session.id }
-                                                    if (currentIndex < sessions.size - 1) {
-                                                        // Swap with next session
-                                                        val temp = sessions[currentIndex].copy(order = currentIndex + 2)
-                                                        sessions[currentIndex] = sessions[currentIndex + 1].copy(order = currentIndex + 1)
-                                                        sessions[currentIndex + 1] = temp
-                                                    }
-                                                    w.copy(sessions = sessions)
-                                                } else w
-                                            }
-                                        }
-                                    } else null,
-                                    isFirst = index == 0,
-                                    isLast = index == sortedSessions.size - 1
+                                    }
                                 )
                                 Spacer(Modifier.height(8.dp))
                             }
@@ -365,11 +328,7 @@ fun SessionCard(
     template: WorkoutTemplate?,
     allTemplates: List<WorkoutTemplate>,
     onSessionUpdated: (ProgramSessionDefinition) -> Unit,
-    onSessionDeleted: (ProgramSessionDefinition) -> Unit,
-    onMoveUp: (() -> Unit)? = null,
-    onMoveDown: (() -> Unit)? = null,
-    isFirst: Boolean = false,
-    isLast: Boolean = false
+    onSessionDeleted: (ProgramSessionDefinition) -> Unit
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
@@ -424,96 +383,54 @@ fun SessionCard(
                     fontWeight = FontWeight.Medium
                 )
                 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                // Template name
+                Text(
+                    text = template?.name ?: "Unknown Template",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (template != null) 
+                        MaterialTheme.colorScheme.onSurfaceVariant 
+                    else MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(top = 2.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.FitnessCenter,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
+                )
+                
+                // Exercise count
+                if (template != null) {
                     Text(
-                        text = template?.name ?: "Unknown Template",
+                        text = "${template.templateExercises.size} exercises",
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (template != null) 
-                            MaterialTheme.colorScheme.onSurfaceVariant 
-                        else MaterialTheme.colorScheme.error
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(top = 1.dp)
                     )
-                    
-                    // Template info
-                    if (template != null) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "• ${template.templateExercises.size} exercises",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
             }
             
-            // Action buttons
-            Row {
-                // Reorder buttons
-                Column {
-                    // Move up button
-                    IconButton(
-                        onClick = { onMoveUp?.invoke() },
-                        enabled = !isFirst && onMoveUp != null,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowUp,
-                            contentDescription = "Move Up",
-                            tint = if (!isFirst && onMoveUp != null) 
-                                MaterialTheme.colorScheme.onSurfaceVariant 
-                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    // Move down button
-                    IconButton(
-                        onClick = { onMoveDown?.invoke() },
-                        enabled = !isLast && onMoveDown != null,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = "Move Down",
-                            tint = if (!isLast && onMoveDown != null) 
-                                MaterialTheme.colorScheme.onSurfaceVariant 
-                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-                
+            // Action buttons - simplified layout
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 // Edit button
                 IconButton(
                     onClick = { showEditDialog = true },
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Edit Session",
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
                 
                 // Delete button
                 IconButton(
                     onClick = { showDeleteConfirmation = true },
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete Session",
                         tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
