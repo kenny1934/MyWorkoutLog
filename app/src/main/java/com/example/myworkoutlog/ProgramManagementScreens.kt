@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -231,10 +232,30 @@ fun ProgramEditorScreen(
                                 }
                             }
                             Spacer(Modifier.height(8.dp))
-                            // List the sessions for this week
+                            // Enhanced session cards
                             week.sessions.sortedBy { it.order }.forEach { session ->
-                                val templateName = allWorkoutTemplates.find { it.id == session.workoutTemplateId }?.name ?: "Unknown Template"
-                                Text("  - ${session.sessionName}: $templateName", style = MaterialTheme.typography.bodyMedium)
+                                SessionCard(
+                                    session = session,
+                                    template = allWorkoutTemplates.find { it.id == session.workoutTemplateId },
+                                    allTemplates = allWorkoutTemplates,
+                                    onSessionUpdated = { updatedSession ->
+                                        editedWeeks = editedWeeks.map { w ->
+                                            if (w.id == week.id) {
+                                                w.copy(sessions = w.sessions.map { s ->
+                                                    if (s.id == session.id) updatedSession else s
+                                                })
+                                            } else w
+                                        }
+                                    },
+                                    onSessionDeleted = { sessionToDelete ->
+                                        editedWeeks = editedWeeks.map { w ->
+                                            if (w.id == week.id) {
+                                                w.copy(sessions = w.sessions.filter { s -> s.id != sessionToDelete.id })
+                                            } else w
+                                        }
+                                    }
+                                )
+                                Spacer(Modifier.height(8.dp))
                             }
                             TextButton(onClick = { showAddSessionDialog = week.id }) {
                                 Text("Add Session to Week")
@@ -293,5 +314,249 @@ fun ProgramEditorScreen(
                 }
             )
         }
+    }
+}
+
+@Composable
+fun SessionCard(
+    session: ProgramSessionDefinition,
+    template: WorkoutTemplate?,
+    allTemplates: List<WorkoutTemplate>,
+    onSessionUpdated: (ProgramSessionDefinition) -> Unit,
+    onSessionDeleted: (ProgramSessionDefinition) -> Unit
+) {
+    var showEditDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showTemplateDropdown by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Drag handle (for future drag & drop)
+            Icon(
+                imageVector = Icons.Default.DragIndicator,
+                contentDescription = "Reorder",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            // Session order number
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = session.order.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Session content
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = session.sessionName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 2.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FitnessCenter,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = template?.name ?: "Unknown Template",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (template != null) 
+                            MaterialTheme.colorScheme.onSurfaceVariant 
+                        else MaterialTheme.colorScheme.error
+                    )
+                    
+                    // Template info
+                    if (template != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "• ${template.templateExercises.size} exercises",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            
+            // Action buttons
+            Row {
+                // Edit button
+                IconButton(
+                    onClick = { showEditDialog = true },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit Session",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                
+                // More options button
+                IconButton(
+                    onClick = { showDeleteConfirmation = true },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete Session",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+    }
+
+    // Edit Session Dialog
+    if (showEditDialog) {
+        var editedName by remember { mutableStateOf(session.sessionName) }
+        var selectedTemplate by remember { mutableStateOf(template) }
+        
+        AlertDialog(
+            onDismissRequest = { showEditDialog = false },
+            title = { Text("Edit Session") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = editedName,
+                        onValueChange = { editedName = it },
+                        label = { Text("Session Name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "Workout Template:",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Template dropdown
+                    ExposedDropdownMenuBox(
+                        expanded = showTemplateDropdown,
+                        onExpandedChange = { showTemplateDropdown = !showTemplateDropdown }
+                    ) {
+                        OutlinedTextField(
+                            value = selectedTemplate?.name ?: "Select Template",
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = { 
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = showTemplateDropdown) 
+                            },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = showTemplateDropdown,
+                            onDismissRequest = { showTemplateDropdown = false }
+                        ) {
+                            allTemplates.forEach { template ->
+                                DropdownMenuItem(
+                                    text = { 
+                                        Column {
+                                            Text(template.name)
+                                            Text(
+                                                text = "${template.templateExercises.size} exercises",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        selectedTemplate = template
+                                        showTemplateDropdown = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val updatedSession = session.copy(
+                            sessionName = editedName.ifBlank { session.sessionName },
+                            workoutTemplateId = selectedTemplate?.id ?: session.workoutTemplateId
+                        )
+                        onSessionUpdated(updatedSession)
+                        showEditDialog = false
+                    }
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Delete Confirmation Dialog
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("Delete Session") },
+            text = { 
+                Text("Are you sure you want to delete \"${session.sessionName}\"? This action cannot be undone.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onSessionDeleted(session)
+                        showDeleteConfirmation = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
