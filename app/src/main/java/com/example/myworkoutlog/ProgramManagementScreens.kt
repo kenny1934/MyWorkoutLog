@@ -28,6 +28,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.compose.animation.core.*
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.util.*
 
@@ -246,12 +251,81 @@ fun ProgramEditorScreen(
                             var draggedSessionId by remember { mutableStateOf<String?>(null) }
                             var dragOffset by remember { mutableStateOf(Offset.Zero) }
                             
-                            sortedSessions.forEach { session ->
+                            Column(
+                                modifier = Modifier.animateContentSize(
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                        stiffness = Spring.StiffnessMedium
+                                    )
+                                )
+                            ) {
+                                sortedSessions.forEachIndexed { index, session ->
+                                    val sessionIsDragged = draggedSessionId == session.id
+                                    val draggedSessionIndex = sortedSessions.indexOfFirst { it.id == draggedSessionId }
+                                    
+                                    // Calculate if this item should move up or down to make space
+                                    val shouldAnimate = draggedSessionId != null && !sessionIsDragged
+                                    val cardHeight = 80 // Approximate card height in dp
+                                    val pixelsPerCard = cardHeight * 3 // Account for spacing
+                                    val targetIndex = if (draggedSessionIndex >= 0) {
+                                        (draggedSessionIndex + (dragOffset.y / pixelsPerCard).toInt()).coerceIn(0, sortedSessions.size - 1)
+                                    } else index
+                                    
+                                    val animatedOffset by animateDpAsState(
+                                        targetValue = if (shouldAnimate && draggedSessionIndex >= 0) {
+                                            when {
+                                                // Item should move down to make space
+                                                index >= targetIndex && index < draggedSessionIndex -> cardHeight.dp
+                                                // Item should move up to make space  
+                                                index <= targetIndex && index > draggedSessionIndex -> (-cardHeight).dp
+                                                else -> 0.dp
+                                            }
+                                        } else 0.dp,
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessMedium
+                                        ),
+                                        label = "session_reorder_animation"
+                                    )
+                                    
+                                    // Show placeholder at target position
+                                    if (draggedSessionId != null && draggedSessionIndex >= 0 && index == targetIndex && !sessionIsDragged) {
+                                        Card(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(cardHeight.dp)
+                                                .padding(vertical = 4.dp),
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                            ),
+                                            border = BorderStroke(
+                                                2.dp, 
+                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                                            )
+                                        ) {
+                                            Box(
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    "Drop here",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                                )
+                                            }
+                                        }
+                                        Spacer(Modifier.height(8.dp))
+                                    }
+                                    
+                                    Box(
+                                        modifier = Modifier.offset(y = animatedOffset)
+                                    ) {
                                 SessionCard(
                                     session = session,
                                     template = allWorkoutTemplates.find { it.id == session.workoutTemplateId },
                                     allTemplates = allWorkoutTemplates,
                                     isDragging = draggedSessionId == session.id,
+                                    dragOffset = if (draggedSessionId == session.id) dragOffset else Offset.Zero,
                                     onDragStart = {
                                         draggedSessionId = session.id
                                         dragOffset = Offset.Zero
@@ -311,7 +385,9 @@ fun ProgramEditorScreen(
                                         }
                                     }
                                 )
-                                Spacer(Modifier.height(8.dp))
+                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                }
                             }
                             TextButton(onClick = { showAddSessionDialog = week.id }) {
                                 Text("Add Session to Week")
@@ -381,6 +457,7 @@ fun SessionCard(
     onSessionUpdated: (ProgramSessionDefinition) -> Unit,
     onSessionDeleted: (ProgramSessionDefinition) -> Unit,
     isDragging: Boolean = false,
+    dragOffset: Offset = Offset.Zero,
     onDragStart: (() -> Unit)? = null,
     onDragEnd: (() -> Unit)? = null,
     onDrag: ((Offset) -> Unit)? = null
@@ -389,10 +466,15 @@ fun SessionCard(
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showTemplateDropdown by remember { mutableStateOf(false) }
     val hapticFeedback = LocalHapticFeedback.current
+    val density = LocalDensity.current
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .offset(
+                x = if (isDragging) with(density) { dragOffset.x.toDp() } else 0.dp,
+                y = if (isDragging) with(density) { dragOffset.y.toDp() } else 0.dp
+            )
             .graphicsLayer {
                 // Visual feedback during drag
                 scaleX = if (isDragging) 1.05f else 1f
