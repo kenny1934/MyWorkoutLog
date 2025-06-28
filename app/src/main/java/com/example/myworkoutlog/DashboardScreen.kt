@@ -1,13 +1,16 @@
 package com.example.myworkoutlog
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -21,6 +24,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.zIndex
+import androidx.compose.animation.core.*
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
@@ -1395,6 +1408,12 @@ fun EnhancedDashboardScreen(
     val isLoading by dashboardViewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by dashboardViewModel.isRefreshing.collectAsStateWithLifecycle()
     val error by dashboardViewModel.error.collectAsStateWithLifecycle()
+    val isCustomizationMode by dashboardViewModel.isCustomizationMode.collectAsStateWithLifecycle()
+    val dashboardPreferences by dashboardViewModel.dashboardPreferences.collectAsStateWithLifecycle()
+    
+    // Drag and drop state
+    var draggedWidgetIndex by remember { mutableStateOf<Int?>(null) }
+    var dragOffset by remember { mutableStateOf(Offset.Zero) }
     
     PullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -1407,14 +1426,30 @@ fun EnhancedDashboardScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-        // Header
+        // Header with customization toggle
         item {
-            Text(
-                text = "Dashboard",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Dashboard",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                
+                IconButton(
+                    onClick = { dashboardViewModel.toggleCustomizationMode() }
+                ) {
+                    Icon(
+                        imageVector = if (isCustomizationMode) Icons.Default.Done else Icons.Default.Edit,
+                        contentDescription = if (isCustomizationMode) "Exit customization" else "Customize dashboard",
+                        tint = if (isCustomizationMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
         
         // Error state
@@ -1511,8 +1546,160 @@ fun EnhancedDashboardScreen(
                 }
             }
             
-            // Dashboard widgets (simplified for compilation)
-            items(dashboardState.widgets) { widget ->
+            // Dashboard widgets with drag and drop support
+            itemsIndexed(dashboardState.widgets) { index, widget ->
+                val isDragged = draggedWidgetIndex == index
+                val targetIndex = if (draggedWidgetIndex != null) {
+                    val cardHeight = 120 // Approximate card height
+                    val pixelsPerCard = cardHeight * 1.2f // Account for spacing
+                    (draggedWidgetIndex!! + (dragOffset.y / pixelsPerCard).toInt()).coerceIn(0, dashboardState.widgets.size - 1)
+                } else index
+                
+                val animatedOffset by animateDpAsState(
+                    targetValue = if (draggedWidgetIndex != null && !isDragged && draggedWidgetIndex != null) {
+                        when {
+                            // Item should move down to make space
+                            index >= targetIndex && index < draggedWidgetIndex!! -> cardHeight.dp
+                            // Item should move up to make space  
+                            index <= targetIndex && index > draggedWidgetIndex!! -> (-cardHeight).dp
+                            else -> 0.dp
+                        }
+                    } else 0.dp,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    ),
+                    label = "widget_reorder_animation"
+                )
+                
+                // Show placeholder at target position
+                if (draggedWidgetIndex != null && index == targetIndex && !isDragged) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp)
+                            .padding(vertical = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                        ),
+                        border = BorderStroke(
+                            2.dp, 
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "Drop here",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
+                
+                Box(
+                    modifier = Modifier.offset(y = animatedOffset)
+                ) {
+                    DraggableWidgetCard(
+                        widget = widget,
+                        navController = navController,
+                        isDragged = isDragged,
+                        dragOffset = if (isDragged) dragOffset else Offset.Zero,
+                        isCustomizationMode = isCustomizationMode,
+                        onDragStart = {
+                            draggedWidgetIndex = index
+                            dragOffset = Offset.Zero
+                        },
+                        onDragEnd = {
+                            draggedWidgetIndex?.let { fromIndex ->
+                                val toIndex = targetIndex
+                                if (fromIndex != toIndex) {
+                                    dashboardViewModel.reorderWidgets(fromIndex, toIndex)
+                                }
+                            }
+                            draggedWidgetIndex = null
+                            dragOffset = Offset.Zero
+                        },
+                        onDrag = { dragAmount ->
+                            dragOffset = dragOffset.plus(dragAmount)
+                        },
+                        onToggleVisibility = { widgetId ->
+                            dashboardViewModel.toggleWidgetVisibility(widgetId)
+                        }
+                    )
+                }
+            }
+            
+            // Low priority insights
+            val lowPriorityInsights = dashboardState.insights.filter { 
+                it.priority == InsightPriority.LOW || it.priority == InsightPriority.MEDIUM 
+            }
+            if (lowPriorityInsights.isNotEmpty()) {
+                item {
+                    EnhancedDashboardWidgetCard(
+                        title = "Insights",
+                        icon = Icons.Default.Lightbulb
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            lowPriorityInsights.forEach { insight ->
+                                EnhancedInsightCard(
+                                    insight = insight,
+                                    onDismiss = { insightId -> dashboardViewModel.dismissInsight(insightId) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        }
+    }
+}
+
+@Composable
+fun DraggableWidgetCard(
+    widget: DashboardWidget,
+    navController: NavHostController,
+    isDragged: Boolean = false,
+    dragOffset: Offset = Offset.Zero,
+    isCustomizationMode: Boolean = false,
+    onDragStart: (() -> Unit)? = null,
+    onDragEnd: (() -> Unit)? = null,
+    onDrag: ((Offset) -> Unit)? = null,
+    onToggleVisibility: ((String) -> Unit)? = null
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    val density = LocalDensity.current
+    
+    Box {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(
+                    x = if (isDragged) with(density) { dragOffset.x.toDp() } else 0.dp,
+                    y = if (isDragged) with(density) { dragOffset.y.toDp() } else 0.dp
+                )
+                .graphicsLayer {
+                    // Enhanced visual feedback during drag
+                    scaleX = if (isDragged) 1.02f else 1f
+                    scaleY = if (isDragged) 1.02f else 1f
+                    alpha = if (isDragged) 0.95f else 1f
+                }
+                .zIndex(if (isDragged) 1f else 0f),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = if (isDragged) 12.dp else 4.dp
+            ),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isDragged) 
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f)
+                else MaterialTheme.colorScheme.surface
+            )
+        ) {
+            Box {
+                // Render the actual widget content
                 when (widget) {
                     is DashboardWidget.WelcomeWidget -> SimpleWelcomeWidgetCard(widget)
                     is DashboardWidget.QuickStatsWidget -> SimpleQuickStatsWidgetCard(widget)
@@ -1540,32 +1727,64 @@ fun EnhancedDashboardScreen(
                         navController = navController
                     )
                     is DashboardWidget.AchievementWidget -> SimpleAchievementWidgetCard(widget)
-                    // All widget types are handled above
                 }
-            }
-            
-            // Low priority insights
-            val lowPriorityInsights = dashboardState.insights.filter { 
-                it.priority == InsightPriority.LOW || it.priority == InsightPriority.MEDIUM 
-            }
-            if (lowPriorityInsights.isNotEmpty()) {
-                item {
-                    EnhancedDashboardWidgetCard(
-                        title = "Insights",
-                        icon = Icons.Default.Lightbulb
+                
+                // Customization overlay
+                if (isCustomizationMode) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            lowPriorityInsights.forEach { insight ->
-                                EnhancedInsightCard(
-                                    insight = insight,
-                                    onDismiss = { insightId -> dashboardViewModel.dismissInsight(insightId) }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Drag handle
+                            Icon(
+                                imageVector = Icons.Default.DragIndicator,
+                                contentDescription = "Drag to reorder",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .pointerInput(widget.id) {
+                                        detectDragGestures(
+                                            onDragStart = { 
+                                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                onDragStart?.invoke() 
+                                            },
+                                            onDragEnd = { onDragEnd?.invoke() },
+                                            onDrag = { change, dragAmount ->
+                                                onDrag?.invoke(dragAmount)
+                                            }
+                                        )
+                                    }
+                            )
+                            
+                            Text(
+                                text = widget.title,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f).padding(horizontal = 16.dp)
+                            )
+                            
+                            // Visibility toggle
+                            IconButton(
+                                onClick = { onToggleVisibility?.invoke(widget.id) }
+                            ) {
+                                Icon(
+                                    imageVector = if (widget.isVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = if (widget.isVisible) "Hide widget" else "Show widget",
+                                    tint = if (widget.isVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                                 )
                             }
                         }
                     }
                 }
             }
-        }
         }
     }
 }

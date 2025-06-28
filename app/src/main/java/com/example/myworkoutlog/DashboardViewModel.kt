@@ -181,12 +181,119 @@ class DashboardViewModel(
         }
     }
     
-    fun reorderWidgets(newOrder: List<String>) {
-        // TODO: Implement widget reordering
+    // Dashboard preferences state
+    private val _dashboardPreferences = MutableStateFlow(
+        DashboardPreferences(
+            widgetConfigs = emptyList(),
+            showMotivationalMessages = true,
+            showAchievements = true,
+            showInsights = true,
+            autoRefresh = true,
+            defaultTimeframe = "30days"
+        )
+    )
+    val dashboardPreferences: StateFlow<DashboardPreferences> = _dashboardPreferences.asStateFlow()
+    
+    // Customization mode state
+    private val _isCustomizationMode = MutableStateFlow(false)
+    val isCustomizationMode: StateFlow<Boolean> = _isCustomizationMode.asStateFlow()
+    
+    fun reorderWidgets(fromIndex: Int, toIndex: Int) {
         viewModelScope.launch {
-            // Save new order preference and refresh
+            val currentState = dashboardState.value
+            val widgets = currentState.widgets.toMutableList()
+            
+            if (fromIndex in widgets.indices && toIndex in widgets.indices) {
+                // Perform the reordering
+                val draggedWidget = widgets.removeAt(fromIndex)
+                widgets.add(toIndex, draggedWidget)
+                
+                // Update widget configs with new order
+                val newConfigs = widgets.mapIndexed { index, widget ->
+                    WidgetConfig(
+                        widgetType = widget.id,
+                        isEnabled = widget.isVisible,
+                        position = index
+                    )
+                }
+                
+                // Update preferences
+                _dashboardPreferences.value = _dashboardPreferences.value.copy(
+                    widgetConfigs = newConfigs
+                )
+                
+                // Save preferences
+                saveDashboardPreferences()
+                
+                // Trigger refresh to apply new order
+                refreshDashboard()
+            }
+        }
+    }
+    
+    fun toggleWidgetVisibility(widgetId: String) {
+        viewModelScope.launch {
+            val currentConfigs = _dashboardPreferences.value.widgetConfigs.toMutableList()
+            val configIndex = currentConfigs.indexOfFirst { it.widgetType == widgetId }
+            
+            if (configIndex >= 0) {
+                currentConfigs[configIndex] = currentConfigs[configIndex].copy(
+                    isEnabled = !currentConfigs[configIndex].isEnabled
+                )
+            } else {
+                // Add new config if it doesn't exist
+                currentConfigs.add(
+                    WidgetConfig(
+                        widgetType = widgetId,
+                        isEnabled = false,
+                        position = currentConfigs.size
+                    )
+                )
+            }
+            
+            _dashboardPreferences.value = _dashboardPreferences.value.copy(
+                widgetConfigs = currentConfigs
+            )
+            
+            // Save preferences
+            saveDashboardPreferences()
+            
             refreshDashboard()
         }
+    }
+    
+    fun toggleCustomizationMode() {
+        _isCustomizationMode.value = !_isCustomizationMode.value
+    }
+    
+    // Preference persistence (basic in-memory implementation)
+    private fun saveDashboardPreferences() {
+        viewModelScope.launch(Dispatchers.IO) {
+            // TODO: Implement SharedPreferences or Room persistence
+            // For now, preferences persist only during app session
+            println("Dashboard preferences saved: ${_dashboardPreferences.value}")
+        }
+    }
+    
+    private fun loadDashboardPreferences() {
+        viewModelScope.launch(Dispatchers.IO) {
+            // TODO: Load from SharedPreferences or Room database
+            // For now, using default preferences
+            val defaultPreferences = DashboardPreferences(
+                widgetConfigs = emptyList(),
+                showMotivationalMessages = true,
+                showAchievements = true,
+                showInsights = true,
+                autoRefresh = true,
+                defaultTimeframe = "30days"
+            )
+            _dashboardPreferences.value = defaultPreferences
+        }
+    }
+    
+    init {
+        // Load preferences on initialization
+        loadDashboardPreferences()
     }
     
     // Helper method to get widget by ID
