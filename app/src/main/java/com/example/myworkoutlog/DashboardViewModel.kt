@@ -20,15 +20,19 @@ class DashboardViewModel(
     // Get active cycle as a flow
     private val activeCycle = activeCycleDao.getActiveCycle()
     
-    // Dashboard state that recomposes when active cycle changes or refresh is triggered
+    // Dashboard state that recomposes when active cycle, preferences, or refresh is triggered
     val dashboardState: StateFlow<DashboardState> = combine(
         activeCycle,
-        _refreshTrigger
-    ) { cycle, _ ->
-        // This will trigger recomposition when either activeCycle changes or refresh is called
-        cycle
-    }.flatMapLatest { cycle ->
-        widgetRepository.getDashboardState(cycle)
+        _refreshTrigger,
+        _dashboardPreferences
+    ) { cycle, _, preferences ->
+        // This will trigger recomposition when cycle, preferences change or refresh is called
+        Triple(cycle, preferences, Unit)
+    }.flatMapLatest { (cycle, preferences, _) ->
+        widgetRepository.getDashboardState(cycle).map { state ->
+            // Apply preferences to filter and reorder widgets
+            applyPreferencesToDashboardState(state, preferences)
+        }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -203,7 +207,7 @@ class DashboardViewModel(
             val currentState = dashboardState.value
             val widgets = currentState.widgets.toMutableList()
             
-            if (fromIndex in widgets.indices && toIndex in widgets.indices) {
+            if (fromIndex in widgets.indices && toIndex in widgets.indices && fromIndex != toIndex) {
                 // Perform the reordering
                 val draggedWidget = widgets.removeAt(fromIndex)
                 widgets.add(toIndex, draggedWidget)
@@ -212,12 +216,12 @@ class DashboardViewModel(
                 val newConfigs = widgets.mapIndexed { index, widget ->
                     WidgetConfig(
                         widgetType = widget.id,
-                        isEnabled = widget.isVisible,
+                        isEnabled = true, // Keep all visible widgets enabled after reordering
                         position = index
                     )
                 }
                 
-                // Update preferences
+                // Update preferences immediately - this will trigger the state recomposition
                 _dashboardPreferences.value = _dashboardPreferences.value.copy(
                     widgetConfigs = newConfigs
                 )
@@ -225,32 +229,36 @@ class DashboardViewModel(
                 // Save preferences
                 saveDashboardPreferences()
                 
-                // Trigger refresh to apply new order
-                refreshDashboard()
+                // Note: No need to call refreshDashboard() as the preference change will trigger state update
             }
         }
     }
     
     fun toggleWidgetVisibility(widgetId: String) {
         viewModelScope.launch {
+            val currentState = dashboardState.value
             val currentConfigs = _dashboardPreferences.value.widgetConfigs.toMutableList()
             val configIndex = currentConfigs.indexOfFirst { it.widgetType == widgetId }
             
             if (configIndex >= 0) {
+                // Toggle existing config
                 currentConfigs[configIndex] = currentConfigs[configIndex].copy(
                     isEnabled = !currentConfigs[configIndex].isEnabled
                 )
             } else {
-                // Add new config if it doesn't exist
-                currentConfigs.add(
+                // Create configs for all current widgets if they don't exist
+                val allWidgetConfigs = currentState.widgets.mapIndexed { index, widget ->
                     WidgetConfig(
-                        widgetType = widgetId,
-                        isEnabled = false,
-                        position = currentConfigs.size
+                        widgetType = widget.id,
+                        isEnabled = if (widget.id == widgetId) false else true, // Toggle the specific widget
+                        position = index
                     )
-                )
+                }
+                currentConfigs.clear()
+                currentConfigs.addAll(allWidgetConfigs)
             }
             
+            // Update preferences immediately - this will trigger state recomposition
             _dashboardPreferences.value = _dashboardPreferences.value.copy(
                 widgetConfigs = currentConfigs
             )
@@ -258,7 +266,7 @@ class DashboardViewModel(
             // Save preferences
             saveDashboardPreferences()
             
-            refreshDashboard()
+            // Note: No need to call refreshDashboard() as the preference change will trigger state update
         }
     }
     
@@ -294,6 +302,46 @@ class DashboardViewModel(
     init {
         // Load preferences on initialization
         loadDashboardPreferences()
+    }
+    
+    private fun applyPreferencesToDashboardState(
+        state: DashboardState,
+        preferences: DashboardPreferences
+    ): DashboardState {
+        val configs = preferences.widgetConfigs
+        if (configs.isEmpty()) {
+            // No preferences set, return original state
+            return state
+        }
+        
+        // Create a map of widget configurations for quick lookup
+        val configMap = configs.associateBy { it.widgetType }
+        
+        // Filter widgets based on visibility preferences
+        val filteredWidgets = state.widgets.filter { widget ->
+            val config = configMap[widget.id]
+            config?.isEnabled ?: widget.isVisible // Default to widget's original visibility
+        }
+        
+        // Reorder widgets based on preferences
+        val reorderedWidgets = if (configs.isNotEmpty()) {
+            // Sort by position from preferences, then by original order for missing widgets
+            filteredWidgets.sortedWith { widget1, widget2 ->
+                val config1 = configMap[widget1.id]
+                val config2 = configMap[widget2.id]
+                
+                when {
+                    config1 != null && config2 != null -> config1.position.compareTo(config2.position)
+                    config1 != null && config2 == null -> -1
+                    config1 == null && config2 != null -> 1
+                    else -> widget1.priority.compareTo(widget2.priority) // Fallback to original priority
+                }
+            }
+        } else {
+            filteredWidgets
+        }
+        
+        return state.copy(widgets = reorderedWidgets)
     }
     
     // Helper method to get widget by ID

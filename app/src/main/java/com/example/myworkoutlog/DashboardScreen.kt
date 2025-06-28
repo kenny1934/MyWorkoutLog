@@ -1555,6 +1555,10 @@ fun EnhancedDashboardScreen(
                     (draggedWidgetIndex!! + (dragOffset.y / pixelsPerCard).toInt()).coerceIn(0, dashboardState.widgets.size - 1)
                 } else index
                 
+                // Get current visibility state from preferences
+                val widgetConfig = dashboardPreferences.widgetConfigs.find { it.widgetType == widget.id }
+                val isWidgetVisible = widgetConfig?.isEnabled ?: widget.isVisible
+                
                 val animatedOffset by animateDpAsState(
                     targetValue = if (draggedWidgetIndex != null && !isDragged && draggedWidgetIndex != null) {
                         when {
@@ -1609,6 +1613,7 @@ fun EnhancedDashboardScreen(
                         isDragged = isDragged,
                         dragOffset = if (isDragged) dragOffset else Offset.Zero,
                         isCustomizationMode = isCustomizationMode,
+                        isWidgetVisible = isWidgetVisible,
                         onDragStart = {
                             draggedWidgetIndex = index
                             dragOffset = Offset.Zero
@@ -1666,6 +1671,7 @@ fun DraggableWidgetCard(
     isDragged: Boolean = false,
     dragOffset: Offset = Offset.Zero,
     isCustomizationMode: Boolean = false,
+    isWidgetVisible: Boolean = true,
     onDragStart: (() -> Unit)? = null,
     onDragEnd: (() -> Unit)? = null,
     onDrag: ((Offset) -> Unit)? = null,
@@ -1776,9 +1782,9 @@ fun DraggableWidgetCard(
                                 onClick = { onToggleVisibility?.invoke(widget.id) }
                             ) {
                                 Icon(
-                                    imageVector = if (widget.isVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                    contentDescription = if (widget.isVisible) "Hide widget" else "Show widget",
-                                    tint = if (widget.isVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                                    imageVector = if (isWidgetVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = if (isWidgetVisible) "Hide widget" else "Show widget",
+                                    tint = if (isWidgetVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                                 )
                             }
                         }
