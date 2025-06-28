@@ -275,6 +275,43 @@ class DashboardViewModel(
         _isCustomizationMode.value = !_isCustomizationMode.value
     }
     
+    // Get all available widgets including hidden ones
+    fun getAllAvailableWidgets(): Flow<List<DashboardWidget>> {
+        return combine(
+            activeCycle,
+            _refreshTrigger
+        ) { cycle, _ ->
+            cycle
+        }.flatMapLatest { cycle ->
+            widgetRepository.getDashboardState(cycle).map { state ->
+                state.widgets // Return all widgets without filtering
+            }
+        }
+    }
+    
+    // Hidden widgets state for UI
+    val hiddenWidgets: StateFlow<List<DashboardWidget>> = combine(
+        activeCycle,
+        _refreshTrigger,
+        _dashboardPreferences
+    ) { cycle, _, preferences ->
+        Triple(cycle, preferences, Unit)
+    }.flatMapLatest { (cycle, preferences, _) ->
+        widgetRepository.getDashboardState(cycle).map { state ->
+            val configs = preferences.widgetConfigs
+            val configMap = configs.associateBy { it.widgetType }
+            
+            state.widgets.filter { widget ->
+                val config = configMap[widget.id]
+                config?.isEnabled == false
+            }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+    
     // Preference persistence (basic in-memory implementation)
     private fun saveDashboardPreferences() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -310,10 +347,6 @@ class DashboardViewModel(
         preferences: DashboardPreferences
     ): DashboardState {
         val configs = preferences.widgetConfigs
-        if (configs.isEmpty()) {
-            // No preferences set, return original state
-            return state
-        }
         
         // Create a map of widget configurations for quick lookup
         val configMap = configs.associateBy { it.widgetType }
@@ -321,7 +354,7 @@ class DashboardViewModel(
         // Filter widgets based on visibility preferences
         val filteredWidgets = state.widgets.filter { widget ->
             val config = configMap[widget.id]
-            config?.isEnabled ?: widget.isVisible // Default to widget's original visibility
+            config?.isEnabled ?: true // Default to visible if no config exists
         }
         
         // Reorder widgets based on preferences
@@ -339,7 +372,8 @@ class DashboardViewModel(
                 }
             }
         } else {
-            filteredWidgets
+            // No preferences set, use original order
+            filteredWidgets.sortedBy { it.priority }
         }
         
         return state.copy(widgets = reorderedWidgets)
