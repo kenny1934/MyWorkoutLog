@@ -17,6 +17,23 @@ class DashboardViewModel(
     
     private val _refreshTrigger = MutableStateFlow(0)
     
+    // Dashboard preferences state - must be declared before dashboardState
+    private val _dashboardPreferences = MutableStateFlow(
+        DashboardPreferences(
+            widgetConfigs = emptyList(),
+            showMotivationalMessages = true,
+            showAchievements = true,
+            showInsights = true,
+            autoRefresh = true,
+            defaultTimeframe = "30days"
+        )
+    )
+    val dashboardPreferences: StateFlow<DashboardPreferences> = _dashboardPreferences.asStateFlow()
+    
+    // Customization mode state
+    private val _isCustomizationMode = MutableStateFlow(false)
+    val isCustomizationMode: StateFlow<Boolean> = _isCustomizationMode.asStateFlow()
+    
     // Get active cycle as a flow
     private val activeCycle = activeCycleDao.getActiveCycle()
     
@@ -185,22 +202,6 @@ class DashboardViewModel(
         }
     }
     
-    // Dashboard preferences state
-    private val _dashboardPreferences = MutableStateFlow(
-        DashboardPreferences(
-            widgetConfigs = emptyList(),
-            showMotivationalMessages = true,
-            showAchievements = true,
-            showInsights = true,
-            autoRefresh = true,
-            defaultTimeframe = "30days"
-        )
-    )
-    val dashboardPreferences: StateFlow<DashboardPreferences> = _dashboardPreferences.asStateFlow()
-    
-    // Customization mode state
-    private val _isCustomizationMode = MutableStateFlow(false)
-    val isCustomizationMode: StateFlow<Boolean> = _isCustomizationMode.asStateFlow()
     
     fun reorderWidgets(fromIndex: Int, toIndex: Int) {
         viewModelScope.launch {
