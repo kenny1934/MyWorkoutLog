@@ -1549,8 +1549,8 @@ fun EnhancedDashboardScreen(
             // Dashboard widgets with drag and drop support
             itemsIndexed(dashboardState.widgets) { index, widget ->
                 val isDragged = draggedWidgetIndex == index
+                val cardHeight = 120 // Approximate card height in dp
                 val targetIndex = if (draggedWidgetIndex != null) {
-                    val cardHeight = 120 // Approximate card height
                     val pixelsPerCard = cardHeight * 1.2f // Account for spacing
                     (draggedWidgetIndex!! + (dragOffset.y / pixelsPerCard).toInt()).coerceIn(0, dashboardState.widgets.size - 1)
                 } else index
