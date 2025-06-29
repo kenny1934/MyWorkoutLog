@@ -28,7 +28,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.animateDpAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
-import sh.calvin.reorderable.*
+import sh.calvin.reorderable.ReorderableLazyListState
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.draggableHandle
+import sh.calvin.reorderable.reorderable
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
@@ -1537,7 +1541,7 @@ fun EnhancedDashboardScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         LazyColumn(
-            state = reorderableLazyColumnState.lazyListState,
+            state = lazyListState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
