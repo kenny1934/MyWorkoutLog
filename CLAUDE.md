@@ -2,14 +2,14 @@
 
 ## Current Status
 - Branch: `feature/dashboard-enhancements`
-- Last commit: `fix: Resolve drag persistence and add hidden widget management`
-- Development Phase: **Tier 3 Phase 3 COMPLETE** - Advanced Data Visualization + Dashboard Customization ✅
+- Last commit: `fix: Attempt to resolve dashboard drag & drop finger tracking issues`
+- Development Phase: **Tier 3 Phase 3** - Dashboard Customization (⚠️ Drag & Drop Issues)
 
 ## Development Tracking
 - Testing and building done on Android Studio by user
 - ✅ **RESOLVED**: All chart rendering, import functionality, and session management issues
-- ✅ **COMPLETE**: Professional dashboard drag & drop with widget management
-- ⚠️ **KNOWN ISSUE**: Dashboard drag & drop can be finicky in Android simulator (may work better on physical device)
+- ⚠️ **UNRESOLVED**: Custom drag & drop implementation has persistent finger tracking issues
+- 🔄 **PLANNED**: Replace custom implementation with `org.burnoutcrew.reorderable` library
 
 ## 🏆 Major Achievements
 - ✅ **Tier 1 Complete**: Core workout logging with advanced features
@@ -35,37 +35,49 @@
 4. **Hidden Widget Recovery**: Dedicated "Hidden Widgets" section with Add (+) buttons
 5. **Persistent Preferences**: Widget order and visibility maintained across app sessions
 
-### **⚠️ Known Issues**
+### **⚠️ Known Issues & Critical Decision**
 
-#### **Dashboard Drag & Drop - Finger Tracking Issue** 🔧
-**Status**: Working but needs finger tracking refinement  
-**Severity**: Minor UX issue  
+#### **Dashboard Drag & Drop - Custom Implementation Limitations** ❌
+**Status**: Multiple fix attempts failed - custom implementation not viable  
+**Severity**: Major UX issue blocking production use  
+**Decision**: Abandon custom implementation, replace with proven library
 
-**Problem Description**:
-When dragging widgets (e.g., C upward past B and A), the widget swaps positions abruptly when overlap threshold is reached (~25% overlap). This causes:
+**Persistent Issues**:
+1. **Finger Tracking Drift**: Widgets consistently drift away from finger during drag operations
+2. **Incorrect Drop Zones**: Drop zones appear at wrong positions (especially downward movement)  
+3. **Aggressive Position Calculations**: Either too sensitive (jumps multiple positions) or too conservative (can't move)
+4. **Cross-Platform Issues**: Similar problems observed in other drag & drop implementations in codebase
 
-1. **Finger Drift**: As widget moves to new position, user's finger loses contact with drag handle
-2. **Touch Displacement**: User ends up touching blank space below the moved widget
-3. **Progressive Drift**: Multiple swaps cause cumulative displacement between finger and widget
+**Multiple Fix Attempts Made**:
+- ✅ Offset compensation calculations
+- ✅ Progressive threshold-based movement  
+- ✅ Target-relative positioning
+- ✅ Conservative movement constraints
+- ❌ **All approaches failed to achieve smooth finger tracking**
 
-**Example Scenario**:
-- Widgets A, B, C (top to bottom)
-- Drag C upward → when C overlaps 25% of B → C swaps with B instantly
-- Finger now touches area below C (where B used to be)
-- Continue drag → C overlaps A → swaps again → finger now at original B position while C is at top
+**Root Cause Analysis**:
+Custom gesture detection and coordinate calculations are inherently complex and error-prone. Manual offset management cannot compete with battle-tested library implementations.
 
-**Technical Cause**: Widget position changes instantly on swap while drag offset continues from original position
-
-**Next Steps**: Implement finger-relative positioning or smooth position transitions
+#### **✅ Approved Solution - Library Migration**
+**Library**: `org.burnoutcrew.reorderable` (proven Compose drag & drop library)
+**Timeline**: Next development phase after user approval
+**Benefits**: 
+- Eliminates all finger tracking issues
+- Professional animations and feedback
+- Well-tested and maintained
+- Consistent cross-platform behavior
 
 #### **Previous Issues (Resolved)**
 - ✅ **Widget Overlapping**: Fixed with proper z-index and visual feedback
 - ✅ **Compilation Errors**: Fixed function ordering and syntax issues
 - ✅ **State Management**: Fixed optimistic updates and preference persistence
+- ✅ **Drop Zone Visual Feedback**: Added proper indicators and styling
 
 ### **📋 Technical Implementation Status**
-- DashboardScreen.kt: Complete widget management with drag & drop and customization overlay
+- DashboardScreen.kt: Widget management system with custom drag & drop (⚠️ finger tracking issues)
 - DashboardViewModel.kt: Preference management with persistent widget ordering and visibility
-- ProgramManagementScreens.kt: Session-level drag & drop (working reliably)
+- ProgramManagementScreens.kt: Session-level drag & drop (similar tracking issues observed)
 
-**Status**: Production-ready fitness app with comprehensive widget management system. Dashboard customization may work better on physical Android devices than in simulator environment.
+**Current Status**: Widget management features complete, but drag & drop UX compromised by finger tracking issues. Custom implementation committed with known limitations.
+
+**Next Phase**: Replace custom drag & drop with `org.burnoutcrew.reorderable` library implementation for production-ready user experience.
