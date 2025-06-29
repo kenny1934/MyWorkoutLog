@@ -1464,14 +1464,17 @@ fun LibraryBasedWidgetCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Drag handle
-                    Icon(
-                        imageVector = Icons.Default.DragHandle,
-                        contentDescription = "Drag to reorder",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .draggableHandle()
-                    )
+                    IconButton(
+                        onClick = { },
+                        modifier = Modifier.draggableHandle()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DragHandle,
+                            contentDescription = "Drag to reorder",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                     
                     Text(
                         text = widget.title,
@@ -1540,8 +1543,7 @@ fun EnhancedDashboardScreen(
             state = lazyListState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
-                .reorderable(reorderableLazyColumnState),
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
         // Header with customization toggle
