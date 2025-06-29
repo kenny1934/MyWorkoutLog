@@ -1674,13 +1674,59 @@ fun EnhancedDashboardScreen(
             }
             
             // Dashboard widgets with simplified drag and drop
-            items(dashboardState.widgets, key = { it.id }) { widget ->
+            itemsIndexed(dashboardState.widgets, key = { _, widget -> widget.id }) { index, widget ->
                 // Get current visibility state from preferences
                 val widgetConfig = dashboardPreferences.widgetConfigs.find { it.widgetType == widget.id }
                 val isWidgetVisible = widgetConfig?.isEnabled ?: widget.isVisible
                 
                 // Check if this widget is currently being dragged
                 val isDragged = dragState?.draggedWidgetId == widget.id
+                
+                // Show drop zone indicator where the widget will be inserted
+                dragState?.let { currentDragState ->
+                    // Show drop zone at the target position (where widget will be inserted)
+                    val isDropZonePosition = currentDragState.targetIndex == index && 
+                                           currentDragState.targetIndex != currentDragState.draggedIndex &&
+                                           !isDragged
+                    
+                    if (isDropZonePosition) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp), // Make drop zone more prominent
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                        ),
+                        border = BorderStroke(
+                            width = 2.dp,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                        )
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "Drop zone",
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Text(
+                                    text = "Drop here",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
                 
                 DraggableWidgetCard(
                     widget = widget,
@@ -1698,7 +1744,7 @@ fun EnhancedDashboardScreen(
                     onDrag = { dragAmount: Offset ->
                         dragState?.let { currentDragState ->
                             val newOffset = currentDragState.currentOffset + dragAmount
-                            dashboardViewModel.updateDrag(newOffset, 120f) // cardHeight = 120dp
+                            dashboardViewModel.updateDrag(newOffset, 200f) // cardHeight = ~200dp (estimated from UI)
                         }
                     },
                     onToggleVisibility = { widgetId: String ->

@@ -474,8 +474,9 @@ class DashboardViewModel(
             _dragState.value = DragState(
                 draggedWidgetId = widgetId,
                 draggedIndex = draggedIndex,
-                currentOffset = Offset.Zero, // Always start at zero
-                targetIndex = draggedIndex
+                currentOffset = Offset.Zero,
+                targetIndex = draggedIndex,
+                offsetFromTarget = Offset.Zero
             )
             
             // Set optimistic order to base order
@@ -485,43 +486,57 @@ class DashboardViewModel(
     
     fun updateDrag(offset: Offset, cardHeight: Float) {
         val currentDragState = _dragState.value ?: return
-        val baseWidgets = baseDashboardState.value.widgets // Use base widgets, not current state
+        val baseWidgets = baseDashboardState.value.widgets
         
-        // Calculate target index based on cumulative drag offset
-        val pixelsPerCard = cardHeight * 1.2f // Account for spacing
-        val offsetChange = (offset.y / pixelsPerCard).toInt()
-        val newTargetIndex = (currentDragState.draggedIndex + offsetChange)
-            .coerceIn(0, baseWidgets.size - 1)
+        // Conservative approach: only allow one position change at a time
+        // But allow continuing movement in the same direction from current target
+        val cardSpacing = cardHeight + 16f
+        val moveThreshold = cardSpacing * 1.2f // High threshold for stability
         
-        // Update drag state with the received offset (already calculated correctly in UI)
+        val originalIndex = currentDragState.draggedIndex
+        val currentTarget = currentDragState.targetIndex
+        
+        // Calculate offset from where we should be for current target position
+        val expectedOffsetForTarget = (currentTarget - originalIndex) * cardSpacing
+        val offsetFromCurrentTarget = offset.y - expectedOffsetForTarget
+        
+        val newTargetIndex = when {
+            // Moving up from current target - only one position at a time
+            offsetFromCurrentTarget < -moveThreshold && currentTarget > 0 -> {
+                currentTarget - 1
+            }
+            // Moving down from current target - only one position at a time  
+            offsetFromCurrentTarget > moveThreshold && currentTarget < baseWidgets.size - 1 -> {
+                currentTarget + 1
+            }
+            // Stay at current target for smaller movements
+            else -> currentTarget
+        }
+        
+        // Update drag state
         _dragState.value = currentDragState.copy(
             currentOffset = offset,
             targetIndex = newTargetIndex
         )
         
-        // Update optimistic order to show real-time reordering
-        if (newTargetIndex != currentDragState.draggedIndex) {
-            val reorderedWidgets = baseWidgets.toMutableList()
-            val draggedWidget = reorderedWidgets.removeAt(currentDragState.draggedIndex)
-            reorderedWidgets.add(newTargetIndex, draggedWidget)
-            _optimisticWidgetOrder.value = reorderedWidgets
-        } else {
-            // Reset to original order if dragged back to start position
-            _optimisticWidgetOrder.value = baseWidgets
-        }
+        // DON'T update optimistic order during drag to prevent duplicate widgets
+        // Only show the final reorder on drag end
     }
     
     fun endDrag() {
         val currentDragState = _dragState.value ?: return
-        val finalWidgets = _optimisticWidgetOrder.value ?: return
+        val baseWidgets = baseDashboardState.value.widgets
+        
+        // Apply final reordering based on target index
+        if (currentDragState.draggedIndex != currentDragState.targetIndex) {
+            val reorderedWidgets = baseWidgets.toMutableList()
+            val draggedWidget = reorderedWidgets.removeAt(currentDragState.draggedIndex)
+            reorderedWidgets.add(currentDragState.targetIndex, draggedWidget)
+            persistWidgetOrder(reorderedWidgets)
+        }
         
         // Clear drag state
         _dragState.value = null
-        
-        // Persist the final order
-        if (currentDragState.draggedIndex != currentDragState.targetIndex) {
-            persistWidgetOrder(finalWidgets)
-        }
         
         // Clear optimistic order (will fall back to persisted order)
         _optimisticWidgetOrder.value = null
@@ -568,7 +583,8 @@ data class DragState(
     val draggedWidgetId: String,
     val draggedIndex: Int,
     val currentOffset: Offset,
-    val targetIndex: Int
+    val targetIndex: Int,
+    val offsetFromTarget: Offset = Offset.Zero // Track offset from current target position
 )
 
 // Helper for combining 4 flows
