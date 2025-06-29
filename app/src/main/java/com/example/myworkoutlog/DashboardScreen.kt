@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.animateDpAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -1390,134 +1391,6 @@ fun DashboardScreen(
     }
 }
 
-@Composable
-fun DraggableWidgetCard(
-    widget: DashboardWidget,
-    navController: NavHostController,
-    isDragged: Boolean = false,
-    dragOffset: Offset = Offset.Zero,
-    isCustomizationMode: Boolean = false,
-    isWidgetVisible: Boolean = true,
-    onDragStart: (() -> Unit)? = null,
-    onDragEnd: (() -> Unit)? = null,
-    onDrag: ((Offset) -> Unit)? = null,
-    onToggleVisibility: ((String) -> Unit)? = null
-) {
-    val hapticFeedback = LocalHapticFeedback.current
-    val density = LocalDensity.current
-    
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .offset(
-                x = if (isDragged) with(density) { dragOffset.x.toDp() } else 0.dp,
-                y = if (isDragged) with(density) { dragOffset.y.toDp() } else 0.dp
-            )
-            .graphicsLayer {
-                // Visual feedback during drag
-                scaleX = if (isDragged) 1.02f else 1f
-                scaleY = if (isDragged) 1.02f else 1f
-                alpha = if (isDragged) 0.7f else 1f
-            }
-            .zIndex(if (isDragged) 1f else 0f),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isDragged) 8.dp else 4.dp
-        ),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isDragged) 
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
-            else MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Box {
-            // Render the actual widget content
-            when (widget) {
-                is DashboardWidget.WelcomeWidget -> SimpleWelcomeWidgetCard(widget)
-                is DashboardWidget.QuickStatsWidget -> SimpleQuickStatsWidgetCard(widget)
-                is DashboardWidget.BodyweightWidget -> SimpleBodyweightWidgetCard(
-                    currentWeight = widget.currentWeight,
-                    lastRecordedDate = widget.lastRecordedDate,
-                    unit = widget.unit
-                )
-                is DashboardWidget.CycleProgressWidget -> SimpleCycleProgressWidgetCard(
-                    widget = widget,
-                    navController = navController
-                )
-                is DashboardWidget.ActivityHeatmapWidget -> SimpleActivityHeatmapWidgetCard(widget)
-                is DashboardWidget.BodyweightTrendWidget -> SimpleBodyweightTrendWidgetCard(widget)
-                is DashboardWidget.PerformanceTrendWidget -> SimplePerformanceTrendWidgetCard(
-                    widget = widget,
-                    navController = navController
-                )
-                is DashboardWidget.NextSessionWidget -> SimpleNextSessionWidgetCard(
-                    widget = widget,
-                    navController = navController
-                )
-                is DashboardWidget.VolumeProgressWidget -> SimpleVolumeProgressWidgetCard(
-                    widget = widget,
-                    navController = navController
-                )
-                is DashboardWidget.AchievementWidget -> SimpleAchievementWidgetCard(widget)
-            }
-            
-            // Customization overlay
-            if (isCustomizationMode) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Drag handle
-                        Icon(
-                            imageVector = Icons.Default.DragIndicator,
-                            contentDescription = "Drag to reorder",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .size(24.dp)
-                                .pointerInput(widget.id) {
-                                    detectDragGestures(
-                                        onDragStart = { 
-                                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            onDragStart?.invoke() 
-                                        },
-                                        onDragEnd = { onDragEnd?.invoke() },
-                                        onDrag = { change, dragAmount ->
-                                            onDrag?.invoke(dragAmount)
-                                        }
-                                    )
-                                }
-                        )
-                        
-                        Text(
-                            text = widget.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f).padding(horizontal = 16.dp)
-                        )
-                        
-                        // Visibility toggle
-                        IconButton(
-                            onClick = { onToggleVisibility?.invoke(widget.id) }
-                        ) {
-                            Icon(
-                                imageVector = if (isWidgetVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                contentDescription = if (isWidgetVisible) "Hide widget" else "Show widget",
-                                tint = if (isWidgetVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 @Composable
 fun LibraryBasedWidgetCard(
@@ -1597,14 +1470,7 @@ fun LibraryBasedWidgetCard(
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
                             .size(24.dp)
-                            .draggableHandle(
-                                onDragStarted = {
-                                    // Haptic feedback on drag start
-                                },
-                                onDragStopped = {
-                                    // Haptic feedback on drag stop
-                                }
-                            )
+                            .draggableHandle()
                     )
                     
                     Text(
