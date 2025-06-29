@@ -1470,7 +1470,7 @@ fun LibraryBasedWidgetCard(
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
                             .size(24.dp)
-                            .detectReorderAfterLongPress(reorderableState)
+                            .draggableHandle()
                     )
                     
                     Text(
@@ -1511,7 +1511,9 @@ fun EnhancedDashboardScreen(
     val hiddenWidgets by dashboardViewModel.hiddenWidgets.collectAsStateWithLifecycle()
     
     // Setup reorderable state for drag & drop
+    val lazyListState = rememberLazyListState()
     val reorderableLazyColumnState = rememberReorderableLazyListState(
+        lazyListState = lazyListState,
         onMove = { from, to ->
             // Only allow reordering in customization mode and for widgets
             if (isCustomizationMode && from.key.toString().startsWith("widget_") && to.key.toString().startsWith("widget_")) {
@@ -1535,7 +1537,7 @@ fun EnhancedDashboardScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         LazyColumn(
-            state = reorderableLazyColumnState.listState,
+            state = lazyListState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
