@@ -36,8 +36,32 @@
 5. **Persistent Preferences**: Widget order and visibility maintained across app sessions
 
 ### **⚠️ Known Issues**
-- **Dashboard Drag & Drop**: Can be finicky/glitchy in Android simulator - works better on physical device
-- Drag gesture detection may be inconsistent in emulated environment
+
+#### **Dashboard Drag & Drop - Finger Tracking Issue** 🔧
+**Status**: Working but needs finger tracking refinement  
+**Severity**: Minor UX issue  
+
+**Problem Description**:
+When dragging widgets (e.g., C upward past B and A), the widget swaps positions abruptly when overlap threshold is reached (~25% overlap). This causes:
+
+1. **Finger Drift**: As widget moves to new position, user's finger loses contact with drag handle
+2. **Touch Displacement**: User ends up touching blank space below the moved widget
+3. **Progressive Drift**: Multiple swaps cause cumulative displacement between finger and widget
+
+**Example Scenario**:
+- Widgets A, B, C (top to bottom)
+- Drag C upward → when C overlaps 25% of B → C swaps with B instantly
+- Finger now touches area below C (where B used to be)
+- Continue drag → C overlaps A → swaps again → finger now at original B position while C is at top
+
+**Technical Cause**: Widget position changes instantly on swap while drag offset continues from original position
+
+**Next Steps**: Implement finger-relative positioning or smooth position transitions
+
+#### **Previous Issues (Resolved)**
+- ✅ **Widget Overlapping**: Fixed with proper z-index and visual feedback
+- ✅ **Compilation Errors**: Fixed function ordering and syntax issues
+- ✅ **State Management**: Fixed optimistic updates and preference persistence
 
 ### **📋 Technical Implementation Status**
 - DashboardScreen.kt: Complete widget management with drag & drop and customization overlay

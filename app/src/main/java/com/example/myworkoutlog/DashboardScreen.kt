@@ -1398,6 +1398,135 @@ fun DashboardScreen(
     }
 }
 
+@Composable
+fun DraggableWidgetCard(
+    widget: DashboardWidget,
+    navController: NavHostController,
+    isDragged: Boolean = false,
+    dragOffset: Offset = Offset.Zero,
+    isCustomizationMode: Boolean = false,
+    isWidgetVisible: Boolean = true,
+    onDragStart: (() -> Unit)? = null,
+    onDragEnd: (() -> Unit)? = null,
+    onDrag: ((Offset) -> Unit)? = null,
+    onToggleVisibility: ((String) -> Unit)? = null
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    val density = LocalDensity.current
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .offset(
+                x = if (isDragged) with(density) { dragOffset.x.toDp() } else 0.dp,
+                y = if (isDragged) with(density) { dragOffset.y.toDp() } else 0.dp
+            )
+            .graphicsLayer {
+                // Visual feedback during drag
+                scaleX = if (isDragged) 1.02f else 1f
+                scaleY = if (isDragged) 1.02f else 1f
+                alpha = if (isDragged) 0.7f else 1f
+            }
+            .zIndex(if (isDragged) 1f else 0f),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isDragged) 8.dp else 4.dp
+        ),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDragged) 
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+            else MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Box {
+            // Render the actual widget content
+            when (widget) {
+                is DashboardWidget.WelcomeWidget -> SimpleWelcomeWidgetCard(widget)
+                is DashboardWidget.QuickStatsWidget -> SimpleQuickStatsWidgetCard(widget)
+                is DashboardWidget.BodyweightWidget -> SimpleBodyweightWidgetCard(
+                    currentWeight = widget.currentWeight,
+                    lastRecordedDate = widget.lastRecordedDate,
+                    unit = widget.unit
+                )
+                is DashboardWidget.CycleProgressWidget -> SimpleCycleProgressWidgetCard(
+                    widget = widget,
+                    navController = navController
+                )
+                is DashboardWidget.ActivityHeatmapWidget -> SimpleActivityHeatmapWidgetCard(widget)
+                is DashboardWidget.BodyweightTrendWidget -> SimpleBodyweightTrendWidgetCard(widget)
+                is DashboardWidget.PerformanceTrendWidget -> SimplePerformanceTrendWidgetCard(
+                    widget = widget,
+                    navController = navController
+                )
+                is DashboardWidget.NextSessionWidget -> SimpleNextSessionWidgetCard(
+                    widget = widget,
+                    navController = navController
+                )
+                is DashboardWidget.VolumeProgressWidget -> SimpleVolumeProgressWidgetCard(
+                    widget = widget,
+                    navController = navController
+                )
+                is DashboardWidget.AchievementWidget -> SimpleAchievementWidgetCard(widget)
+            }
+            
+            // Customization overlay
+            if (isCustomizationMode) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Drag handle
+                        Icon(
+                            imageVector = Icons.Default.DragIndicator,
+                            contentDescription = "Drag to reorder",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .pointerInput(widget.id) {
+                                    detectDragGestures(
+                                        onDragStart = { 
+                                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            onDragStart?.invoke() 
+                                        },
+                                        onDragEnd = { onDragEnd?.invoke() },
+                                        onDrag = { change, dragAmount ->
+                                            onDrag?.invoke(dragAmount)
+                                        }
+                                    )
+                                }
+                        )
+                        
+                        Text(
+                            text = widget.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f).padding(horizontal = 16.dp)
+                        )
+                        
+                        // Visibility toggle
+                        IconButton(
+                            onClick = { onToggleVisibility?.invoke(widget.id) }
+                        ) {
+                            Icon(
+                                imageVector = if (isWidgetVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = if (isWidgetVisible) "Hide widget" else "Show widget",
+                                tint = if (isWidgetVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EnhancedDashboardScreen(
@@ -1411,10 +1540,7 @@ fun EnhancedDashboardScreen(
     val isCustomizationMode by dashboardViewModel.isCustomizationMode.collectAsStateWithLifecycle()
     val dashboardPreferences by dashboardViewModel.dashboardPreferences.collectAsStateWithLifecycle()
     val hiddenWidgets by dashboardViewModel.hiddenWidgets.collectAsStateWithLifecycle()
-    
-    // Drag and drop state
-    var draggedWidgetIndex by remember { mutableStateOf<Int?>(null) }
-    var dragOffset by remember { mutableStateOf(Offset.Zero) }
+    val dragState by dashboardViewModel.dragState.collectAsStateWithLifecycle()
     
     PullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -1547,96 +1673,38 @@ fun EnhancedDashboardScreen(
                 }
             }
             
-            // Dashboard widgets with drag and drop support
-            itemsIndexed(dashboardState.widgets) { index, widget ->
-                val isDragged = draggedWidgetIndex == index
-                val cardHeight = 120 // Approximate card height in dp
-                val targetIndex = if (draggedWidgetIndex != null) {
-                    val pixelsPerCard = cardHeight * 1.2f // Account for spacing
-                    (draggedWidgetIndex!! + (dragOffset.y / pixelsPerCard).toInt()).coerceIn(0, dashboardState.widgets.size - 1)
-                } else index
-                
+            // Dashboard widgets with simplified drag and drop
+            items(dashboardState.widgets, key = { it.id }) { widget ->
                 // Get current visibility state from preferences
                 val widgetConfig = dashboardPreferences.widgetConfigs.find { it.widgetType == widget.id }
                 val isWidgetVisible = widgetConfig?.isEnabled ?: widget.isVisible
                 
-                val animatedOffset by animateDpAsState(
-                    targetValue = if (draggedWidgetIndex != null && !isDragged && draggedWidgetIndex != null) {
-                        when {
-                            // Item should move down to make space
-                            index >= targetIndex && index < draggedWidgetIndex!! -> cardHeight.dp
-                            // Item should move up to make space  
-                            index <= targetIndex && index > draggedWidgetIndex!! -> (-cardHeight).dp
-                            else -> 0.dp
-                        }
-                    } else 0.dp,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMedium
-                    ),
-                    label = "widget_reorder_animation"
-                )
+                // Check if this widget is currently being dragged
+                val isDragged = dragState?.draggedWidgetId == widget.id
                 
-                // Show placeholder at target position
-                if (draggedWidgetIndex != null && index == targetIndex && !isDragged) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp)
-                            .padding(vertical = 8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                        ),
-                        border = BorderStroke(
-                            2.dp, 
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                        )
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                "Drop here",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                            )
+                DraggableWidgetCard(
+                    widget = widget,
+                    navController = navController,
+                    isDragged = isDragged,
+                    dragOffset = dragState?.currentOffset ?: Offset.Zero,
+                    isCustomizationMode = isCustomizationMode,
+                    isWidgetVisible = isWidgetVisible,
+                    onDragStart = {
+                        dashboardViewModel.startDrag(widget.id)
+                    },
+                    onDragEnd = {
+                        dashboardViewModel.endDrag()
+                    },
+                    onDrag = { dragAmount: Offset ->
+                        dragState?.let { currentDragState ->
+                            val newOffset = currentDragState.currentOffset + dragAmount
+                            dashboardViewModel.updateDrag(newOffset, 120f) // cardHeight = 120dp
                         }
+                    },
+                    onToggleVisibility = { widgetId: String ->
+                        dashboardViewModel.toggleWidgetVisibility(widgetId)
                     }
-                }
-                
-                Box(
-                    modifier = Modifier.offset(y = animatedOffset)
-                ) {
-                    DraggableWidgetCard(
-                        widget = widget,
-                        navController = navController,
-                        isDragged = isDragged,
-                        dragOffset = if (isDragged) dragOffset else Offset.Zero,
-                        isCustomizationMode = isCustomizationMode,
-                        isWidgetVisible = isWidgetVisible,
-                        onDragStart = {
-                            draggedWidgetIndex = index
-                            dragOffset = Offset.Zero
-                        },
-                        onDragEnd = {
-                            draggedWidgetIndex?.let { fromIndex ->
-                                val toIndex = targetIndex
-                                if (fromIndex != toIndex) {
-                                    dashboardViewModel.reorderWidgets(fromIndex, toIndex)
-                                }
-                            }
-                            draggedWidgetIndex = null
-                            dragOffset = Offset.Zero
-                        },
-                        onDrag = { dragAmount ->
-                            dragOffset = dragOffset.plus(dragAmount)
-                        },
-                        onToggleVisibility = { widgetId ->
-                            dashboardViewModel.toggleWidgetVisibility(widgetId)
-                        }
-                    )
-                }
+                )
             }
             
             // Hidden widgets section (only show in customization mode)
@@ -1738,133 +1806,3 @@ fun EnhancedDashboardScreen(
     }
 }
 
-@Composable
-fun DraggableWidgetCard(
-    widget: DashboardWidget,
-    navController: NavHostController,
-    isDragged: Boolean = false,
-    dragOffset: Offset = Offset.Zero,
-    isCustomizationMode: Boolean = false,
-    isWidgetVisible: Boolean = true,
-    onDragStart: (() -> Unit)? = null,
-    onDragEnd: (() -> Unit)? = null,
-    onDrag: ((Offset) -> Unit)? = null,
-    onToggleVisibility: ((String) -> Unit)? = null
-) {
-    val hapticFeedback = LocalHapticFeedback.current
-    val density = LocalDensity.current
-    
-    Box {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .offset(
-                    x = if (isDragged) with(density) { dragOffset.x.toDp() } else 0.dp,
-                    y = if (isDragged) with(density) { dragOffset.y.toDp() } else 0.dp
-                )
-                .graphicsLayer {
-                    // Enhanced visual feedback during drag
-                    scaleX = if (isDragged) 1.02f else 1f
-                    scaleY = if (isDragged) 1.02f else 1f
-                    alpha = if (isDragged) 0.95f else 1f
-                }
-                .zIndex(if (isDragged) 1f else 0f),
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = if (isDragged) 12.dp else 4.dp
-            ),
-            colors = CardDefaults.cardColors(
-                containerColor = if (isDragged) 
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f)
-                else MaterialTheme.colorScheme.surface
-            )
-        ) {
-            Box {
-                // Render the actual widget content
-                when (widget) {
-                    is DashboardWidget.WelcomeWidget -> SimpleWelcomeWidgetCard(widget)
-                    is DashboardWidget.QuickStatsWidget -> SimpleQuickStatsWidgetCard(widget)
-                    is DashboardWidget.BodyweightWidget -> SimpleBodyweightWidgetCard(
-                        currentWeight = widget.currentWeight,
-                        lastRecordedDate = widget.lastRecordedDate,
-                        unit = widget.unit
-                    )
-                    is DashboardWidget.CycleProgressWidget -> SimpleCycleProgressWidgetCard(
-                        widget = widget,
-                        navController = navController
-                    )
-                    is DashboardWidget.ActivityHeatmapWidget -> SimpleActivityHeatmapWidgetCard(widget)
-                    is DashboardWidget.BodyweightTrendWidget -> SimpleBodyweightTrendWidgetCard(widget)
-                    is DashboardWidget.PerformanceTrendWidget -> SimplePerformanceTrendWidgetCard(
-                        widget = widget,
-                        navController = navController
-                    )
-                    is DashboardWidget.NextSessionWidget -> SimpleNextSessionWidgetCard(
-                        widget = widget,
-                        navController = navController
-                    )
-                    is DashboardWidget.VolumeProgressWidget -> SimpleVolumeProgressWidgetCard(
-                        widget = widget,
-                        navController = navController
-                    )
-                    is DashboardWidget.AchievementWidget -> SimpleAchievementWidgetCard(widget)
-                }
-                
-                // Customization overlay
-                if (isCustomizationMode) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Drag handle
-                            Icon(
-                                imageVector = Icons.Default.DragIndicator,
-                                contentDescription = "Drag to reorder",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .pointerInput(widget.id) {
-                                        detectDragGestures(
-                                            onDragStart = { 
-                                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                onDragStart?.invoke() 
-                                            },
-                                            onDragEnd = { onDragEnd?.invoke() },
-                                            onDrag = { change, dragAmount ->
-                                                onDrag?.invoke(dragAmount)
-                                            }
-                                        )
-                                    }
-                            )
-                            
-                            Text(
-                                text = widget.title,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.weight(1f).padding(horizontal = 16.dp)
-                            )
-                            
-                            // Visibility toggle
-                            IconButton(
-                                onClick = { onToggleVisibility?.invoke(widget.id) }
-                            ) {
-                                Icon(
-                                    imageVector = if (isWidgetVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                    contentDescription = if (isWidgetVisible) "Hide widget" else "Show widget",
-                                    tint = if (isWidgetVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}

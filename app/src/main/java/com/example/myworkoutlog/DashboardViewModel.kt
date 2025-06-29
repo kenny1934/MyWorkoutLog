@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import androidx.compose.ui.geometry.Offset
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DashboardViewModel(
@@ -34,21 +35,49 @@ class DashboardViewModel(
     private val _isCustomizationMode = MutableStateFlow(false)
     val isCustomizationMode: StateFlow<Boolean> = _isCustomizationMode.asStateFlow()
     
+    // Drag and drop state management
+    private val _dragState = MutableStateFlow<DragState?>(null)
+    val dragState: StateFlow<DragState?> = _dragState.asStateFlow()
+    
+    // Optimistic widget order state (for immediate drag feedback)
+    private val _optimisticWidgetOrder = MutableStateFlow<List<DashboardWidget>?>(null)
+    val optimisticWidgetOrder: StateFlow<List<DashboardWidget>?> = _optimisticWidgetOrder.asStateFlow()
+    
     // Get active cycle as a flow
     private val activeCycle = activeCycleDao.getActiveCycle()
     
-    // Dashboard state that recomposes when active cycle, preferences, or refresh is triggered
-    val dashboardState: StateFlow<DashboardState> = combine(
+    // Base dashboard state (without optimistic updates)
+    private val baseDashboardState: StateFlow<DashboardState> = combine(
         activeCycle,
         _refreshTrigger,
         _dashboardPreferences
     ) { cycle, _, preferences ->
-        // This will trigger recomposition when cycle, preferences change or refresh is called
         Triple(cycle, preferences, Unit)
     }.flatMapLatest { (cycle, preferences, _) ->
         widgetRepository.getDashboardState(cycle).map { state ->
-            // Apply preferences to filter and reorder widgets
             applyPreferencesToDashboardState(state, preferences)
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = DashboardState(
+            mode = DashboardMode.NoActiveCycle,
+            widgets = emptyList(),
+            quickActions = emptyList(),
+            insights = emptyList(),
+            isLoading = true
+        )
+    )
+    
+    // Dashboard state with optimistic updates for drag operations
+    val dashboardState: StateFlow<DashboardState> = combine(
+        baseDashboardState,
+        _optimisticWidgetOrder
+    ) { baseState, optimisticOrder ->
+        if (optimisticOrder != null) {
+            baseState.copy(widgets = optimisticOrder)
+        } else {
+            baseState
         }
     }.stateIn(
         scope = viewModelScope,
@@ -203,35 +232,18 @@ class DashboardViewModel(
     }
     
     
+    // Legacy method - now delegates to new drag system
     fun reorderWidgets(fromIndex: Int, toIndex: Int) {
-        viewModelScope.launch {
-            val currentState = dashboardState.value
-            val widgets = currentState.widgets.toMutableList()
+        val currentState = dashboardState.value
+        val widgets = currentState.widgets.toMutableList()
+        
+        if (fromIndex in widgets.indices && toIndex in widgets.indices && fromIndex != toIndex) {
+            // Perform the reordering
+            val draggedWidget = widgets.removeAt(fromIndex)
+            widgets.add(toIndex, draggedWidget)
             
-            if (fromIndex in widgets.indices && toIndex in widgets.indices && fromIndex != toIndex) {
-                // Perform the reordering
-                val draggedWidget = widgets.removeAt(fromIndex)
-                widgets.add(toIndex, draggedWidget)
-                
-                // Update widget configs with new order
-                val newConfigs = widgets.mapIndexed { index, widget ->
-                    WidgetConfig(
-                        widgetType = widget.id,
-                        isEnabled = true, // Keep all visible widgets enabled after reordering
-                        position = index
-                    )
-                }
-                
-                // Update preferences immediately - this will trigger the state recomposition
-                _dashboardPreferences.value = _dashboardPreferences.value.copy(
-                    widgetConfigs = newConfigs
-                )
-                
-                // Save preferences
-                saveDashboardPreferences()
-                
-                // Note: No need to call refreshDashboard() as the preference change will trigger state update
-            }
+            // Use the new persist method
+            persistWidgetOrder(widgets)
         }
     }
     
@@ -272,6 +284,10 @@ class DashboardViewModel(
     }
     
     fun toggleCustomizationMode() {
+        // Cancel any ongoing drag when exiting customization mode
+        if (_isCustomizationMode.value) {
+            cancelDrag()
+        }
         _isCustomizationMode.value = !_isCustomizationMode.value
     }
     
@@ -448,6 +464,95 @@ class DashboardViewModel(
         // TODO: Implement streak calculation
         return 0
     }
+    
+    // Drag and drop methods
+    fun startDrag(widgetId: String) {
+        val baseWidgets = baseDashboardState.value.widgets
+        val draggedIndex = baseWidgets.indexOfFirst { it.id == widgetId }
+        
+        if (draggedIndex >= 0) {
+            _dragState.value = DragState(
+                draggedWidgetId = widgetId,
+                draggedIndex = draggedIndex,
+                currentOffset = Offset.Zero, // Always start at zero
+                targetIndex = draggedIndex
+            )
+            
+            // Set optimistic order to base order
+            _optimisticWidgetOrder.value = baseWidgets
+        }
+    }
+    
+    fun updateDrag(offset: Offset, cardHeight: Float) {
+        val currentDragState = _dragState.value ?: return
+        val baseWidgets = baseDashboardState.value.widgets // Use base widgets, not current state
+        
+        // Calculate target index based on cumulative drag offset
+        val pixelsPerCard = cardHeight * 1.2f // Account for spacing
+        val offsetChange = (offset.y / pixelsPerCard).toInt()
+        val newTargetIndex = (currentDragState.draggedIndex + offsetChange)
+            .coerceIn(0, baseWidgets.size - 1)
+        
+        // Update drag state with the received offset (already calculated correctly in UI)
+        _dragState.value = currentDragState.copy(
+            currentOffset = offset,
+            targetIndex = newTargetIndex
+        )
+        
+        // Update optimistic order to show real-time reordering
+        if (newTargetIndex != currentDragState.draggedIndex) {
+            val reorderedWidgets = baseWidgets.toMutableList()
+            val draggedWidget = reorderedWidgets.removeAt(currentDragState.draggedIndex)
+            reorderedWidgets.add(newTargetIndex, draggedWidget)
+            _optimisticWidgetOrder.value = reorderedWidgets
+        } else {
+            // Reset to original order if dragged back to start position
+            _optimisticWidgetOrder.value = baseWidgets
+        }
+    }
+    
+    fun endDrag() {
+        val currentDragState = _dragState.value ?: return
+        val finalWidgets = _optimisticWidgetOrder.value ?: return
+        
+        // Clear drag state
+        _dragState.value = null
+        
+        // Persist the final order
+        if (currentDragState.draggedIndex != currentDragState.targetIndex) {
+            persistWidgetOrder(finalWidgets)
+        }
+        
+        // Clear optimistic order (will fall back to persisted order)
+        _optimisticWidgetOrder.value = null
+    }
+    
+    fun cancelDrag() {
+        // Clear both drag state and optimistic order
+        _dragState.value = null
+        _optimisticWidgetOrder.value = null
+    }
+    
+    private fun persistWidgetOrder(widgets: List<DashboardWidget>) {
+        viewModelScope.launch {
+            // Update widget configs with new order
+            val newConfigs = widgets.mapIndexed { index, widget ->
+                WidgetConfig(
+                    widgetType = widget.id,
+                    isEnabled = true, // Keep all visible widgets enabled after reordering
+                    position = index
+                )
+            }
+            
+            // Update preferences
+            _dashboardPreferences.value = _dashboardPreferences.value.copy(
+                widgetConfigs = newConfigs
+            )
+            
+            // Save preferences
+            saveDashboardPreferences()
+        }
+    }
 }
 
 // Helper data class for quick analytics
@@ -456,6 +561,22 @@ data class QuickAnalytics(
     val thisWeekWorkouts: Int,
     val currentStreak: Int,
     val avgWeeklyVolume: Float
+)
+
+// Drag and drop state
+data class DragState(
+    val draggedWidgetId: String,
+    val draggedIndex: Int,
+    val currentOffset: Offset,
+    val targetIndex: Int
+)
+
+// Helper for combining 4 flows
+data class Quadruple<A, B, C, D>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D
 )
 
 // ViewModelFactory for DashboardViewModel
