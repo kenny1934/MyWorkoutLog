@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import androidx.compose.ui.geometry.Offset
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DashboardViewModel(
@@ -35,19 +34,15 @@ class DashboardViewModel(
     private val _isCustomizationMode = MutableStateFlow(false)
     val isCustomizationMode: StateFlow<Boolean> = _isCustomizationMode.asStateFlow()
     
-    // Drag and drop state management
-    private val _dragState = MutableStateFlow<DragState?>(null)
-    val dragState: StateFlow<DragState?> = _dragState.asStateFlow()
-    
-    // Optimistic widget order state (for immediate drag feedback)
-    private val _optimisticWidgetOrder = MutableStateFlow<List<DashboardWidget>?>(null)
-    val optimisticWidgetOrder: StateFlow<List<DashboardWidget>?> = _optimisticWidgetOrder.asStateFlow()
+    // Widget reordering state (simplified for library integration)
+    private val _isReordering = MutableStateFlow(false)
+    val isReordering: StateFlow<Boolean> = _isReordering.asStateFlow()
     
     // Get active cycle as a flow
     private val activeCycle = activeCycleDao.getActiveCycle()
     
-    // Base dashboard state (without optimistic updates)
-    private val baseDashboardState: StateFlow<DashboardState> = combine(
+    // Dashboard state with preferences applied
+    val dashboardState: StateFlow<DashboardState> = combine(
         activeCycle,
         _refreshTrigger,
         _dashboardPreferences
@@ -56,28 +51,6 @@ class DashboardViewModel(
     }.flatMapLatest { (cycle, preferences, _) ->
         widgetRepository.getDashboardState(cycle).map { state ->
             applyPreferencesToDashboardState(state, preferences)
-        }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = DashboardState(
-            mode = DashboardMode.NoActiveCycle,
-            widgets = emptyList(),
-            quickActions = emptyList(),
-            insights = emptyList(),
-            isLoading = true
-        )
-    )
-    
-    // Dashboard state with optimistic updates for drag operations
-    val dashboardState: StateFlow<DashboardState> = combine(
-        baseDashboardState,
-        _optimisticWidgetOrder
-    ) { baseState, optimisticOrder ->
-        if (optimisticOrder != null) {
-            baseState.copy(widgets = optimisticOrder)
-        } else {
-            baseState
         }
     }.stateIn(
         scope = viewModelScope,
@@ -232,21 +205,6 @@ class DashboardViewModel(
     }
     
     
-    // Legacy method - now delegates to new drag system
-    fun reorderWidgets(fromIndex: Int, toIndex: Int) {
-        val currentState = dashboardState.value
-        val widgets = currentState.widgets.toMutableList()
-        
-        if (fromIndex in widgets.indices && toIndex in widgets.indices && fromIndex != toIndex) {
-            // Perform the reordering
-            val draggedWidget = widgets.removeAt(fromIndex)
-            widgets.add(toIndex, draggedWidget)
-            
-            // Use the new persist method
-            persistWidgetOrder(widgets)
-        }
-    }
-    
     fun toggleWidgetVisibility(widgetId: String) {
         viewModelScope.launch {
             val currentState = dashboardState.value
@@ -284,10 +242,6 @@ class DashboardViewModel(
     }
     
     fun toggleCustomizationMode() {
-        // Cancel any ongoing drag when exiting customization mode
-        if (_isCustomizationMode.value) {
-            cancelDrag()
-        }
         _isCustomizationMode.value = !_isCustomizationMode.value
     }
     
@@ -465,87 +419,21 @@ class DashboardViewModel(
         return 0
     }
     
-    // Drag and drop methods
-    fun startDrag(widgetId: String) {
-        val baseWidgets = baseDashboardState.value.widgets
-        val draggedIndex = baseWidgets.indexOfFirst { it.id == widgetId }
+    // Simplified reordering method for library integration
+    fun reorderWidgets(fromIndex: Int, toIndex: Int) {
+        _isReordering.value = true
         
-        if (draggedIndex >= 0) {
-            _dragState.value = DragState(
-                draggedWidgetId = widgetId,
-                draggedIndex = draggedIndex,
-                currentOffset = Offset.Zero,
-                targetIndex = draggedIndex,
-                offsetFromTarget = Offset.Zero
-            )
+        val currentWidgets = dashboardState.value.widgets.toMutableList()
+        if (fromIndex in currentWidgets.indices && toIndex in currentWidgets.indices && fromIndex != toIndex) {
+            // Perform the reordering
+            val draggedWidget = currentWidgets.removeAt(fromIndex)
+            currentWidgets.add(toIndex, draggedWidget)
             
-            // Set optimistic order to base order
-            _optimisticWidgetOrder.value = baseWidgets
-        }
-    }
-    
-    fun updateDrag(offset: Offset, cardHeight: Float) {
-        val currentDragState = _dragState.value ?: return
-        val baseWidgets = baseDashboardState.value.widgets
-        
-        // Conservative approach: only allow one position change at a time
-        // But allow continuing movement in the same direction from current target
-        val cardSpacing = cardHeight + 16f
-        val moveThreshold = cardSpacing * 1.2f // High threshold for stability
-        
-        val originalIndex = currentDragState.draggedIndex
-        val currentTarget = currentDragState.targetIndex
-        
-        // Calculate offset from where we should be for current target position
-        val expectedOffsetForTarget = (currentTarget - originalIndex) * cardSpacing
-        val offsetFromCurrentTarget = offset.y - expectedOffsetForTarget
-        
-        val newTargetIndex = when {
-            // Moving up from current target - only one position at a time
-            offsetFromCurrentTarget < -moveThreshold && currentTarget > 0 -> {
-                currentTarget - 1
-            }
-            // Moving down from current target - only one position at a time  
-            offsetFromCurrentTarget > moveThreshold && currentTarget < baseWidgets.size - 1 -> {
-                currentTarget + 1
-            }
-            // Stay at current target for smaller movements
-            else -> currentTarget
+            // Persist the new order
+            persistWidgetOrder(currentWidgets)
         }
         
-        // Update drag state
-        _dragState.value = currentDragState.copy(
-            currentOffset = offset,
-            targetIndex = newTargetIndex
-        )
-        
-        // DON'T update optimistic order during drag to prevent duplicate widgets
-        // Only show the final reorder on drag end
-    }
-    
-    fun endDrag() {
-        val currentDragState = _dragState.value ?: return
-        val baseWidgets = baseDashboardState.value.widgets
-        
-        // Apply final reordering based on target index
-        if (currentDragState.draggedIndex != currentDragState.targetIndex) {
-            val reorderedWidgets = baseWidgets.toMutableList()
-            val draggedWidget = reorderedWidgets.removeAt(currentDragState.draggedIndex)
-            reorderedWidgets.add(currentDragState.targetIndex, draggedWidget)
-            persistWidgetOrder(reorderedWidgets)
-        }
-        
-        // Clear drag state
-        _dragState.value = null
-        
-        // Clear optimistic order (will fall back to persisted order)
-        _optimisticWidgetOrder.value = null
-    }
-    
-    fun cancelDrag() {
-        // Clear both drag state and optimistic order
-        _dragState.value = null
-        _optimisticWidgetOrder.value = null
+        _isReordering.value = false
     }
     
     private fun persistWidgetOrder(widgets: List<DashboardWidget>) {
@@ -578,16 +466,7 @@ data class QuickAnalytics(
     val avgWeeklyVolume: Float
 )
 
-// Drag and drop state
-data class DragState(
-    val draggedWidgetId: String,
-    val draggedIndex: Int,
-    val currentOffset: Offset,
-    val targetIndex: Int,
-    val offsetFromTarget: Offset = Offset.Zero // Track offset from current target position
-)
-
-// Helper for combining 4 flows
+// Helper for combining 4 flows  
 data class Quadruple<A, B, C, D>(
     val first: A,
     val second: B,

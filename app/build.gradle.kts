@@ -102,6 +102,8 @@ dependencies {
     }
     // --- Work Manager for Background Sync ---
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+    // --- Reorderable Library for Drag & Drop ---
+    implementation("sh.calvin.reorderable:reorderable:2.5.1")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
