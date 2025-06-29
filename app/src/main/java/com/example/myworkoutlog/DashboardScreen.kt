@@ -28,11 +28,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.animateDpAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
-import sh.calvin.reorderable.ReorderableLazyListState
-import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.draggableHandle
-import sh.calvin.reorderable.reorderable
-import sh.calvin.reorderable.rememberReorderableLazyListState
+import sh.calvin.reorderable.*
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
@@ -1474,7 +1470,7 @@ fun LibraryBasedWidgetCard(
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
                             .size(24.dp)
-                            .draggableHandle()
+                            .detectReorderAfterLongPress(reorderableState)
                     )
                     
                     Text(
@@ -1515,9 +1511,7 @@ fun EnhancedDashboardScreen(
     val hiddenWidgets by dashboardViewModel.hiddenWidgets.collectAsStateWithLifecycle()
     
     // Setup reorderable state for drag & drop
-    val lazyListState = rememberLazyListState()
     val reorderableLazyColumnState = rememberReorderableLazyListState(
-        lazyListState = lazyListState,
         onMove = { from, to ->
             // Only allow reordering in customization mode and for widgets
             if (isCustomizationMode && from.key.toString().startsWith("widget_") && to.key.toString().startsWith("widget_")) {
@@ -1541,7 +1535,7 @@ fun EnhancedDashboardScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         LazyColumn(
-            state = lazyListState,
+            state = reorderableLazyColumnState.listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
