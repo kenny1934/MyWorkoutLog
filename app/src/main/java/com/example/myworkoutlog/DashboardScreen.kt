@@ -1727,8 +1727,7 @@ fun EnhancedDashboardScreen(
                         }
                     }
                 }
-            }
-            
+                
                 // Low priority insights
                 val lowPriorityInsights = dashboardState.insights.filter { 
                     it.priority == InsightPriority.LOW || it.priority == InsightPriority.MEDIUM 
