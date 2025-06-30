@@ -2,14 +2,14 @@
 
 ## Current Status
 - Branch: `feature/reorderable-library-migration`
-- Last commit: `feat: Replace custom drag & drop with reorderable library`
-- Development Phase: **Tier 3 Phase 3 COMPLETE** - Dashboard Customization with Professional Drag & Drop ✅
+- Last commit: `debug: Temporarily disable DragDropSwipeLazyColumn to isolate crash`
+- Development Phase: **Tier 3 Phase 3 IN PROGRESS** - Dashboard Library Migration Research ⚠️
 
 ## Development Tracking
 - Testing and building done on Android Studio by user
 - ✅ **RESOLVED**: All chart rendering, import functionality, and session management issues
-- ✅ **RESOLVED**: Drag & drop finger tracking issues resolved with library migration
-- ✅ **COMPLETE**: Professional drag & drop implementation with `sh.calvin.reorderable` library
+- ⚠️ **IN PROGRESS**: Drag & drop library migration research with multiple approaches tested
+- ✅ **STABLE BUILD**: App runs without crashes, widgets display correctly (drag & drop disabled temporarily)
 
 ## 🏆 Major Achievements
 - ✅ **Tier 1 Complete**: Core workout logging with advanced features
@@ -37,42 +37,50 @@
 5. **Persistent Preferences**: Widget order and visibility maintained across app sessions
 6. **Professional Animations**: Elevation changes and visual feedback during drag operations
 
-### **✅ Success Story - Library Migration**
+### **🔬 Library Migration Research Status**
 
-#### **Dashboard Drag & Drop - Library Implementation Success** ✅
-**Status**: All finger tracking issues resolved with library migration  
-**Solution**: `sh.calvin.reorderable` library (proven Compose drag & drop library)
-**Implementation**: Complete replacement of custom drag & drop system
+#### **Dashboard Drag & Drop - Library Evaluation In Progress** ⚠️
+**Status**: Multiple library approaches tested, stable build achieved without drag functionality  
+**Current State**: App runs without crashes, widgets display correctly, drag & drop temporarily disabled
+**Goal**: Find robust library solution to replace problematic custom implementation
 
-**Problems Solved**:
-1. ✅ **Perfect Finger Tracking**: Widgets now follow finger precisely with zero drift
-2. ✅ **Smooth Animations**: Professional spring animations and elevation changes
-3. ✅ **Reliable Positioning**: Accurate drag zone calculations for all directions
-4. ✅ **Cross-Platform Consistency**: Works reliably on all devices and simulators
-5. ✅ **Reduced Complexity**: ~200 lines of problematic code replaced with ~20 lines
+**Libraries Tested**:
+1. ❌ **org.burnoutcrew.reorderable:0.9.6** - Library not found in public repositories
+2. ❌ **sh.calvin.reorderable:2.5.1** - API compilation errors (`draggableHandle` function not found)
+3. ❌ **com.ernestoyaquello.dragdropswipelazycolumn:0.9.0** - Runtime crashes, requires minSdk 26, API complexity
 
-**Implementation Benefits**:
-- **Battle-Tested**: Used in production apps with proven reliability
-- **Professional UX**: Smooth animations, haptic feedback, visual indicators
-- **Maintainable**: Simple integration with existing widget management system
-- **Future-Proof**: Regular library updates and community support
+**Technical Discoveries**:
+- **minSdk Update**: Increased from 24 → 26 (Android 8.0) for modern library compatibility
+- **ImmutableList Requirement**: Added `kotlinx.collections.immutable:0.4.0` dependency
+- **API Complexity**: Many libraries have undocumented or inconsistent APIs
+- **Nested LazyColumn Issues**: Embedding reorderable lists in LazyColumn items causes crashes
 
-**Technical Achievement**:
-The migration demonstrates the value of leveraging proven libraries over custom implementations for complex UI interactions. This approach eliminated weeks of debugging and provided a superior user experience immediately.
+**Current Technical State**:
+- ✅ **Stable Build**: App compiles and runs without crashes
+- ✅ **Widget Display**: All dashboard widgets render correctly
+- ✅ **Widget Management**: Show/hide functionality works perfectly
+- ⚠️ **Missing Feature**: Drag & drop reordering disabled (visual drag handles present but non-functional)
 
-#### **Previous Issues (All Resolved)**
-- ✅ **Custom Drag Implementation**: Replaced with professional library solution
-- ✅ **Finger Tracking Drift**: Eliminated with library's gesture detection
-- ✅ **Widget Overlapping**: Perfect visual feedback during drag operations
-- ✅ **Compilation Errors**: Clean, maintainable code structure
-- ✅ **State Management**: Simplified with library's built-in state handling
+#### **Bugs to be Fixed**
+1. **Drag & Drop Reordering**: Currently non-functional drag handles need working implementation
+2. **Library Integration**: Need to find or implement robust drag & drop solution
+3. **API Documentation**: Libraries tested have poor or missing documentation
+4. **Runtime Stability**: Several libraries caused immediate crashes requiring careful integration
 
 ### **📋 Technical Implementation Status**
-- **DashboardScreen.kt**: Professional widget management with `sh.calvin.reorderable` library integration
-- **DashboardViewModel.kt**: Clean, simplified state management with persistent widget ordering  
-- **LibraryBasedWidgetCard.kt**: New component with perfect drag handle and visual feedback
-- **Dependencies**: Added `sh.calvin.reorderable:2.5.1` for professional drag & drop
+- **DashboardScreen.kt**: Widget management with standard LazyColumn (drag & drop temporarily disabled)
+- **DashboardViewModel.kt**: Clean state management with persistent widget ordering and visibility
+- **DragDropWidgetCard.kt**: Simplified widget component with visual drag handles (non-functional)
+- **Dependencies**: Multiple drag & drop libraries added for testing:
+  - `com.ernestoyaquello.dragdropswipelazycolumn:0.9.0` (causes crashes)
+  - `kotlinx.collections.immutable:0.4.0` (for ImmutableList support)
+  - minSdk increased to 26 for library compatibility
 
-**Current Status**: Production-ready dashboard customization with professional drag & drop experience. All finger tracking issues resolved with library-based implementation.
+**Current Status**: Stable build with full widget management except drag & drop reordering. All widgets display correctly with show/hide functionality working perfectly.
 
-**Architecture**: Clean separation between UI (reorderable library) and business logic (ViewModel) with maintained preference persistence and widget visibility management.
+**Next Steps**: 
+1. Research additional drag & drop libraries or approaches
+2. Consider returning to previous branch with improved custom implementation
+3. Evaluate trade-offs between library complexity vs custom solution benefits
+
+**Architecture**: Clean separation maintained with widget management, preference persistence, and visibility controls all working reliably.
