@@ -30,6 +30,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.ernestoyaquello.dragdropswipelazycolumn.DragDropSwipeLazyColumn
 import com.ernestoyaquello.dragdropswipelazycolumn.DraggableSwipeableItem
+import com.ernestoyaquello.dragdropswipelazycolumn.dragDropModifier
+import com.ernestoyaquello.dragdropswipelazycolumn.animateDraggableSwipeableItem
 import kotlinx.collections.immutable.toImmutableList
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
@@ -1453,12 +1455,14 @@ fun DragDropWidgetCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Drag handle (visual only - DraggableSwipeableItem handles drag)
+                    // Drag handle
                     Icon(
                         imageVector = Icons.Default.DragHandle,
                         contentDescription = "Drag to reorder",
                         tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier
+                            .size(24.dp)
+                            .dragDropModifier()
                     )
                     
                     Text(
@@ -1643,6 +1647,7 @@ fun EnhancedDashboardScreen(
                     val isWidgetVisible = widgetConfig?.isEnabled ?: widget.isVisible
                     
                     DraggableSwipeableItem(
+                        modifier = Modifier.animateDraggableSwipeableItem(),
                         onClick = { /* Widget click action if needed */ }
                     ) {
                         DragDropWidgetCard(
