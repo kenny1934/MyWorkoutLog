@@ -440,21 +440,12 @@ class DashboardViewModel(
     fun reorderWidgetsFromOrderedItems(reorderedItems: List<*>) {
         _isReordering.value = true
         
-        // Extract DashboardWidget objects from OrderedItem wrappers
-        val reorderedWidgets = reorderedItems.mapNotNull { orderedItem ->
-            // Use reflection or cast to extract the actual widget
-            try {
-                val itemField = orderedItem?.javaClass?.getDeclaredField("item")
-                itemField?.isAccessible = true
-                itemField?.get(orderedItem) as? DashboardWidget
-            } catch (e: Exception) {
-                null
-            }
-        }
-        
-        // Persist the new order
-        if (reorderedWidgets.isNotEmpty()) {
-            persistWidgetOrder(reorderedWidgets)
+        try {
+            // For now, skip reordering to avoid crashes and just log
+            println("DragDropSwipeLazyColumn reordering called with ${reorderedItems.size} items")
+            // TODO: Implement proper OrderedItem handling once we understand the structure
+        } catch (e: Exception) {
+            println("Error in reorderWidgetsFromOrderedItems: ${e.message}")
         }
         
         _isReordering.value = false

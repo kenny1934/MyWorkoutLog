@@ -1633,36 +1633,24 @@ fun EnhancedDashboardScreen(
                 }
             }
             
-            // Dashboard widgets with DragDropSwipeLazyColumn
-            item {
-                DragDropSwipeLazyColumn(
-                    modifier = Modifier.fillMaxWidth(),
-                    items = dashboardState.widgets.toImmutableList(),
-                    key = remember { { widget: DashboardWidget -> widget.id } },
-                    onIndicesChangedViaDragAndDrop = { reorderedItems ->
-                        if (isCustomizationMode) {
-                            dashboardViewModel.reorderWidgetsFromOrderedItems(reorderedItems)
-                        }
+            // Dashboard widgets (temporary: simple rendering to debug crash)
+            items(
+                items = dashboardState.widgets,
+                key = { widget -> "widget_${widget.id}" }
+            ) { widget ->
+                // Get current visibility state from preferences
+                val widgetConfig = dashboardPreferences.widgetConfigs.find { it.widgetType == widget.id }
+                val isWidgetVisible = widgetConfig?.isEnabled ?: widget.isVisible
+                
+                DragDropWidgetCard(
+                    widget = widget,
+                    navController = navController,
+                    isCustomizationMode = isCustomizationMode,
+                    isWidgetVisible = isWidgetVisible,
+                    onToggleVisibility = { widgetId: String ->
+                        dashboardViewModel.toggleWidgetVisibility(widgetId)
                     }
-                ) { index, widget ->
-                    // Get current visibility state from preferences
-                    val widgetConfig = dashboardPreferences.widgetConfigs.find { it.widgetType == widget.id }
-                    val isWidgetVisible = widgetConfig?.isEnabled ?: widget.isVisible
-                    
-                    DraggableSwipeableItem(
-                        onClick = { /* Widget click action if needed */ }
-                    ) {
-                        DragDropWidgetCard(
-                            widget = widget,
-                            navController = navController,
-                            isCustomizationMode = isCustomizationMode,
-                            isWidgetVisible = isWidgetVisible,
-                            onToggleVisibility = { widgetId: String ->
-                                dashboardViewModel.toggleWidgetVisibility(widgetId)
-                            }
-                        )
-                    }
-                }
+                )
             }
             
             // Hidden widgets section (only show in customization mode)
