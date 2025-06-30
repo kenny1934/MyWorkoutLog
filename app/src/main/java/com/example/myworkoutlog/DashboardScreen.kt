@@ -1590,7 +1590,10 @@ fun EnhancedDashboardScreen(
                 ) {
                     CircularProgressIndicator()
                 }
-            } else {
+            }
+            
+            // Content (when not loading)
+            if (!isLoading) {
                 // High priority insights
                 val urgentInsights = dashboardState.insights.filter { 
                     it.priority == InsightPriority.URGENT || it.priority == InsightPriority.HIGH 
