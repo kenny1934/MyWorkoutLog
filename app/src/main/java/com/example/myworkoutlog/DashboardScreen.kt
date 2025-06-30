@@ -30,6 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.ernestoyaquello.dragdropswipelazycolumn.DragDropSwipeLazyColumn
 import com.ernestoyaquello.dragdropswipelazycolumn.DraggableSwipeableItem
+import kotlinx.collections.immutable.toImmutableList
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
@@ -1636,12 +1637,11 @@ fun EnhancedDashboardScreen(
             item {
                 DragDropSwipeLazyColumn(
                     modifier = Modifier.fillMaxWidth(),
-                    items = dashboardState.widgets,
+                    items = dashboardState.widgets.toImmutableList(),
                     key = remember { { widget: DashboardWidget -> widget.id } },
                     onIndicesChangedViaDragAndDrop = { reorderedItems ->
                         if (isCustomizationMode) {
-                            // Handle the reordered items list
-                            // TODO: Update ViewModel to handle reordered list
+                            dashboardViewModel.reorderWidgetsFromOrderedItems(reorderedItems)
                         }
                     }
                 ) { index, widget ->
