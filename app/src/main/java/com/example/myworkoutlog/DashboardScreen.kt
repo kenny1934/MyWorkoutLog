@@ -30,6 +30,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.ernestoyaquello.dragdropswipelazycolumn.DragDropSwipeLazyColumn
 import com.ernestoyaquello.dragdropswipelazycolumn.DraggableSwipeableItem
+import com.ernestoyaquello.dragdropswipelazycolumn.dragDropModifier
+import com.ernestoyaquello.dragdropswipelazycolumn.animateDraggableSwipeableItem
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
@@ -1394,30 +1396,18 @@ fun DashboardScreen(
 
 
 @Composable
-fun LibraryBasedWidgetCard(
+fun DragDropWidgetCard(
     widget: DashboardWidget,
     navController: NavHostController,
     isCustomizationMode: Boolean,
     isWidgetVisible: Boolean,
-    isDragging: Boolean,
-    elevation: Dp,
-    onToggleVisibility: (String) -> Unit,
-    reorderableState: ReorderableLazyListState
+    onToggleVisibility: (String) -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .graphicsLayer {
-                // Smooth visual feedback during drag
-                scaleX = if (isDragging) 1.02f else 1f
-                scaleY = if (isDragging) 1.02f else 1f
-                alpha = if (isDragging) 0.9f else 1f
-            },
-        elevation = CardDefaults.cardElevation(defaultElevation = elevation),
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isDragging) 
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f)
-            else MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
         Box {
@@ -1465,17 +1455,14 @@ fun LibraryBasedWidgetCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Drag handle
-                    IconButton(
-                        onClick = { },
-                        modifier = Modifier.draggableHandle()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.DragHandle,
-                            contentDescription = "Drag to reorder",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.DragHandle,
+                        contentDescription = "Drag to reorder",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .dragDropModifier()
+                    )
                     
                     Text(
                         text = widget.title,
@@ -1514,26 +1501,8 @@ fun EnhancedDashboardScreen(
     val dashboardPreferences by dashboardViewModel.dashboardPreferences.collectAsStateWithLifecycle()
     val hiddenWidgets by dashboardViewModel.hiddenWidgets.collectAsStateWithLifecycle()
     
-    // Setup reorderable state for drag & drop
+    // Setup simple LazyColumn state (non-widget items)
     val lazyListState = rememberLazyListState()
-    val reorderableLazyColumnState = rememberReorderableLazyListState(
-        lazyListState = lazyListState,
-        onMove = { from, to ->
-            // Only allow reordering in customization mode and for widgets
-            if (isCustomizationMode && from.key.toString().startsWith("widget_") && to.key.toString().startsWith("widget_")) {
-                // Calculate the actual widget indices (accounting for header and other items)
-                val widgetStartIndex = 2 // Header + Quick Actions (if present) 
-                val fromWidgetIndex = from.index - widgetStartIndex
-                val toWidgetIndex = to.index - widgetStartIndex
-                
-                if (fromWidgetIndex >= 0 && toWidgetIndex >= 0 && 
-                    fromWidgetIndex < dashboardState.widgets.size && 
-                    toWidgetIndex < dashboardState.widgets.size) {
-                    dashboardViewModel.reorderWidgets(fromWidgetIndex, toWidgetIndex)
-                }
-            }
-        }
-    )
     
     PullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -1667,36 +1636,36 @@ fun EnhancedDashboardScreen(
                 }
             }
             
-            // Dashboard widgets with reorderable library drag & drop
-            itemsIndexed(
-                items = dashboardState.widgets, 
-                key = { _, widget -> "widget_${widget.id}" }
-            ) { index, widget ->
-                // Get current visibility state from preferences
-                val widgetConfig = dashboardPreferences.widgetConfigs.find { it.widgetType == widget.id }
-                val isWidgetVisible = widgetConfig?.isEnabled ?: widget.isVisible
-                
-                ReorderableItem(
-                    reorderableLazyColumnState,
-                    key = "widget_${widget.id}"
-                ) { isDragging ->
-                    val elevation by animateDpAsState(
-                        targetValue = if (isDragging) 8.dp else 4.dp,
-                        label = "card_elevation"
-                    )
+            // Dashboard widgets with DragDropSwipeLazyColumn
+            item {
+                DragDropSwipeLazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    items = dashboardState.widgets,
+                    key = remember { { widget: DashboardWidget -> widget.id } },
+                    onIndicesChangedViaDragAndDrop = { fromIndex, toIndex ->
+                        if (isCustomizationMode) {
+                            dashboardViewModel.reorderWidgets(fromIndex, toIndex)
+                        }
+                    }
+                ) { index, widget ->
+                    // Get current visibility state from preferences
+                    val widgetConfig = dashboardPreferences.widgetConfigs.find { it.widgetType == widget.id }
+                    val isWidgetVisible = widgetConfig?.isEnabled ?: widget.isVisible
                     
-                    LibraryBasedWidgetCard(
-                        widget = widget,
-                        navController = navController,
-                        isCustomizationMode = isCustomizationMode,
-                        isWidgetVisible = isWidgetVisible,
-                        isDragging = isDragging,
-                        elevation = elevation,
-                        onToggleVisibility = { widgetId: String ->
-                            dashboardViewModel.toggleWidgetVisibility(widgetId)
-                        },
-                        reorderableState = reorderableLazyColumnState
-                    )
+                    DraggableSwipeableItem(
+                        modifier = Modifier.animateDraggableSwipeableItem(),
+                        onClick = { /* Widget click action if needed */ }
+                    ) {
+                        DragDropWidgetCard(
+                            widget = widget,
+                            navController = navController,
+                            isCustomizationMode = isCustomizationMode,
+                            isWidgetVisible = isWidgetVisible,
+                            onToggleVisibility = { widgetId: String ->
+                                dashboardViewModel.toggleWidgetVisibility(widgetId)
+                            }
+                        )
+                    }
                 }
             }
             
