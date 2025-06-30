@@ -1506,15 +1506,13 @@ fun EnhancedDashboardScreen(
         onRefresh = { dashboardViewModel.onPullToRefresh() },
         modifier = Modifier.fillMaxSize()
     ) {
-        LazyColumn(
-            state = lazyListState,
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-        // Header with customization toggle
-        item {
+            // Header with customization toggle
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1537,11 +1535,9 @@ fun EnhancedDashboardScreen(
                     )
                 }
             }
-        }
         
-        // Error state
-        error?.let { errorMessage ->
-            item {
+            // Error state
+            error?.let { errorMessage ->
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer
@@ -1585,36 +1581,30 @@ fun EnhancedDashboardScreen(
                     }
                 }
             }
-        }
-        
-        // Loading state
-        if (isLoading) {
-            item {
+            
+            // Loading state
+            if (isLoading) {
                 Box(
                     modifier = Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
                 }
-            }
-        } else {
-            // High priority insights
-            val urgentInsights = dashboardState.insights.filter { 
-                it.priority == InsightPriority.URGENT || it.priority == InsightPriority.HIGH 
-            }
-            if (urgentInsights.isNotEmpty()) {
-                items(urgentInsights) { insight ->
+            } else {
+                // High priority insights
+                val urgentInsights = dashboardState.insights.filter { 
+                    it.priority == InsightPriority.URGENT || it.priority == InsightPriority.HIGH 
+                }
+                urgentInsights.forEach { insight ->
                     EnhancedInsightCard(
                         insight = insight,
                         onDismiss = { insightId -> dashboardViewModel.dismissInsight(insightId) },
                         onAction = { /* TODO: Handle insight actions */ }
                     )
                 }
-            }
-            
-            // Quick actions
-            if (dashboardState.quickActions.isNotEmpty()) {
-                item {
+                
+                // Quick actions
+                if (dashboardState.quickActions.isNotEmpty()) {
                     EnhancedDashboardWidgetCard(
                         title = "Quick Actions",
                         icon = Icons.Default.FlashOn
@@ -1631,31 +1621,41 @@ fun EnhancedDashboardScreen(
                         }
                     }
                 }
-            }
-            
-            // Dashboard widgets (temporary: simple rendering to debug crash)
-            items(
-                items = dashboardState.widgets,
-                key = { widget -> "widget_${widget.id}" }
-            ) { widget ->
-                // Get current visibility state from preferences
-                val widgetConfig = dashboardPreferences.widgetConfigs.find { it.widgetType == widget.id }
-                val isWidgetVisible = widgetConfig?.isEnabled ?: widget.isVisible
                 
-                DragDropWidgetCard(
-                    widget = widget,
-                    navController = navController,
-                    isCustomizationMode = isCustomizationMode,
-                    isWidgetVisible = isWidgetVisible,
-                    onToggleVisibility = { widgetId: String ->
-                        dashboardViewModel.toggleWidgetVisibility(widgetId)
+                // Dashboard widgets with DragDropSwipeLazyColumn
+                DragDropSwipeLazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f), // Take remaining space
+                    items = dashboardState.widgets.toImmutableList(),
+                    key = remember { { widget: DashboardWidget -> widget.id } },
+                    onIndicesChangedViaDragAndDrop = { reorderedItems ->
+                        if (isCustomizationMode) {
+                            dashboardViewModel.reorderWidgetsFromOrderedItems(reorderedItems)
+                        }
                     }
-                )
-            }
+                ) { index, widget ->
+                    // Get current visibility state from preferences
+                    val widgetConfig = dashboardPreferences.widgetConfigs.find { it.widgetType == widget.id }
+                    val isWidgetVisible = widgetConfig?.isEnabled ?: widget.isVisible
+                    
+                    DraggableSwipeableItem(
+                        onClick = { /* Widget click action if needed */ }
+                    ) {
+                        DragDropWidgetCard(
+                            widget = widget,
+                            navController = navController,
+                            isCustomizationMode = isCustomizationMode,
+                            isWidgetVisible = isWidgetVisible,
+                            onToggleVisibility = { widgetId: String ->
+                                dashboardViewModel.toggleWidgetVisibility(widgetId)
+                            }
+                        )
+                    }
+                }
             
-            // Hidden widgets section (only show in customization mode)
-            if (isCustomizationMode && hiddenWidgets.isNotEmpty()) {
-                item {
+                // Hidden widgets section (only show in customization mode)
+                if (isCustomizationMode && hiddenWidgets.isNotEmpty()) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -1726,12 +1726,11 @@ fun EnhancedDashboardScreen(
                 }
             }
             
-            // Low priority insights
-            val lowPriorityInsights = dashboardState.insights.filter { 
-                it.priority == InsightPriority.LOW || it.priority == InsightPriority.MEDIUM 
-            }
-            if (lowPriorityInsights.isNotEmpty()) {
-                item {
+                // Low priority insights
+                val lowPriorityInsights = dashboardState.insights.filter { 
+                    it.priority == InsightPriority.LOW || it.priority == InsightPriority.MEDIUM 
+                }
+                if (lowPriorityInsights.isNotEmpty()) {
                     EnhancedDashboardWidgetCard(
                         title = "Insights",
                         icon = Icons.Default.Lightbulb
@@ -1747,7 +1746,6 @@ fun EnhancedDashboardScreen(
                     }
                 }
             }
-        }
         }
     }
 }

@@ -441,11 +441,20 @@ class DashboardViewModel(
         _isReordering.value = true
         
         try {
-            // For now, skip reordering to avoid crashes and just log
             println("DragDropSwipeLazyColumn reordering called with ${reorderedItems.size} items")
-            // TODO: Implement proper OrderedItem handling once we understand the structure
+            println("First item type: ${reorderedItems.firstOrNull()?.javaClass?.simpleName}")
+            
+            // Cast to the expected type based on the library's documentation
+            @Suppress("UNCHECKED_CAST")
+            val reorderedWidgets = reorderedItems as List<DashboardWidget>
+            
+            if (reorderedWidgets.isNotEmpty()) {
+                persistWidgetOrder(reorderedWidgets)
+                println("Successfully reordered ${reorderedWidgets.size} widgets")
+            }
         } catch (e: Exception) {
             println("Error in reorderWidgetsFromOrderedItems: ${e.message}")
+            e.printStackTrace()
         }
         
         _isReordering.value = false
