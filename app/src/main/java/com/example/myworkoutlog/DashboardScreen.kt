@@ -1630,7 +1630,11 @@ fun EnhancedDashboardScreen(
                     EnhancedInsightCard(
                         insight = insight,
                         onDismiss = { insightId -> dashboardViewModel.dismissInsight(insightId) },
-                        onAction = { /* TODO: Handle insight actions */ }
+                        onAction = { insight -> 
+                            dashboardViewModel.executeInsightAction(insight) { route -> 
+                                navController.navigate(route) 
+                            }
+                        }
                     )
                 }
                 
@@ -1766,7 +1770,12 @@ fun EnhancedDashboardScreen(
                             lowPriorityInsights.forEach { insight ->
                                 EnhancedInsightCard(
                                     insight = insight,
-                                    onDismiss = { insightId -> dashboardViewModel.dismissInsight(insightId) }
+                                    onDismiss = { insightId -> dashboardViewModel.dismissInsight(insightId) },
+                                    onAction = { insight -> 
+                                        dashboardViewModel.executeInsightAction(insight) { route -> 
+                                            navController.navigate(route) 
+                                        }
+                                    }
                                 )
                             }
                         }

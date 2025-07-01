@@ -51,7 +51,7 @@ fun EnhancedDashboardWidgetCard(
 fun EnhancedInsightCard(
     insight: SmartInsight,
     onDismiss: ((String) -> Unit)? = null,
-    onAction: (() -> Unit)? = null
+    onAction: ((SmartInsight) -> Unit)? = null
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -93,7 +93,7 @@ fun EnhancedInsightCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     TextButton(
-                        onClick = { onAction?.invoke() },
+                        onClick = { onAction?.invoke(insight) },
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(insight.actionText)

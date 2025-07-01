@@ -248,5 +248,6 @@ data class DashboardPreferences(
     val showAchievements: Boolean = true,
     val showInsights: Boolean = true,
     val autoRefresh: Boolean = true,
-    val defaultTimeframe: String = "30days"
+    val defaultTimeframe: String = "30days",
+    val dismissedInsights: Set<String> = emptySet()
 )

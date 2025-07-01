@@ -154,10 +154,12 @@ class MainActivity : ComponentActivity() {
             (application as WorkoutApplication).database.programTemplateDao(),
             (application as WorkoutApplication).database.workoutTemplateDao()
         )
+        val preferencesManager = DashboardPreferencesManager(this)
         DashboardViewModelFactory(
             widgetRepository,
             (application as WorkoutApplication).database.activeCycleDao(),
-            analyticsRepository
+            analyticsRepository,
+            preferencesManager
         )
     }
 

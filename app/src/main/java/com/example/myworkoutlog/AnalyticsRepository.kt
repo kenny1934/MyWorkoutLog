@@ -517,6 +517,34 @@ class AnalyticsRepository(
             weeklyVolumes.values.average().toFloat()
         } else 0f
     }
+
+    suspend fun getCurrentStreak(): Int {
+        val startDate = LocalDate.now().minusMonths(6).format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val endDate = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+        
+        val workouts = loggedWorkoutDao.getWorkoutsByDateRange(startDate, endDate).first()
+        if (workouts.isEmpty()) return 0
+        
+        // Sort workouts by date (most recent first)
+        val sortedWorkouts = workouts.sortedByDescending { it.date }
+        
+        var streak = 0
+        var currentDate = LocalDate.now()
+        
+        for (workout in sortedWorkouts) {
+            val workoutDate = LocalDate.parse(workout.date)
+            
+            // Check if workout is on current date or previous consecutive days
+            if (workoutDate == currentDate || workoutDate == currentDate.minusDays(1)) {
+                streak++
+                currentDate = workoutDate.minusDays(1) // Move to previous day to check
+            } else {
+                break // Break streak if there's a gap
+            }
+        }
+        
+        return streak
+    }
     
     suspend fun getVolumeData(startDate: LocalDate, endDate: LocalDate): List<VolumeDataPoint> {
         val startDateStr = startDate.format(DateTimeFormatter.ISO_LOCAL_DATE)

@@ -12,7 +12,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 class DashboardViewModel(
     private val widgetRepository: WidgetRepositorySimplified,
     private val activeCycleDao: ActiveCycleDao,
-    private val analyticsRepository: AnalyticsRepository
+    private val analyticsRepository: AnalyticsRepository,
+    private val preferencesManager: DashboardPreferencesManager
 ) : ViewModel() {
     
     private val _refreshTrigger = MutableStateFlow(0)
@@ -160,8 +161,9 @@ class DashboardViewModel(
             }
             
             QuickActionType.ADD_BODYWEIGHT -> {
-                // TODO: Implement bodyweight logging dialog or screen
-                onNavigate(Screen.WorkoutLogger.route) // Placeholder
+                // For now, navigate to analytics where bodyweight tracking might be
+                // In a future version, this could open a quick entry dialog
+                onNavigate(Screen.Analytics.route)
             }
             
             QuickActionType.VIEW_HISTORY -> {
@@ -182,17 +184,70 @@ class DashboardViewModel(
             }
             
             QuickActionType.LOG_QUICK_WORKOUT -> {
-                // TODO: Implement quick workout logging
+                // Navigate to workout logger for quick workout entry
                 onNavigate(Screen.WorkoutLogger.route)
             }
         }
     }
     
     fun dismissInsight(insightId: String) {
-        // TODO: Implement insight dismissal logic
         viewModelScope.launch {
-            // For now, just refresh to remove the insight
-            refreshDashboard()
+            try {
+                // Store dismissed insights in preferences
+                val currentPreferences = _dashboardPreferences.value
+                val dismissedInsights = currentPreferences.dismissedInsights.toMutableSet()
+                dismissedInsights.add(insightId)
+                
+                _dashboardPreferences.value = currentPreferences.copy(
+                    dismissedInsights = dismissedInsights
+                )
+                
+                // Save updated preferences
+                saveDashboardPreferences()
+                
+                // Trigger dashboard refresh to update insights
+                refreshDashboard()
+            } catch (e: Exception) {
+                println("Error dismissing insight: ${e.message}")
+            }
+        }
+    }
+    
+    fun executeInsightAction(insight: SmartInsight, onNavigate: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                when (insight.type) {
+                    InsightType.PERFORMANCE -> {
+                        // Navigate to analytics for performance insights
+                        onNavigate(Screen.Analytics.route)
+                    }
+                    InsightType.RECOVERY -> {
+                        // Navigate to calendar or rest day planning
+                        onNavigate(Screen.Analytics.route)
+                    }
+                    InsightType.MOTIVATION -> {
+                        // Navigate to achievements or progress view
+                        onNavigate(Screen.Analytics.route)
+                    }
+                    InsightType.WARNING -> {
+                        // Navigate to relevant area based on warning
+                        onNavigate(Screen.Analytics.route)
+                    }
+                    InsightType.CELEBRATION -> {
+                        // Navigate to achievements or analytics
+                        onNavigate(Screen.Analytics.route)
+                    }
+                    InsightType.RECOMMENDATION -> {
+                        // Navigate to programs or workout templates
+                        onNavigate(Screen.Programs.route)
+                    }
+                }
+                
+                // Optionally dismiss the insight after action
+                dismissInsight(insight.id)
+            } catch (e: Exception) {
+                println("Error executing insight action: ${e.message}")
+            }
         }
     }
     
@@ -282,28 +337,36 @@ class DashboardViewModel(
         initialValue = emptyList()
     )
     
-    // Preference persistence (basic in-memory implementation)
+    // Preference persistence using SharedPreferences
     private fun saveDashboardPreferences() {
         viewModelScope.launch(Dispatchers.IO) {
-            // TODO: Implement SharedPreferences or Room persistence
-            // For now, preferences persist only during app session
-            println("Dashboard preferences saved: ${_dashboardPreferences.value}")
+            try {
+                preferencesManager.saveDashboardPreferences(_dashboardPreferences.value)
+            } catch (e: Exception) {
+                // Log error but don't crash - preferences are not critical
+                println("Error saving dashboard preferences: ${e.message}")
+            }
         }
     }
     
     private fun loadDashboardPreferences() {
         viewModelScope.launch(Dispatchers.IO) {
-            // TODO: Load from SharedPreferences or Room database
-            // For now, using default preferences
-            val defaultPreferences = DashboardPreferences(
-                widgetConfigs = emptyList(),
-                showMotivationalMessages = true,
-                showAchievements = true,
-                showInsights = true,
-                autoRefresh = true,
-                defaultTimeframe = "30days"
-            )
-            _dashboardPreferences.value = defaultPreferences
+            try {
+                val loadedPreferences = preferencesManager.loadDashboardPreferences()
+                _dashboardPreferences.value = loadedPreferences
+            } catch (e: Exception) {
+                // Fall back to default preferences if loading fails
+                println("Error loading dashboard preferences: ${e.message}")
+                val defaultPreferences = DashboardPreferences(
+                    widgetConfigs = emptyList(),
+                    showMotivationalMessages = true,
+                    showAchievements = true,
+                    showInsights = true,
+                    autoRefresh = true,
+                    defaultTimeframe = "30days"
+                )
+                _dashboardPreferences.value = defaultPreferences
+            }
         }
     }
     
@@ -415,8 +478,12 @@ class DashboardViewModel(
     }
     
     private suspend fun calculateStreak(): Int {
-        // TODO: Implement streak calculation
-        return 0
+        return try {
+            analyticsRepository.getCurrentStreak()
+        } catch (e: Exception) {
+            // Fallback calculation or return 0 if analytics repository doesn't have this method
+            0
+        }
     }
     
     // Simplified reordering method for library integration
@@ -515,12 +582,13 @@ data class Quadruple<A, B, C, D>(
 class DashboardViewModelFactory(
     private val widgetRepository: WidgetRepositorySimplified,
     private val activeCycleDao: ActiveCycleDao,
-    private val analyticsRepository: AnalyticsRepository
+    private val analyticsRepository: AnalyticsRepository,
+    private val preferencesManager: DashboardPreferencesManager
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return DashboardViewModel(widgetRepository, activeCycleDao, analyticsRepository) as T
+            return DashboardViewModel(widgetRepository, activeCycleDao, analyticsRepository, preferencesManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
