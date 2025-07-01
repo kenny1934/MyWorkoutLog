@@ -3,7 +3,6 @@
 package com.example.myworkoutlog
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,23 +15,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
-import androidx.compose.animation.core.*
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.util.*
 
@@ -246,146 +232,75 @@ fun ProgramEditorScreen(
                                 }
                             }
                             Spacer(Modifier.height(8.dp))
-                            // Enhanced session cards with drag & drop
+                            // Simple session cards with arrow button reordering
                             val sortedSessions = week.sessions.sortedBy { it.order }
-                            var draggedSessionId by remember { mutableStateOf<String?>(null) }
-                            var dragOffset by remember { mutableStateOf(Offset.Zero) }
                             
-                            Column(
-                                modifier = Modifier.animateContentSize(
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                        stiffness = Spring.StiffnessMedium
-                                    )
-                                )
-                            ) {
+                            Column {
                                 sortedSessions.forEachIndexed { index, session ->
-                                    val sessionIsDragged = draggedSessionId == session.id
-                                    val draggedSessionIndex = sortedSessions.indexOfFirst { it.id == draggedSessionId }
-                                    
-                                    // Calculate if this item should move up or down to make space
-                                    val shouldAnimate = draggedSessionId != null && !sessionIsDragged
-                                    val cardHeight = 80 // Approximate card height in dp
-                                    val pixelsPerCard = cardHeight * 3 // Account for spacing
-                                    val targetIndex = if (draggedSessionIndex >= 0) {
-                                        (draggedSessionIndex + (dragOffset.y / pixelsPerCard).toInt()).coerceIn(0, sortedSessions.size - 1)
-                                    } else index
-                                    
-                                    val animatedOffset by animateDpAsState(
-                                        targetValue = if (shouldAnimate && draggedSessionIndex >= 0) {
-                                            when {
-                                                // Item should move down to make space
-                                                index >= targetIndex && index < draggedSessionIndex -> cardHeight.dp
-                                                // Item should move up to make space  
-                                                index <= targetIndex && index > draggedSessionIndex -> (-cardHeight).dp
-                                                else -> 0.dp
-                                            }
-                                        } else 0.dp,
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                                            stiffness = Spring.StiffnessMedium
-                                        ),
-                                        label = "session_reorder_animation"
-                                    )
-                                    
-                                    // Show placeholder at target position
-                                    if (draggedSessionId != null && draggedSessionIndex >= 0 && index == targetIndex && !sessionIsDragged) {
-                                        Card(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(cardHeight.dp)
-                                                .padding(vertical = 4.dp),
-                                            colors = CardDefaults.cardColors(
-                                                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                                            ),
-                                            border = BorderStroke(
-                                                2.dp, 
-                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                                            )
-                                        ) {
-                                            Box(
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    "Drop here",
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                                                )
-                                            }
-                                        }
-                                        Spacer(Modifier.height(8.dp))
-                                    }
-                                    
-                                    Box(
-                                        modifier = Modifier.offset(y = animatedOffset)
-                                    ) {
-                                SessionCard(
-                                    session = session,
-                                    template = allWorkoutTemplates.find { it.id == session.workoutTemplateId },
-                                    allTemplates = allWorkoutTemplates,
-                                    isDragging = draggedSessionId == session.id,
-                                    dragOffset = if (draggedSessionId == session.id) dragOffset else Offset.Zero,
-                                    onDragStart = {
-                                        draggedSessionId = session.id
-                                        dragOffset = Offset.Zero
-                                    },
-                                    onDragEnd = {
-                                        draggedSessionId?.let { draggedId ->
-                                            // Calculate the new position based on drag offset
-                                            val draggedSessionIndex = sortedSessions.indexOfFirst { it.id == draggedId }
-                                            val cardHeight = 80 // Approximate card height in dp
-                                            val pixelsPerCard = cardHeight * 3 // Account for spacing
-                                            val positionChange = (dragOffset.y / pixelsPerCard).toInt()
-                                            val newIndex = (draggedSessionIndex + positionChange).coerceIn(0, sortedSessions.size - 1)
+                                    SessionCard(
+                                        session = session,
+                                        template = allWorkoutTemplates.find { it.id == session.workoutTemplateId },
+                                        allTemplates = allWorkoutTemplates,
+                                        canMoveUp = index > 0,
+                                        canMoveDown = index < sortedSessions.size - 1,
+                                        onMoveUp = {
+                                            // Move session up in the order
+                                            val reorderedSessions = sortedSessions.toMutableList()
+                                            val temp = reorderedSessions[index]
+                                            reorderedSessions[index] = reorderedSessions[index - 1]
+                                            reorderedSessions[index - 1] = temp
                                             
-                                            if (newIndex != draggedSessionIndex) {
-                                                // Reorder sessions
-                                                val reorderedSessions = sortedSessions.toMutableList()
-                                                val draggedSession = reorderedSessions.removeAt(draggedSessionIndex)
-                                                reorderedSessions.add(newIndex, draggedSession)
-                                                
-                                                // Update orders
-                                                val updatedSessions = reorderedSessions.mapIndexed { index, s ->
-                                                    s.copy(order = index + 1)
-                                                }
-                                                
-                                                editedWeeks = editedWeeks.map { w ->
-                                                    if (w.id == week.id) {
-                                                        w.copy(sessions = updatedSessions)
-                                                    } else w
-                                                }
+                                            // Update orders
+                                            val updatedSessions = reorderedSessions.mapIndexed { idx, s ->
+                                                s.copy(order = idx + 1)
+                                            }
+                                            
+                                            editedWeeks = editedWeeks.map { w ->
+                                                if (w.id == week.id) {
+                                                    w.copy(sessions = updatedSessions)
+                                                } else w
+                                            }
+                                        },
+                                        onMoveDown = {
+                                            // Move session down in the order
+                                            val reorderedSessions = sortedSessions.toMutableList()
+                                            val temp = reorderedSessions[index]
+                                            reorderedSessions[index] = reorderedSessions[index + 1]
+                                            reorderedSessions[index + 1] = temp
+                                            
+                                            // Update orders
+                                            val updatedSessions = reorderedSessions.mapIndexed { idx, s ->
+                                                s.copy(order = idx + 1)
+                                            }
+                                            
+                                            editedWeeks = editedWeeks.map { w ->
+                                                if (w.id == week.id) {
+                                                    w.copy(sessions = updatedSessions)
+                                                } else w
+                                            }
+                                        },
+                                        onSessionUpdated = { updatedSession ->
+                                            editedWeeks = editedWeeks.map { w ->
+                                                if (w.id == week.id) {
+                                                    w.copy(sessions = w.sessions.map { s ->
+                                                        if (s.id == session.id) updatedSession else s
+                                                    })
+                                                } else w
+                                            }
+                                        },
+                                        onSessionDeleted = { sessionToDelete ->
+                                            editedWeeks = editedWeeks.map { w ->
+                                                if (w.id == week.id) {
+                                                    // Remove session and reorder remaining sessions
+                                                    val remainingSessions = w.sessions.filter { s -> s.id != sessionToDelete.id }
+                                                    val reorderedSessions = remainingSessions.mapIndexed { idx, s ->
+                                                        s.copy(order = idx + 1)
+                                                    }
+                                                    w.copy(sessions = reorderedSessions)
+                                                } else w
                                             }
                                         }
-                                        draggedSessionId = null
-                                        dragOffset = Offset.Zero
-                                    },
-                                    onDrag = { dragAmount ->
-                                        dragOffset = dragOffset.plus(dragAmount)
-                                    },
-                                    onSessionUpdated = { updatedSession ->
-                                        editedWeeks = editedWeeks.map { w ->
-                                            if (w.id == week.id) {
-                                                w.copy(sessions = w.sessions.map { s ->
-                                                    if (s.id == session.id) updatedSession else s
-                                                })
-                                            } else w
-                                        }
-                                    },
-                                    onSessionDeleted = { sessionToDelete ->
-                                        editedWeeks = editedWeeks.map { w ->
-                                            if (w.id == week.id) {
-                                                // Remove session and reorder remaining sessions
-                                                val remainingSessions = w.sessions.filter { s -> s.id != sessionToDelete.id }
-                                                val reorderedSessions = remainingSessions.mapIndexed { idx, s ->
-                                                    s.copy(order = idx + 1)
-                                                }
-                                                w.copy(sessions = reorderedSessions)
-                                            } else w
-                                        }
-                                    }
-                                )
-                                    }
+                                    )
                                     Spacer(Modifier.height(8.dp))
                                 }
                             }
@@ -456,39 +371,20 @@ fun SessionCard(
     allTemplates: List<WorkoutTemplate>,
     onSessionUpdated: (ProgramSessionDefinition) -> Unit,
     onSessionDeleted: (ProgramSessionDefinition) -> Unit,
-    isDragging: Boolean = false,
-    dragOffset: Offset = Offset.Zero,
-    onDragStart: (() -> Unit)? = null,
-    onDragEnd: (() -> Unit)? = null,
-    onDrag: ((Offset) -> Unit)? = null
+    canMoveUp: Boolean = false,
+    canMoveDown: Boolean = false,
+    onMoveUp: (() -> Unit)? = null,
+    onMoveDown: (() -> Unit)? = null
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showTemplateDropdown by remember { mutableStateOf(false) }
-    val hapticFeedback = LocalHapticFeedback.current
-    val density = LocalDensity.current
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .offset(
-                x = if (isDragging) with(density) { dragOffset.x.toDp() } else 0.dp,
-                y = if (isDragging) with(density) { dragOffset.y.toDp() } else 0.dp
-            )
-            .graphicsLayer {
-                // Visual feedback during drag
-                scaleX = if (isDragging) 1.05f else 1f
-                scaleY = if (isDragging) 1.05f else 1f
-                alpha = if (isDragging) 0.9f else 1f
-            }
-            .zIndex(if (isDragging) 1f else 0f),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isDragging) 8.dp else 2.dp
-        ),
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
-                alpha = if (isDragging) 0.8f else 0.5f
-            )
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         )
     ) {
         Row(
@@ -497,30 +393,33 @@ fun SessionCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Interactive drag handle
-            Icon(
-                imageVector = Icons.Default.DragIndicator,
-                contentDescription = "Drag to reorder",
-                tint = if (isDragging) 
-                    MaterialTheme.colorScheme.primary 
-                else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .size(20.dp)
-                    .pointerInput(session.id) {
-                        detectDragGestures(
-                            onDragStart = { offset ->
-                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onDragStart?.invoke()
-                            },
-                            onDragEnd = {
-                                onDragEnd?.invoke()
-                            },
-                            onDrag = { change, dragAmount ->
-                                onDrag?.invoke(dragAmount)
-                            }
-                        )
-                    }
-            )
+            // Arrow reordering buttons
+            Column {
+                IconButton(
+                    onClick = { onMoveUp?.invoke() },
+                    enabled = canMoveUp,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Move up",
+                        tint = if (canMoveUp) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                IconButton(
+                    onClick = { onMoveDown?.invoke() },
+                    enabled = canMoveDown,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Move down",
+                        tint = if (canMoveDown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
             
             Spacer(modifier = Modifier.width(8.dp))
             
