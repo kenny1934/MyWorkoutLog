@@ -1235,6 +1235,10 @@ class WidgetRepositorySimplified(
             }
             
         } catch (e: Exception) {
+            // Log the error to understand what's failing
+            println("DEBUG Insights Exception: ${e.message}")
+            e.printStackTrace()
+            
             // Fallback insight if analytics fail
             insights.add(SmartInsight(
                 id = "system_ready",
