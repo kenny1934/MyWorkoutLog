@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.*
@@ -1080,10 +1082,10 @@ class WidgetRepositorySimplified(
         val insights = mutableListOf<SmartInsight>()
         
         try {
-            // Get basic analytics
-            val streak = calculateBasicStreak()
-            val totalWorkouts = analyticsRepository.getTotalWorkoutCount()
-            val thisWeekWorkouts = analyticsRepository.getThisWeekWorkoutCount()
+            // Get basic analytics on IO thread
+            val streak = withContext(Dispatchers.IO) { calculateBasicStreak() }
+            val totalWorkouts = withContext(Dispatchers.IO) { analyticsRepository.getTotalWorkoutCount() }
+            val thisWeekWorkouts = withContext(Dispatchers.IO) { analyticsRepository.getThisWeekWorkoutCount() }
             
             println("DEBUG Insights: streak=$streak, totalWorkouts=$totalWorkouts, thisWeekWorkouts=$thisWeekWorkouts")
             println("DEBUG Dismissed Insights: $dismissedInsights (size: ${dismissedInsights.size})")
