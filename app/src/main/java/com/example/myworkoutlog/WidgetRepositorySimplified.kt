@@ -154,11 +154,14 @@ class WidgetRepositorySimplified(
             streakInfo = getStreakInfo()
         ))
         
+        val generatedInsights = generateBasicInsights(activeCycle = null, dismissedInsights = dismissedInsights)
+        println("DEBUG Dashboard State: NoActiveCycle, insights count: ${generatedInsights.size}")
+        
         emit(DashboardState(
             mode = DashboardMode.NoActiveCycle,
             widgets = widgets,
             quickActions = getBasicQuickActions(null),
-            insights = generateBasicInsights(activeCycle = null, dismissedInsights = dismissedInsights)
+            insights = generatedInsights
         ))
     }
     
@@ -289,6 +292,9 @@ class WidgetRepositorySimplified(
             streakInfo = getStreakInfo()
         ))
         
+        val generatedInsights = generateBasicInsights(activeCycle = activeCycle, dismissedInsights = dismissedInsights)
+        println("DEBUG Dashboard State: ActiveCycle, insights count: ${generatedInsights.size}")
+        
         emit(DashboardState(
             mode = DashboardMode.ActiveCycle(activeCycle, CycleProgress(
                 completionPercentage = progress,
@@ -301,7 +307,7 @@ class WidgetRepositorySimplified(
             )),
             widgets = widgets,
             quickActions = getBasicQuickActions(activeCycle),
-            insights = generateBasicInsights(activeCycle = activeCycle, dismissedInsights = dismissedInsights)
+            insights = generatedInsights
         ))
     }
     
@@ -1079,6 +1085,8 @@ class WidgetRepositorySimplified(
             val totalWorkouts = analyticsRepository.getTotalWorkoutCount()
             val thisWeekWorkouts = analyticsRepository.getThisWeekWorkoutCount()
             
+            println("DEBUG Insights: streak=$streak, totalWorkouts=$totalWorkouts, thisWeekWorkouts=$thisWeekWorkouts, dismissedInsights=$dismissedInsights")
+            
             // Welcome back insight for returning users
             if (totalWorkouts > 0 && thisWeekWorkouts == 0) {
                 insights.add(SmartInsight(
@@ -1198,9 +1206,12 @@ class WidgetRepositorySimplified(
             ))
         }
         
-        return insights
+        val finalInsights = insights
             .filter { it.id !in dismissedInsights } // Filter out dismissed insights
             .take(3) // Limit to 3 insights max
+        
+        println("DEBUG Insights Generated: ${insights.size} total, ${finalInsights.size} after filtering. Insights: ${finalInsights.map { it.title }}")
+        return finalInsights
     }
 }
 
