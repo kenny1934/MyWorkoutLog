@@ -158,7 +158,7 @@ class WidgetRepositorySimplified(
             mode = DashboardMode.NoActiveCycle,
             widgets = widgets,
             quickActions = getBasicQuickActions(null),
-            insights = emptyList()
+            insights = generateBasicInsights(activeCycle = null)
         ))
     }
     
@@ -301,7 +301,7 @@ class WidgetRepositorySimplified(
             )),
             widgets = widgets,
             quickActions = getBasicQuickActions(activeCycle),
-            insights = emptyList()
+            insights = generateBasicInsights(activeCycle = activeCycle)
         ))
     }
     
@@ -1067,6 +1067,138 @@ class WidgetRepositorySimplified(
                 thisWeekCount = 0
             )
         }
+    }
+    
+    // Smart Insights Generation
+    private suspend fun generateBasicInsights(activeCycle: ActiveProgramCycle?): List<SmartInsight> {
+        val insights = mutableListOf<SmartInsight>()
+        
+        try {
+            // Get basic analytics
+            val streak = calculateBasicStreak()
+            val totalWorkouts = analyticsRepository.getTotalWorkoutCount()
+            val thisWeekWorkouts = analyticsRepository.getThisWeekWorkoutCount()
+            
+            // Welcome back insight for returning users
+            if (totalWorkouts > 0 && thisWeekWorkouts == 0) {
+                insights.add(SmartInsight(
+                    id = "welcome_back",
+                    title = "Welcome Back!",
+                    message = "You haven't worked out this week yet. Ready to get back into it?",
+                    type = InsightType.MOTIVATION,
+                    priority = InsightPriority.MEDIUM,
+                    actionable = true,
+                    actionText = "Start Workout"
+                ))
+            }
+            
+            // Streak celebration
+            if (streak >= 7) {
+                insights.add(SmartInsight(
+                    id = "streak_celebration",
+                    title = "🔥 Amazing Streak!",
+                    message = "You're on a ${streak}-day workout streak! Keep up the fantastic consistency.",
+                    type = InsightType.CELEBRATION,
+                    priority = InsightPriority.HIGH,
+                    actionable = false
+                ))
+            } else if (streak >= 3) {
+                insights.add(SmartInsight(
+                    id = "streak_building",
+                    title = "Building Momentum",
+                    message = "${streak} days in a row! You're building great habits.",
+                    type = InsightType.MOTIVATION,
+                    priority = InsightPriority.MEDIUM,
+                    actionable = false
+                ))
+            }
+            
+            // Weekly progress insight
+            if (thisWeekWorkouts >= 4) {
+                insights.add(SmartInsight(
+                    id = "weekly_goal_met",
+                    title = "✅ Weekly Goal Achieved",
+                    message = "You've completed ${thisWeekWorkouts} workouts this week. Excellent consistency!",
+                    type = InsightType.CELEBRATION,
+                    priority = InsightPriority.MEDIUM,
+                    actionable = false
+                ))
+            } else if (thisWeekWorkouts >= 1) {
+                val remaining = 4 - thisWeekWorkouts
+                insights.add(SmartInsight(
+                    id = "weekly_progress",
+                    title = "Weekly Progress",
+                    message = "${thisWeekWorkouts} workouts completed this week. ${remaining} more to reach your goal!",
+                    type = InsightType.PERFORMANCE,
+                    priority = InsightPriority.LOW,
+                    actionable = true,
+                    actionText = "View Schedule"
+                ))
+            }
+            
+            // No active cycle recommendation
+            if (activeCycle == null && totalWorkouts > 0) {
+                insights.add(SmartInsight(
+                    id = "start_program",
+                    title = "Ready for Structure?",
+                    message = "Consider starting a structured program to maximize your progress and stay motivated.",
+                    type = InsightType.RECOMMENDATION,
+                    priority = InsightPriority.MEDIUM,
+                    actionable = true,
+                    actionText = "Browse Programs"
+                ))
+            }
+            
+            // First workout encouragement
+            if (totalWorkouts == 0) {
+                insights.add(SmartInsight(
+                    id = "first_workout",
+                    title = "🚀 Ready to Start?",
+                    message = "Welcome to MyWorkoutLog! Let's begin your fitness journey with your first workout.",
+                    type = InsightType.MOTIVATION,
+                    priority = InsightPriority.HIGH,
+                    actionable = true,
+                    actionText = "Start First Workout"
+                ))
+            }
+            
+            // Random motivational insights
+            if (insights.size < 2) {
+                val motivationalInsights = listOf(
+                    SmartInsight(
+                        id = "consistency_tip",
+                        title = "💡 Pro Tip",
+                        message = "Consistency beats perfection. Even a 15-minute workout is better than none!",
+                        type = InsightType.MOTIVATION,
+                        priority = InsightPriority.LOW,
+                        actionable = false
+                    ),
+                    SmartInsight(
+                        id = "progress_tracking",
+                        title = "📊 Track Your Progress",
+                        message = "Check your analytics to see how far you've come and plan your next goals.",
+                        type = InsightType.RECOMMENDATION,
+                        priority = InsightPriority.LOW,
+                        actionable = true,
+                        actionText = "View Analytics"
+                    )
+                )
+                insights.add(motivationalInsights.random())
+            }
+            
+        } catch (e: Exception) {
+            // Fallback insight if analytics fail
+            insights.add(SmartInsight(
+                id = "system_ready",
+                title = "System Ready",
+                message = "Your workout tracker is ready to help you achieve your fitness goals!",
+                type = InsightType.MOTIVATION,
+                priority = InsightPriority.LOW,
+                actionable = false
+            ))
+        }
+        
+        return insights.take(3) // Limit to 3 insights max
     }
 }
 
