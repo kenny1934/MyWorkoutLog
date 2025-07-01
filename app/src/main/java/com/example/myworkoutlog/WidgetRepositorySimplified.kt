@@ -1085,7 +1085,8 @@ class WidgetRepositorySimplified(
             val totalWorkouts = analyticsRepository.getTotalWorkoutCount()
             val thisWeekWorkouts = analyticsRepository.getThisWeekWorkoutCount()
             
-            println("DEBUG Insights: streak=$streak, totalWorkouts=$totalWorkouts, thisWeekWorkouts=$thisWeekWorkouts, dismissedInsights=$dismissedInsights")
+            println("DEBUG Insights: streak=$streak, totalWorkouts=$totalWorkouts, thisWeekWorkouts=$thisWeekWorkouts")
+            println("DEBUG Dismissed Insights: $dismissedInsights (size: ${dismissedInsights.size})")
             
             // Welcome back insight for returning users
             if (totalWorkouts > 0 && thisWeekWorkouts == 0) {
@@ -1144,6 +1145,19 @@ class WidgetRepositorySimplified(
                 ))
             }
             
+            // Active cycle specific insights
+            if (activeCycle != null) {
+                insights.add(SmartInsight(
+                    id = "active_cycle_progress",
+                    title = "🎯 Keep Going!",
+                    message = "You're making great progress on your current program. Stay consistent to see the best results!",
+                    type = InsightType.MOTIVATION,
+                    priority = InsightPriority.MEDIUM,
+                    actionable = true,
+                    actionText = "View Progress"
+                ))
+            }
+            
             // No active cycle recommendation
             if (activeCycle == null && totalWorkouts > 0) {
                 insights.add(SmartInsight(
@@ -1170,9 +1184,9 @@ class WidgetRepositorySimplified(
                 ))
             }
             
-            // Random motivational insights
-            if (insights.size < 2) {
-                val motivationalInsights = listOf(
+            // Ensure we always have some insights - add more variety
+            while (insights.size < 2) {
+                val availableInsights = listOf(
                     SmartInsight(
                         id = "consistency_tip",
                         title = "💡 Pro Tip",
@@ -1189,9 +1203,35 @@ class WidgetRepositorySimplified(
                         priority = InsightPriority.LOW,
                         actionable = true,
                         actionText = "View Analytics"
+                    ),
+                    SmartInsight(
+                        id = "hydration_reminder",
+                        title = "💧 Stay Hydrated",
+                        message = "Remember to drink water before, during, and after your workouts!",
+                        type = InsightType.MOTIVATION,
+                        priority = InsightPriority.LOW,
+                        actionable = false
+                    ),
+                    SmartInsight(
+                        id = "rest_day_tip",
+                        title = "😴 Recovery Matters",
+                        message = "Rest days are just as important as workout days for muscle growth and recovery.",
+                        type = InsightType.MOTIVATION,
+                        priority = InsightPriority.LOW,
+                        actionable = false
                     )
                 )
-                insights.add(motivationalInsights.random())
+                
+                // Add insights that aren't already present
+                val unusedInsights = availableInsights.filter { newInsight ->
+                    !insights.any { it.id == newInsight.id }
+                }
+                
+                if (unusedInsights.isNotEmpty()) {
+                    insights.add(unusedInsights.random())
+                } else {
+                    break // All insights already added
+                }
             }
             
         } catch (e: Exception) {
