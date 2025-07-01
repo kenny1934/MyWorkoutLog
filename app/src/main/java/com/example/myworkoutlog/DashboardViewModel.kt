@@ -436,25 +436,38 @@ class DashboardViewModel(
         _isReordering.value = false
     }
     
-    // Reordering method for DragDropSwipeLazyColumn library
-    fun reorderWidgetsFromOrderedItems(reorderedItems: List<*>) {
+    // Arrow button reordering methods
+    fun moveWidgetUp(widgetIndex: Int) {
+        if (widgetIndex <= 0) return // Can't move first item up
+        
+        _isReordering.value = true
+        val currentWidgets = dashboardState.value.widgets.toMutableList()
+        
+        if (widgetIndex < currentWidgets.size) {
+            // Swap with previous item
+            val temp = currentWidgets[widgetIndex]
+            currentWidgets[widgetIndex] = currentWidgets[widgetIndex - 1]
+            currentWidgets[widgetIndex - 1] = temp
+            
+            persistWidgetOrder(currentWidgets)
+        }
+        
+        _isReordering.value = false
+    }
+    
+    fun moveWidgetDown(widgetIndex: Int) {
+        val currentWidgets = dashboardState.value.widgets.toMutableList()
+        if (widgetIndex >= currentWidgets.size - 1) return // Can't move last item down
+        
         _isReordering.value = true
         
-        try {
-            println("DragDropSwipeLazyColumn reordering called with ${reorderedItems.size} items")
-            println("First item type: ${reorderedItems.firstOrNull()?.javaClass?.simpleName}")
+        if (widgetIndex >= 0) {
+            // Swap with next item
+            val temp = currentWidgets[widgetIndex]
+            currentWidgets[widgetIndex] = currentWidgets[widgetIndex + 1]
+            currentWidgets[widgetIndex + 1] = temp
             
-            // Cast to the expected type based on the library's documentation
-            @Suppress("UNCHECKED_CAST")
-            val reorderedWidgets = reorderedItems as List<DashboardWidget>
-            
-            if (reorderedWidgets.isNotEmpty()) {
-                persistWidgetOrder(reorderedWidgets)
-                println("Successfully reordered ${reorderedWidgets.size} widgets")
-            }
-        } catch (e: Exception) {
-            println("Error in reorderWidgetsFromOrderedItems: ${e.message}")
-            e.printStackTrace()
+            persistWidgetOrder(currentWidgets)
         }
         
         _isReordering.value = false

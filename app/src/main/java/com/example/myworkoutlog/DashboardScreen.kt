@@ -28,11 +28,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.animateDpAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
-import com.ernestoyaquello.dragdropswipelazycolumn.DragDropSwipeLazyColumn
-import com.ernestoyaquello.dragdropswipelazycolumn.DraggableSwipeableItem
-import com.ernestoyaquello.dragdropswipelazycolumn.dragDropModifier
-import com.ernestoyaquello.dragdropswipelazycolumn.animateDraggableSwipeableItem
-import kotlinx.collections.immutable.toImmutableList
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
@@ -1397,12 +1392,16 @@ fun DashboardScreen(
 
 
 @Composable
-fun DragDropWidgetCard(
+fun ArrowReorderWidgetCard(
     widget: DashboardWidget,
     navController: NavHostController,
     isCustomizationMode: Boolean,
     isWidgetVisible: Boolean,
-    onToggleVisibility: (String) -> Unit
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onToggleVisibility: (String) -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1455,15 +1454,33 @@ fun DragDropWidgetCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Drag handle
-                    Icon(
-                        imageVector = Icons.Default.DragHandle,
-                        contentDescription = "Drag to reorder",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .dragDropModifier()
-                    )
+                    // Reorder arrow buttons
+                    Column {
+                        IconButton(
+                            onClick = onMoveUp,
+                            enabled = canMoveUp,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowUp,
+                                contentDescription = "Move up",
+                                tint = if (canMoveUp) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        IconButton(
+                            onClick = onMoveDown,
+                            enabled = canMoveDown,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = "Move down",
+                                tint = if (canMoveDown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
                     
                     Text(
                         text = widget.title,
@@ -1510,38 +1527,42 @@ fun EnhancedDashboardScreen(
         onRefresh = { dashboardViewModel.onPullToRefresh() },
         modifier = Modifier.fillMaxSize()
     ) {
-        Column(
+        LazyColumn(
+            state = lazyListState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Header with customization toggle
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Dashboard",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                
-                IconButton(
-                    onClick = { dashboardViewModel.toggleCustomizationMode() }
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = if (isCustomizationMode) Icons.Default.Done else Icons.Default.Edit,
-                        contentDescription = if (isCustomizationMode) "Exit customization" else "Customize dashboard",
-                        tint = if (isCustomizationMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    Text(
+                        text = "Dashboard",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
+                    
+                    IconButton(
+                        onClick = { dashboardViewModel.toggleCustomizationMode() }
+                    ) {
+                        Icon(
+                            imageVector = if (isCustomizationMode) Icons.Default.Done else Icons.Default.Edit,
+                            contentDescription = if (isCustomizationMode) "Exit customization" else "Customize dashboard",
+                            tint = if (isCustomizationMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         
             // Error state
             error?.let { errorMessage ->
+                item {
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer
@@ -1584,15 +1605,18 @@ fun EnhancedDashboardScreen(
                         }
                     }
                 }
+                }
             }
             
             // Loading state
             if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+                item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
             }
             
@@ -1602,7 +1626,7 @@ fun EnhancedDashboardScreen(
                 val urgentInsights = dashboardState.insights.filter { 
                     it.priority == InsightPriority.URGENT || it.priority == InsightPriority.HIGH 
                 }
-                urgentInsights.forEach { insight ->
+                items(urgentInsights) { insight ->
                     EnhancedInsightCard(
                         insight = insight,
                         onDismiss = { insightId -> dashboardViewModel.dismissInsight(insightId) },
@@ -1612,64 +1636,58 @@ fun EnhancedDashboardScreen(
                 
                 // Quick actions
                 if (dashboardState.quickActions.isNotEmpty()) {
-                    EnhancedDashboardWidgetCard(
-                        title = "Quick Actions",
-                        icon = Icons.Default.FlashOn
-                    ) {
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    item {
+                        EnhancedDashboardWidgetCard(
+                            title = "Quick Actions",
+                            icon = Icons.Default.FlashOn
                         ) {
-                            items(dashboardState.quickActions) { action ->
-                                EnhancedQuickActionButton(
-                                    action = action,
-                                    onClick = { selectedAction -> dashboardViewModel.executeQuickAction(selectedAction) { route -> navController.navigate(route) } }
-                                )
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(dashboardState.quickActions) { action ->
+                                    EnhancedQuickActionButton(
+                                        action = action,
+                                        onClick = { selectedAction -> dashboardViewModel.executeQuickAction(selectedAction) { route -> navController.navigate(route) } }
+                                    )
+                                }
                             }
                         }
                     }
                 }
                 
-                // Dashboard widgets with DragDropSwipeLazyColumn
-                DragDropSwipeLazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f), // Take remaining space
-                    items = dashboardState.widgets.toImmutableList(),
-                    key = remember { { widget: DashboardWidget -> widget.id } },
-                    onIndicesChangedViaDragAndDrop = { reorderedItems ->
-                        if (isCustomizationMode) {
-                            dashboardViewModel.reorderWidgetsFromOrderedItems(reorderedItems)
-                        }
-                    }
+                // Dashboard widgets with arrow button reordering
+                itemsIndexed(
+                    items = dashboardState.widgets,
+                    key = { _, widget -> "widget_${widget.id}" }
                 ) { index, widget ->
                     // Get current visibility state from preferences
                     val widgetConfig = dashboardPreferences.widgetConfigs.find { it.widgetType == widget.id }
                     val isWidgetVisible = widgetConfig?.isEnabled ?: widget.isVisible
                     
-                    DraggableSwipeableItem(
-                        modifier = Modifier.animateDraggableSwipeableItem(),
-                        onClick = { /* Widget click action if needed */ }
-                    ) {
-                        DragDropWidgetCard(
-                            widget = widget,
-                            navController = navController,
-                            isCustomizationMode = isCustomizationMode,
-                            isWidgetVisible = isWidgetVisible,
-                            onToggleVisibility = { widgetId: String ->
-                                dashboardViewModel.toggleWidgetVisibility(widgetId)
-                            }
-                        )
-                    }
+                    ArrowReorderWidgetCard(
+                        widget = widget,
+                        navController = navController,
+                        isCustomizationMode = isCustomizationMode,
+                        isWidgetVisible = isWidgetVisible,
+                        canMoveUp = index > 0,
+                        canMoveDown = index < dashboardState.widgets.size - 1,
+                        onToggleVisibility = { widgetId: String ->
+                            dashboardViewModel.toggleWidgetVisibility(widgetId)
+                        },
+                        onMoveUp = { dashboardViewModel.moveWidgetUp(index) },
+                        onMoveDown = { dashboardViewModel.moveWidgetDown(index) }
+                    )
                 }
             
                 // Hidden widgets section (only show in customization mode)
                 if (isCustomizationMode && hiddenWidgets.isNotEmpty()) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        )
-                    ) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            )
+                        ) {
                         Column(
                             modifier = Modifier.padding(16.dp)
                         ) {
@@ -1730,6 +1748,7 @@ fun EnhancedDashboardScreen(
                                 }
                             }
                         }
+                        }
                     }
                 }
                 
@@ -1738,7 +1757,8 @@ fun EnhancedDashboardScreen(
                     it.priority == InsightPriority.LOW || it.priority == InsightPriority.MEDIUM 
                 }
                 if (lowPriorityInsights.isNotEmpty()) {
-                    EnhancedDashboardWidgetCard(
+                    item {
+                        EnhancedDashboardWidgetCard(
                         title = "Insights",
                         icon = Icons.Default.Lightbulb
                     ) {
@@ -1749,6 +1769,7 @@ fun EnhancedDashboardScreen(
                                     onDismiss = { insightId -> dashboardViewModel.dismissInsight(insightId) }
                                 )
                             }
+                        }
                         }
                     }
                 }

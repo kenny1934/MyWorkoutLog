@@ -102,10 +102,6 @@ dependencies {
     }
     // --- Work Manager for Background Sync ---
     implementation("androidx.work:work-runtime-ktx:2.9.0")
-    // --- Drag & Drop Reorderable Library ---
-    implementation("com.ernestoyaquello.dragdropswipelazycolumn:drag-drop-swipe-lazycolumn:0.9.0")
-    // --- Immutable Collections for Drag & Drop Library ---
-    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.4.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
