@@ -26,7 +26,8 @@ class DashboardViewModel(
             showAchievements = true,
             showInsights = true,
             autoRefresh = true,
-            defaultTimeframe = "30days"
+            defaultTimeframe = "30days",
+            dismissedInsights = emptySet()
         )
     )
     val dashboardPreferences: StateFlow<DashboardPreferences> = _dashboardPreferences.asStateFlow()
@@ -50,7 +51,7 @@ class DashboardViewModel(
     ) { cycle, _, preferences ->
         Triple(cycle, preferences, Unit)
     }.flatMapLatest { (cycle, preferences, _) ->
-        widgetRepository.getDashboardState(cycle).map { state ->
+        widgetRepository.getDashboardState(cycle, preferences.dismissedInsights).map { state ->
             applyPreferencesToDashboardState(state, preferences)
         }
     }.stateIn(
@@ -363,7 +364,8 @@ class DashboardViewModel(
                     showAchievements = true,
                     showInsights = true,
                     autoRefresh = true,
-                    defaultTimeframe = "30days"
+                    defaultTimeframe = "30days",
+                    dismissedInsights = emptySet()
                 )
                 _dashboardPreferences.value = defaultPreferences
             }

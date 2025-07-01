@@ -20,15 +20,15 @@ class WidgetRepositorySimplified(
     private val workoutTemplateDao: WorkoutTemplateDao
 ) {
     
-    suspend fun getDashboardState(activeCycle: ActiveProgramCycle?): Flow<DashboardState> {
+    suspend fun getDashboardState(activeCycle: ActiveProgramCycle?, dismissedInsights: Set<String> = emptySet()): Flow<DashboardState> {
         return if (activeCycle == null) {
-            getNoActiveCycleDashboardState()
+            getNoActiveCycleDashboardState(dismissedInsights)
         } else {
-            getActiveCycleDashboardState(activeCycle)
+            getActiveCycleDashboardState(activeCycle, dismissedInsights)
         }
     }
     
-    private suspend fun getNoActiveCycleDashboardState(): Flow<DashboardState> = flow {
+    private suspend fun getNoActiveCycleDashboardState(dismissedInsights: Set<String> = emptySet()): Flow<DashboardState> = flow {
         val widgets = mutableListOf<DashboardWidget>()
         
         // Get bodyweight info
@@ -158,11 +158,11 @@ class WidgetRepositorySimplified(
             mode = DashboardMode.NoActiveCycle,
             widgets = widgets,
             quickActions = getBasicQuickActions(null),
-            insights = generateBasicInsights(activeCycle = null)
+            insights = generateBasicInsights(activeCycle = null, dismissedInsights = dismissedInsights)
         ))
     }
     
-    private suspend fun getActiveCycleDashboardState(activeCycle: ActiveProgramCycle): Flow<DashboardState> = flow {
+    private suspend fun getActiveCycleDashboardState(activeCycle: ActiveProgramCycle, dismissedInsights: Set<String> = emptySet()): Flow<DashboardState> = flow {
         val widgets = mutableListOf<DashboardWidget>()
         
         // Get bodyweight info
@@ -301,7 +301,7 @@ class WidgetRepositorySimplified(
             )),
             widgets = widgets,
             quickActions = getBasicQuickActions(activeCycle),
-            insights = generateBasicInsights(activeCycle = activeCycle)
+            insights = generateBasicInsights(activeCycle = activeCycle, dismissedInsights = dismissedInsights)
         ))
     }
     
@@ -1070,7 +1070,7 @@ class WidgetRepositorySimplified(
     }
     
     // Smart Insights Generation
-    private suspend fun generateBasicInsights(activeCycle: ActiveProgramCycle?): List<SmartInsight> {
+    private suspend fun generateBasicInsights(activeCycle: ActiveProgramCycle?, dismissedInsights: Set<String> = emptySet()): List<SmartInsight> {
         val insights = mutableListOf<SmartInsight>()
         
         try {
@@ -1198,7 +1198,9 @@ class WidgetRepositorySimplified(
             ))
         }
         
-        return insights.take(3) // Limit to 3 insights max
+        return insights
+            .filter { it.id !in dismissedInsights } // Filter out dismissed insights
+            .take(3) // Limit to 3 insights max
     }
 }
 
