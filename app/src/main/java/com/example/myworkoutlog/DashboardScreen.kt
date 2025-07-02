@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -18,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,6 +29,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
@@ -42,31 +48,66 @@ import java.time.LocalDate
 
 @Composable
 fun SimpleWelcomeWidgetCard(widget: DashboardWidget.WelcomeWidget) {
+    val animatedScale by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 100f),
+        label = "welcome_scale"
+    )
+    
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer(
+                scaleX = animatedScale,
+                scaleY = animatedScale
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = widget.greeting,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = widget.motivationalMessage,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            if (widget.currentStreak > 0) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "${widget.currentStreak} day streak 🔥",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color(0xFFFF6B35),
-                    fontWeight = FontWeight.Medium
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                            MaterialTheme.colorScheme.surface
+                        )
+                    )
                 )
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    text = widget.greeting,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = widget.motivationalMessage,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 22.sp
+                )
+                if (widget.currentStreak > 0) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color(0xFFFF6B35).copy(alpha = 0.15f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "🔥 ${widget.currentStreak} day streak - You're on fire!",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color(0xFFFF6B35),
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
             }
         }
     }
@@ -76,62 +117,102 @@ fun SimpleWelcomeWidgetCard(widget: DashboardWidget.WelcomeWidget) {
 fun SimpleQuickStatsWidgetCard(widget: DashboardWidget.QuickStatsWidget) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Quick Stats",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Analytics,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Quick Stats",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
             
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = widget.totalWorkouts.toString(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "Workouts",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "${widget.currentStreak}",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "Streak",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = widget.recentPRs.size.toString(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "Recent PRs",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                StatCard(
+                    value = widget.totalWorkouts.toString(),
+                    label = "Total Workouts",
+                    color = MaterialTheme.colorScheme.primary,
+                    icon = Icons.Default.FitnessCenter
+                )
+                StatCard(
+                    value = widget.currentStreak.toString(),
+                    label = "Day Streak",
+                    color = Color(0xFFFF6B35),
+                    icon = Icons.Default.LocalFireDepartment
+                )
+                StatCard(
+                    value = widget.recentPRs.size.toString(),
+                    label = "Recent PRs",
+                    color = MaterialTheme.colorScheme.secondary,
+                    icon = Icons.Default.TrendingUp
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun StatCard(
+    value: String,
+    label: String,
+    color: Color,
+    icon: androidx.compose.ui.graphics.vector.ImageVector
+) {
+    val animatedScale by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = spring(dampingRatio = 0.7f),
+        label = "stat_scale"
+    )
+    
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = color.copy(alpha = 0.1f),
+        modifier = Modifier
+            .graphicsLayer(
+                scaleX = animatedScale,
+                scaleY = animatedScale
+            )
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = color
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
@@ -180,7 +261,11 @@ fun SimpleBodyweightWidgetCard(
 }
 
 @Composable  
-fun SimpleCycleProgressWidgetCard(widget: DashboardWidget.CycleProgressWidget, navController: NavHostController) {
+fun SimpleCycleProgressWidgetCard(
+    widget: DashboardWidget.CycleProgressWidget, 
+    navController: NavHostController,
+    onEndCycle: (() -> Unit)? = null
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -265,6 +350,27 @@ fun SimpleCycleProgressWidgetCard(widget: DashboardWidget.CycleProgressWidget, n
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("View Analytics")
+                        }
+                    }
+                    
+                    // Add End Cycle button if callback provided
+                    if (onEndCycle != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = onEndCycle,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            ),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("End Cycle")
                         }
                     }
                 }
@@ -1401,44 +1507,45 @@ fun ArrowReorderWidgetCard(
     canMoveDown: Boolean,
     onToggleVisibility: (String) -> Unit,
     onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit
+    onMoveDown: () -> Unit,
+    onEndCycle: (() -> Unit)? = null
 ) {
+    // Use transparent Card to preserve enhanced styling while maintaining structure  
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Box {
             // Render the actual widget content
             when (widget) {
-                is DashboardWidget.WelcomeWidget -> SimpleWelcomeWidgetCard(widget)
-                is DashboardWidget.QuickStatsWidget -> SimpleQuickStatsWidgetCard(widget)
-                is DashboardWidget.BodyweightWidget -> SimpleBodyweightWidgetCard(
-                    currentWeight = widget.currentWeight,
-                    lastRecordedDate = widget.lastRecordedDate,
-                    unit = widget.unit
-                )
-                is DashboardWidget.CycleProgressWidget -> SimpleCycleProgressWidgetCard(
-                    widget = widget,
-                    navController = navController
-                )
-                is DashboardWidget.ActivityHeatmapWidget -> SimpleActivityHeatmapWidgetCard(widget)
-                is DashboardWidget.BodyweightTrendWidget -> SimpleBodyweightTrendWidgetCard(widget)
-                is DashboardWidget.PerformanceTrendWidget -> SimplePerformanceTrendWidgetCard(
-                    widget = widget,
-                    navController = navController
-                )
-                is DashboardWidget.NextSessionWidget -> SimpleNextSessionWidgetCard(
-                    widget = widget,
-                    navController = navController
-                )
-                is DashboardWidget.VolumeProgressWidget -> SimpleVolumeProgressWidgetCard(
-                    widget = widget,
-                    navController = navController
-                )
-                is DashboardWidget.AchievementWidget -> SimpleAchievementWidgetCard(widget)
+            is DashboardWidget.WelcomeWidget -> SimpleWelcomeWidgetCard(widget)
+            is DashboardWidget.QuickStatsWidget -> SimpleQuickStatsWidgetCard(widget)
+            is DashboardWidget.BodyweightWidget -> SimpleBodyweightWidgetCard(
+                currentWeight = widget.currentWeight,
+                lastRecordedDate = widget.lastRecordedDate,
+                unit = widget.unit
+            )
+            is DashboardWidget.CycleProgressWidget -> SimpleCycleProgressWidgetCard(
+                widget = widget,
+                navController = navController,
+                onEndCycle = onEndCycle
+            )
+            is DashboardWidget.ActivityHeatmapWidget -> SimpleActivityHeatmapWidgetCard(widget)
+            is DashboardWidget.BodyweightTrendWidget -> SimpleBodyweightTrendWidgetCard(widget)
+            is DashboardWidget.PerformanceTrendWidget -> SimplePerformanceTrendWidgetCard(
+                widget = widget,
+                navController = navController
+            )
+            is DashboardWidget.NextSessionWidget -> SimpleNextSessionWidgetCard(
+                widget = widget,
+                navController = navController
+            )
+            is DashboardWidget.VolumeProgressWidget -> SimpleVolumeProgressWidgetCard(
+                widget = widget,
+                navController = navController
+            )
+            is DashboardWidget.AchievementWidget -> SimpleAchievementWidgetCard(widget)
             }
             
             // Customization overlay (only show in customization mode)
@@ -1505,7 +1612,7 @@ fun ArrowReorderWidgetCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun EnhancedDashboardScreen(
     dashboardViewModel: DashboardViewModel,
@@ -1541,12 +1648,42 @@ fun EnhancedDashboardScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    var showDebugDialog by remember { mutableStateOf(false) }
+                    
                     Text(
                         text = "Dashboard",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.combinedClickable(
+                            onClick = { /* Normal click does nothing */ },
+                            onLongClick = { showDebugDialog = true }
+                        )
                     )
+                    
+                    // Debug Dialog
+                    if (showDebugDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showDebugDialog = false },
+                            title = { Text("Debug Options") },
+                            text = { Text("Reset dismissed insights to show them again for testing?") },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        dashboardViewModel.resetDismissedInsights()
+                                        showDebugDialog = false
+                                    }
+                                ) {
+                                    Text("Reset Insights")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showDebugDialog = false }) {
+                                    Text("Cancel")
+                                }
+                            }
+                        )
+                    }
                     
                     IconButton(
                         onClick = { dashboardViewModel.toggleCustomizationMode() }
@@ -1679,7 +1816,18 @@ fun EnhancedDashboardScreen(
                             dashboardViewModel.toggleWidgetVisibility(widgetId)
                         },
                         onMoveUp = { dashboardViewModel.moveWidgetUp(index) },
-                        onMoveDown = { dashboardViewModel.moveWidgetDown(index) }
+                        onMoveDown = { dashboardViewModel.moveWidgetDown(index) },
+                        onEndCycle = {
+                            dashboardViewModel.executeQuickAction(
+                                QuickAction(
+                                    id = "end_cycle",
+                                    title = "End Cycle",
+                                    description = "End current cycle",
+                                    icon = Icons.Default.Close,
+                                    action = QuickActionType.COMPLETE_CYCLE
+                                )
+                            ) { route -> navController.navigate(route) }
+                        }
                     )
                 }
             

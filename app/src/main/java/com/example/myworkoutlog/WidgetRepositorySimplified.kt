@@ -173,6 +173,23 @@ class WidgetRepositorySimplified(
         // Get bodyweight info
         val bodyweightInfo = getLatestBodyweightInfo()
         
+        // Quick stats (same as no-cycle dashboard)
+        val streak = calculateBasicStreak()
+        val totalWorkouts = try {
+            analyticsRepository.getTotalWorkoutCount()
+        } catch (e: Exception) { 0 }
+        
+        val recentPRs = try {
+            personalRecordDao.recentPersonalRecords(5)
+        } catch (e: Exception) { emptyList() }
+        
+        widgets.add(DashboardWidget.QuickStatsWidget(
+            totalWorkouts = totalWorkouts,
+            currentStreak = streak,
+            bestWeek = "N/A",
+            recentPRs = recentPRs
+        ))
+        
         // Cycle progress
         val progress = calculateBasicCycleProgress(activeCycle)
         val (weekProgress, sessionProgress) = calculateCycleProgressText(activeCycle)
@@ -426,31 +443,24 @@ class WidgetRepositorySimplified(
         val totalSessions = activeCycle.cycleProgram.weeks.sumOf { it.sessions.size }
         val completedSessionsCount = activeCycle.completedSessions.size
         
-        // Calculate current week based on completed sessions
-        var currentWeek = 1
-        var sessionsInCurrentWeek = 0
-        var totalSessionsProcessed = 0
+        // Use the same logic as Next Session widget to find current week
+        val completedSessionIds = activeCycle.completedSessions.keys.toSet()
+        var currentWeekLabel = "Week $totalWeeks" // Default to last week
         
-        activeCycle.cycleProgram.weeks.sortedBy { it.order }.forEachIndexed { weekIndex, week ->
-            val weekSessionCount = week.sessions.size
-            if (totalSessionsProcessed + weekSessionCount <= completedSessionsCount) {
-                // This week is fully completed
-                totalSessionsProcessed += weekSessionCount
-                currentWeek = (weekIndex + 2).coerceAtMost(totalWeeks) // Next week or stay at last week
-            } else if (totalSessionsProcessed < completedSessionsCount) {
-                // This week is partially completed
-                currentWeek = weekIndex + 1
-                sessionsInCurrentWeek = completedSessionsCount - totalSessionsProcessed
-                return@forEachIndexed
+        // Find the first week with incomplete sessions (same logic as Next Session widget)
+        for (week in activeCycle.cycleProgram.weeks.sortedBy { it.order }) {
+            val hasIncompleteSession = week.sessions.any { session ->
+                session.id !in completedSessionIds
+            }
+            
+            if (hasIncompleteSession) {
+                // Extract week number from weekLabel (e.g., "Week 1: RIR 3" -> "Week 1")
+                currentWeekLabel = week.weekLabel.split(":").firstOrNull()?.trim() ?: "Week ${week.order + 1}"
+                break
             }
         }
         
-        // If all sessions are completed, stay at the last week
-        if (completedSessionsCount >= totalSessions) {
-            currentWeek = totalWeeks
-        }
-        
-        val weekProgress = "Week $currentWeek of $totalWeeks"
+        val weekProgress = "$currentWeekLabel of $totalWeeks"
         val sessionProgress = "$completedSessionsCount of $totalSessions sessions completed"
         
         return Pair(weekProgress, sessionProgress)
@@ -1186,11 +1196,12 @@ class WidgetRepositorySimplified(
                 ))
             }
             
-            // Ensure we always have some insights - add more variety
+            // Ensure we always have some insights - add more variety with time-based IDs for fresh testing
             while (insights.size < 2) {
+                val currentTime = System.currentTimeMillis()
                 val availableInsights = listOf(
                     SmartInsight(
-                        id = "consistency_tip",
+                        id = "consistency_tip_$currentTime",
                         title = "💡 Pro Tip",
                         message = "Consistency beats perfection. Even a 15-minute workout is better than none!",
                         type = InsightType.MOTIVATION,
@@ -1198,7 +1209,7 @@ class WidgetRepositorySimplified(
                         actionable = false
                     ),
                     SmartInsight(
-                        id = "progress_tracking",
+                        id = "progress_tracking_$currentTime",
                         title = "📊 Track Your Progress",
                         message = "Check your analytics to see how far you've come and plan your next goals.",
                         type = InsightType.RECOMMENDATION,
@@ -1207,7 +1218,7 @@ class WidgetRepositorySimplified(
                         actionText = "View Analytics"
                     ),
                     SmartInsight(
-                        id = "hydration_reminder",
+                        id = "hydration_reminder_$currentTime",
                         title = "💧 Stay Hydrated",
                         message = "Remember to drink water before, during, and after your workouts!",
                         type = InsightType.MOTIVATION,
@@ -1215,18 +1226,38 @@ class WidgetRepositorySimplified(
                         actionable = false
                     ),
                     SmartInsight(
-                        id = "rest_day_tip",
+                        id = "rest_day_tip_$currentTime",
                         title = "😴 Recovery Matters",
                         message = "Rest days are just as important as workout days for muscle growth and recovery.",
                         type = InsightType.MOTIVATION,
                         priority = InsightPriority.LOW,
                         actionable = false
+                    ),
+                    SmartInsight(
+                        id = "navigation_test_$currentTime",
+                        title = "🧪 Navigation Test",
+                        message = "Testing insight navigation routing to different screens.",
+                        type = InsightType.RECOMMENDATION,
+                        priority = InsightPriority.MEDIUM,
+                        actionable = true,
+                        actionText = "View Schedule"
+                    ),
+                    SmartInsight(
+                        id = "debug_workout_test_$currentTime",
+                        title = "🚀 Test Workout Start",
+                        message = "Test insight that should route to the correct workout session.",
+                        type = InsightType.MOTIVATION,
+                        priority = InsightPriority.MEDIUM,
+                        actionable = true,
+                        actionText = "Start Workout"
                     )
                 )
                 
-                // Add insights that aren't already present
+                // Add insights that aren't already present (check by base name, not full ID)
+                val existingBaseIds = insights.map { it.id.substringBefore("_") }.toSet()
                 val unusedInsights = availableInsights.filter { newInsight ->
-                    !insights.any { it.id == newInsight.id }
+                    val baseId = newInsight.id.substringBefore("_")
+                    baseId !in existingBaseIds
                 }
                 
                 if (unusedInsights.isNotEmpty()) {

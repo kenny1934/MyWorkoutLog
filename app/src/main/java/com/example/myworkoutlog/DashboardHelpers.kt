@@ -2,15 +2,23 @@ package com.example.myworkoutlog
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.graphicsLayer
 
 // Helper components for EnhancedDashboardScreen
 
@@ -53,69 +61,129 @@ fun EnhancedInsightCard(
     onDismiss: ((String) -> Unit)? = null,
     onAction: ((SmartInsight) -> Unit)? = null
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = when (insight.priority) {
-                InsightPriority.URGENT -> MaterialTheme.colorScheme.errorContainer
-                InsightPriority.HIGH -> MaterialTheme.colorScheme.primaryContainer
-                else -> MaterialTheme.colorScheme.surfaceVariant
-            }
+    val animatedScale by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = spring(dampingRatio = 0.6f),
+        label = "insight_scale"
+    )
+    
+    val (containerColor, contentColor, accentColor) = when (insight.priority) {
+        InsightPriority.URGENT -> Triple(
+            MaterialTheme.colorScheme.errorContainer,
+            MaterialTheme.colorScheme.onErrorContainer,
+            MaterialTheme.colorScheme.error
         )
+        InsightPriority.HIGH -> Triple(
+            MaterialTheme.colorScheme.primaryContainer,
+            MaterialTheme.colorScheme.onPrimaryContainer,
+            MaterialTheme.colorScheme.primary
+        )
+        else -> Triple(
+            MaterialTheme.colorScheme.surfaceVariant,
+            MaterialTheme.colorScheme.onSurfaceVariant,
+            MaterialTheme.colorScheme.secondary
+        )
+    }
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer(
+                scaleX = animatedScale,
+                scaleY = animatedScale
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = insight.title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium,
-                color = when (insight.priority) {
-                    InsightPriority.URGENT -> MaterialTheme.colorScheme.onErrorContainer
-                    InsightPriority.HIGH -> MaterialTheme.colorScheme.onPrimaryContainer
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                }
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = insight.message,
-                style = MaterialTheme.typography.bodySmall,
-                color = when (insight.priority) {
-                    InsightPriority.URGENT -> MaterialTheme.colorScheme.onErrorContainer
-                    InsightPriority.HIGH -> MaterialTheme.colorScheme.onPrimaryContainer
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                }
-            )
-            
-            if (insight.actionable && insight.actionText != null) {
-                Spacer(modifier = Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            containerColor,
+                            containerColor.copy(alpha = 0.8f),
+                            MaterialTheme.colorScheme.surface
+                        )
+                    )
+                )
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    TextButton(
-                        onClick = { onAction?.invoke(insight) },
+                    // Priority indicator
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = accentColor.copy(alpha = 0.2f),
+                        modifier = Modifier.size(8.dp)
+                    ) {}
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Text(
+                        text = insight.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = contentColor,
                         modifier = Modifier.weight(1f)
-                    ) {
-                        Text(insight.actionText)
-                    }
+                    )
+                    
                     if (onDismiss != null) {
-                        TextButton(
-                            onClick = { onDismiss(insight.id) }
+                        IconButton(
+                            onClick = { onDismiss(insight.id) },
+                            modifier = Modifier.size(20.dp)
                         ) {
-                            Text("Dismiss")
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Dismiss",
+                                tint = contentColor.copy(alpha = 0.7f),
+                                modifier = Modifier.size(14.dp)
+                            )
                         }
                     }
                 }
-            } else if (onDismiss != null) {
+                
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(
-                        onClick = { onDismiss(insight.id) }
+                
+                Text(
+                    text = insight.message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = contentColor.copy(alpha = 0.9f),
+                    lineHeight = 20.sp
+                )
+                
+                if (insight.actionable && insight.actionText != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = { onAction?.invoke(insight) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = accentColor,
+                            contentColor = when (insight.priority) {
+                                InsightPriority.URGENT -> MaterialTheme.colorScheme.onError
+                                InsightPriority.HIGH -> MaterialTheme.colorScheme.onPrimary
+                                else -> MaterialTheme.colorScheme.onSecondary
+                            }
+                        ),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Dismiss")
+                        Icon(
+                            imageVector = when (insight.actionText) {
+                                "View Progress", "View Analytics" -> Icons.Default.Analytics
+                                "View Schedule", "Browse Programs" -> Icons.Default.Schedule
+                                "Start Workout", "Start First Workout" -> Icons.Default.PlayArrow
+                                else -> Icons.Default.Launch
+                            },
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = insight.actionText,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }

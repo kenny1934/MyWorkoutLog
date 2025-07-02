@@ -119,36 +119,63 @@ class DashboardViewModel(
     fun executeQuickAction(action: QuickAction, onNavigate: (String) -> Unit) {
         when (action.action) {
             QuickActionType.START_NEXT_SESSION -> {
+                // Use the same logic as NextSessionWidget for consistency
                 val currentState = dashboardState.value
-                if (currentState.mode is DashboardMode.ActiveCycle) {
-                    val cycle = currentState.mode.cycle
+                val nextSessionWidget = currentState.widgets.find { it is DashboardWidget.NextSessionWidget } as? DashboardWidget.NextSessionWidget
+                
+                if (nextSessionWidget != null) {
+                    // Use the exact same route parameters as the NextSessionWidget
+                    val templateId = nextSessionWidget.templateId ?: nextSessionWidget.session.templateId
+                    val cycleId = nextSessionWidget.cycleId
+                    val weekId = nextSessionWidget.weekId
+                    val sessionId = nextSessionWidget.sessionId
                     
-                    // Find the next session to log based on completedSessions
-                    val completedSessionIds = cycle.completedSessions.keys.toSet()
-                    
-                    // Find the first incomplete session across all weeks
-                    var nextSession: ProgramSessionDefinition? = null
-                    var nextWeek: ProgramWeekDefinition? = null
-                    
-                    for (week in cycle.cycleProgram.weeks) {
-                        for (session in week.sessions) {
-                            if (session.id !in completedSessionIds) {
-                                nextSession = session
-                                nextWeek = week
-                                break
-                            }
-                        }
-                        if (nextSession != null) break
-                    }
-                    
-                    if (nextWeek != null && nextSession != null) {
+                    if (templateId != null && cycleId != null && weekId != null && sessionId != null) {
                         val route = Screen.WorkoutLogger.createRoute(
-                            templateId = nextSession.workoutTemplateId,
-                            cycleId = cycle.cycleUuid,
-                            weekId = nextWeek.id,
-                            sessionId = nextSession.id
+                            templateId = templateId,
+                            cycleId = cycleId,
+                            weekId = weekId,
+                            sessionId = sessionId
                         )
                         onNavigate(route)
+                    } else {
+                        // Fallback to simple template route if any parameter is null
+                        templateId?.let { id ->
+                            onNavigate(Screen.WorkoutLogger.createRoute(id))
+                        } ?: onNavigate(Screen.WorkoutLogger.route)
+                    }
+                } else {
+                    // Fallback to original logic if NextSessionWidget not found
+                    if (currentState.mode is DashboardMode.ActiveCycle) {
+                        val cycle = currentState.mode.cycle
+                        
+                        // Find the next session to log based on completedSessions
+                        val completedSessionIds = cycle.completedSessions.keys.toSet()
+                        
+                        // Find the first incomplete session across all weeks
+                        var nextSession: ProgramSessionDefinition? = null
+                        var nextWeek: ProgramWeekDefinition? = null
+                        
+                        for (week in cycle.cycleProgram.weeks) {
+                            for (session in week.sessions) {
+                                if (session.id !in completedSessionIds) {
+                                    nextSession = session
+                                    nextWeek = week
+                                    break
+                                }
+                            }
+                            if (nextSession != null) break
+                        }
+                        
+                        if (nextWeek != null && nextSession != null) {
+                            val route = Screen.WorkoutLogger.createRoute(
+                                templateId = nextSession.workoutTemplateId,
+                                cycleId = cycle.cycleUuid,
+                                weekId = nextWeek.id,
+                                sessionId = nextSession.id
+                            )
+                            onNavigate(route)
+                        }
                     }
                 }
             }
@@ -214,33 +241,90 @@ class DashboardViewModel(
         }
     }
     
+    // Debug method to reset dismissed insights for testing
+    fun resetDismissedInsights() {
+        viewModelScope.launch {
+            try {
+                _dashboardPreferences.value = _dashboardPreferences.value.copy(
+                    dismissedInsights = emptySet()
+                )
+                saveDashboardPreferences()
+                refreshDashboard()
+            } catch (e: Exception) {
+                println("Error resetting dismissed insights: ${e.message}")
+            }
+        }
+    }
+    
     fun executeInsightAction(insight: SmartInsight, onNavigate: (String) -> Unit) {
         viewModelScope.launch {
             try {
-                when (insight.type) {
-                    InsightType.PERFORMANCE -> {
-                        // Navigate to analytics for performance insights
+                // Use action text for specific routing instead of generic type-based routing
+                when (insight.actionText) {
+                    "View Progress" -> {
+                        // Navigate to analytics for progress tracking
                         onNavigate(Screen.Analytics.route)
                     }
-                    InsightType.RECOVERY -> {
-                        // Navigate to calendar or rest day planning
-                        onNavigate(Screen.Analytics.route)
-                    }
-                    InsightType.MOTIVATION -> {
-                        // Navigate to achievements or progress view
-                        onNavigate(Screen.Analytics.route)
-                    }
-                    InsightType.WARNING -> {
-                        // Navigate to relevant area based on warning
-                        onNavigate(Screen.Analytics.route)
-                    }
-                    InsightType.CELEBRATION -> {
-                        // Navigate to achievements or analytics
-                        onNavigate(Screen.Analytics.route)
-                    }
-                    InsightType.RECOMMENDATION -> {
-                        // Navigate to programs or workout templates
+                    "View Schedule" -> {
+                        // Navigate to programs for schedule/planning view
                         onNavigate(Screen.Programs.route)
+                    }
+                    "Browse Programs" -> {
+                        // Navigate to programs for program selection
+                        onNavigate(Screen.Programs.route)
+                    }
+                    "Start Workout", "Start First Workout" -> {
+                        // For workout start, check if we have active cycle context
+                        val currentState = dashboardState.value
+                        val nextSessionWidget = currentState.widgets.find { it is DashboardWidget.NextSessionWidget } as? DashboardWidget.NextSessionWidget
+                        
+                        if (nextSessionWidget != null) {
+                            // Use NextSessionWidget route for consistency
+                            val templateId = nextSessionWidget.templateId ?: nextSessionWidget.session.templateId
+                            val cycleId = nextSessionWidget.cycleId
+                            val weekId = nextSessionWidget.weekId
+                            val sessionId = nextSessionWidget.sessionId
+                            
+                            if (templateId != null && cycleId != null && weekId != null && sessionId != null) {
+                                val route = Screen.WorkoutLogger.createRoute(
+                                    templateId = templateId,
+                                    cycleId = cycleId,
+                                    weekId = weekId,
+                                    sessionId = sessionId
+                                )
+                                onNavigate(route)
+                            } else {
+                                // Fallback to simple template route if any parameter is null
+                                templateId?.let { id ->
+                                    onNavigate(Screen.WorkoutLogger.createRoute(id))
+                                } ?: onNavigate(Screen.WorkoutLogger.route)
+                            }
+                        } else {
+                            // Navigate to general workout logger
+                            onNavigate(Screen.WorkoutLogger.route)
+                        }
+                    }
+                    "View Analytics" -> {
+                        // Navigate to analytics dashboard
+                        onNavigate(Screen.Analytics.route)
+                    }
+                    "View History" -> {
+                        // Navigate to workout history
+                        onNavigate(Screen.History.route)
+                    }
+                    else -> {
+                        // Fallback: route based on insight type for unknown actions
+                        when (insight.type) {
+                            InsightType.PERFORMANCE, InsightType.CELEBRATION -> {
+                                onNavigate(Screen.Analytics.route)
+                            }
+                            InsightType.RECOMMENDATION -> {
+                                onNavigate(Screen.Programs.route)
+                            }
+                            else -> {
+                                onNavigate(Screen.Analytics.route)
+                            }
+                        }
                     }
                 }
                 
