@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -157,8 +159,10 @@ class AnalyticsRepository(
             .map { workouts ->
                 try {
                     println("DEBUG Analytics: Processing $exerciseId with ${workouts.size} workouts")
-                    // Get exercise info once for all workouts
-                    val exerciseInfo = exerciseDao?.getExerciseById(exerciseId)
+                    // Get exercise info once for all workouts (must run on IO thread)
+                    val exerciseInfo = withContext(Dispatchers.IO) {
+                        exerciseDao?.getExerciseById(exerciseId)
+                    }
                     val usesBodyweight = exerciseInfo?.usesBodyweight ?: false
                     println("DEBUG Analytics: Exercise $exerciseId usesBodyweight=$usesBodyweight")
                     
@@ -219,6 +223,8 @@ class AnalyticsRepository(
                     result
                 } catch (e: Exception) {
                     // Return null if processing fails completely
+                    println("ERROR Analytics: Exception in getExercisePerformanceTrend for $exerciseId: ${e.message}")
+                    e.printStackTrace()
                     null
                 }
             }
