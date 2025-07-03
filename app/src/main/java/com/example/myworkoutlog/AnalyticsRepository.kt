@@ -156,7 +156,7 @@ class AnalyticsRepository(
         return combine(
             loggedWorkoutDao.getAllWorkoutsWithExercise(exerciseId),
             exerciseDao?.getExerciseById(exerciseId) ?: flowOf(null)
-        ) { workouts, exerciseInfo ->
+        ) { workouts: List<LoggedWorkout>, exerciseInfo: Exercise? ->
             try {
                 val usesBodyweight = exerciseInfo?.usesBodyweight ?: false
                 
@@ -196,18 +196,18 @@ class AnalyticsRepository(
                         null
                     }
                 }
-                    
-                    val trend = analyzeTrend(dataPoints)
-                    val exerciseName = dataPoints.firstOrNull()?.exerciseName ?: "Unknown Exercise"
-                    
-                    PerformanceTrend(
-                        exerciseId = exerciseId,
-                        exerciseName = exerciseName,
-                        trendDirection = trend.direction,
-                        trendStrength = trend.strength,
-                        dataPoints = dataPoints,
-                        recommendedAction = generateRecommendation(trend)
-                    )
+                
+                val trend = analyzeTrend(dataPoints)
+                val exerciseName = dataPoints.firstOrNull()?.exerciseName ?: "Unknown Exercise"
+                
+                PerformanceTrend(
+                    exerciseId = exerciseId,
+                    exerciseName = exerciseName,
+                    trendDirection = trend.direction,
+                    trendStrength = trend.strength,
+                    dataPoints = dataPoints,
+                    recommendedAction = generateRecommendation(trend)
+                )
                 } catch (e: Exception) {
                     // Return null if processing fails completely
                     null

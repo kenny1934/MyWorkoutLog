@@ -2,7 +2,7 @@
 
 ## Current Status
 - Branch: `feature/dashboard-enhancements`
-- Last commit: `fix: Resolve cycle progress week calculation discrepancy`
+- Last commit: `fix: Resolve performance trend widget bodyweight exercise calculation bug`
 - Development Phase: **Tier 3 Phase 5 COMPLETE** - Commercial Polish + Navigation Fixes ✅
 
 ## Development Tracking
@@ -11,6 +11,7 @@
 - ✅ **COMPLETE**: Smart insights generation with working dismiss functionality and database thread safety
 - ✅ **COMPLETE**: Insight navigation routing fixed and commercial UI polish implemented
 - ✅ **RESOLVED**: Cycle progress week calculation bug (consistency with Next Session widget)
+- ✅ **RESOLVED**: Performance trend widget bodyweight exercise calculation (shows 98kg instead of 35kg for pull-ups)
 - ✅ **STABLE BUILD**: Market-ready dashboard with professional visual appeal
 
 ## 🏆 Major Achievements
