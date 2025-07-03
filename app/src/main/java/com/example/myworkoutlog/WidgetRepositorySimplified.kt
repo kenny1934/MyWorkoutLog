@@ -562,6 +562,8 @@ class WidgetRepositorySimplified(
         return try {
             // Get the most frequently performed exercises
             val workouts = loggedWorkoutDao.getAllLoggedWorkouts().first()
+            println("DEBUG: Found ${workouts.size} workouts for performance trends")
+            
             val exerciseFrequency = mutableMapOf<String, Pair<String, Int>>() // exerciseId to (name, count)
             
             workouts.forEach { workout ->
@@ -574,17 +576,34 @@ class WidgetRepositorySimplified(
                 }
             }
             
+            println("DEBUG: Found ${exerciseFrequency.size} unique exercises")
+            exerciseFrequency.forEach { (id, nameCount) ->
+                println("DEBUG: Exercise ${nameCount.first} (${id}) performed ${nameCount.second} times")
+            }
+            
             // Get top 3 most frequent exercises
             val topExercises = exerciseFrequency.entries
                 .sortedByDescending { it.value.second }
                 .take(3)
                 .map { it.key to it.value.first }
             
+            println("DEBUG: Top 3 exercises: ${topExercises.map { it.second }}")
+            
             // Use Analytics methods for consistent trend calculation
-            topExercises.mapNotNull { (exerciseId, exerciseName) ->
+            val results = topExercises.mapNotNull { (exerciseId, exerciseName) ->
+                println("DEBUG: Processing analytics for $exerciseName ($exerciseId)")
                 convertAnalyticsTrendToExerciseProgress(exerciseId, exerciseName)
             }
+            
+            println("DEBUG: Successfully processed ${results.size} exercise trends")
+            results.forEach { progress ->
+                println("DEBUG: ${progress.exerciseName}: ${progress.currentMax}kg (${progress.improvementPercentage}%)")
+            }
+            
+            results
         } catch (e: Exception) {
+            println("ERROR in getTopPerformanceTrends: ${e.message}")
+            e.printStackTrace()
             emptyList()
         }
     }
@@ -600,17 +619,29 @@ class WidgetRepositorySimplified(
             performanceTrend?.let { trend ->
                 // Extract current and previous performance from Analytics data
                 val dataPoints = trend.dataPoints.sortedBy { it.date }
-                if (dataPoints.size < 2) return null
+                
+                // Show data even with just one data point
+                if (dataPoints.isEmpty()) return null
                 
                 val currentPoint = dataPoints.last()
-                val previousPoint = dataPoints[dataPoints.size - 2]
-                
                 val currentMax = currentPoint.estimated1RM?.toFloat() ?: currentPoint.bestWeight?.toFloat() ?: 0f
-                val previousMax = previousPoint.estimated1RM?.toFloat() ?: previousPoint.bestWeight?.toFloat() ?: 0f
                 
-                if (currentMax == 0f || previousMax == 0f) return null
+                if (currentMax == 0f) return null
                 
-                val improvementPercentage = ((currentMax - previousMax) / previousMax) * 100
+                // If we have at least 2 data points, calculate improvement
+                val (previousMax, improvementPercentage) = if (dataPoints.size >= 2) {
+                    val previousPoint = dataPoints[dataPoints.size - 2]
+                    val prevMax = previousPoint.estimated1RM?.toFloat() ?: previousPoint.bestWeight?.toFloat() ?: 0f
+                    if (prevMax > 0f) {
+                        val improvement = ((currentMax - prevMax) / prevMax) * 100
+                        Pair(prevMax, improvement)
+                    } else {
+                        Pair(currentMax, 0f)
+                    }
+                } else {
+                    // Only one data point, show it without improvement calculation
+                    Pair(currentMax, 0f)
+                }
                 
                 ExerciseProgress(
                     exerciseName = exerciseName,
@@ -618,20 +649,24 @@ class WidgetRepositorySimplified(
                     previousMax = previousMax,
                     improvementPercentage = improvementPercentage,
                     trend = ProgressTrend(
-                        direction = trend.trendDirection,
+                        direction = if (dataPoints.size >= 2) trend.trendDirection else TrendDirection.INSUFFICIENT_DATA,
                         percentage = kotlin.math.abs(improvementPercentage),
-                        description = when (trend.trendDirection) {
-                            TrendDirection.STRONGLY_IMPROVING -> "Great progress!"
-                            TrendDirection.SLIGHTLY_IMPROVING -> "Steady gains"
-                            TrendDirection.STRONGLY_DECLINING -> "Needs attention"
-                            TrendDirection.SLIGHTLY_DECLINING -> "Slight decline"
-                            TrendDirection.STABLE -> "Maintaining"
+                        description = when {
+                            dataPoints.size < 2 -> "New exercise"
+                            trend.trendDirection == TrendDirection.STRONGLY_IMPROVING -> "Great progress!"
+                            trend.trendDirection == TrendDirection.SLIGHTLY_IMPROVING -> "Steady gains"
+                            trend.trendDirection == TrendDirection.STRONGLY_DECLINING -> "Needs attention"
+                            trend.trendDirection == TrendDirection.SLIGHTLY_DECLINING -> "Slight decline"
+                            trend.trendDirection == TrendDirection.STABLE -> "Maintaining"
                             else -> "Insufficient data"
                         }
                     )
                 )
             }
         } catch (e: Exception) {
+            // Log the exception for debugging
+            println("Error in convertAnalyticsTrendToExerciseProgress for $exerciseName: ${e.message}")
+            e.printStackTrace()
             null
         }
     }
