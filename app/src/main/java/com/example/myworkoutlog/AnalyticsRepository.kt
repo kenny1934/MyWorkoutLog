@@ -156,9 +156,11 @@ class AnalyticsRepository(
         return loggedWorkoutDao.getAllWorkoutsWithExercise(exerciseId)
             .map { workouts ->
                 try {
+                    println("DEBUG Analytics: Processing $exerciseId with ${workouts.size} workouts")
                     // Get exercise info once for all workouts
                     val exerciseInfo = exerciseDao?.getExerciseById(exerciseId)
                     val usesBodyweight = exerciseInfo?.usesBodyweight ?: false
+                    println("DEBUG Analytics: Exercise $exerciseId usesBodyweight=$usesBodyweight")
                     
                     val dataPoints = workouts.mapNotNull { workout ->
                         try {
@@ -197,10 +199,15 @@ class AnalyticsRepository(
                         }
                     }
                     
+                    println("DEBUG Analytics: Created ${dataPoints.size} data points for $exerciseId")
+                    dataPoints.forEach { point ->
+                        println("DEBUG Analytics: Data point ${point.date}: weight=${point.bestWeight}, 1RM=${point.estimated1RM}")
+                    }
+                    
                     val trend = analyzeTrend(dataPoints)
                     val exerciseName = dataPoints.firstOrNull()?.exerciseName ?: "Unknown Exercise"
                     
-                    PerformanceTrend(
+                    val result = PerformanceTrend(
                         exerciseId = exerciseId,
                         exerciseName = exerciseName,
                         trendDirection = trend.direction,
@@ -208,6 +215,8 @@ class AnalyticsRepository(
                         dataPoints = dataPoints,
                         recommendedAction = generateRecommendation(trend)
                     )
+                    println("DEBUG Analytics: Returning trend for $exerciseName with ${result.dataPoints.size} points")
+                    result
                 } catch (e: Exception) {
                     // Return null if processing fails completely
                     null

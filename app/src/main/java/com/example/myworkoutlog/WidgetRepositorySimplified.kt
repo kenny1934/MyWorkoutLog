@@ -614,9 +614,12 @@ class WidgetRepositorySimplified(
     ): ExerciseProgress? {
         return try {
             // Use Analytics repository for consistent trend calculation
+            println("DEBUG: Getting performance trend for $exerciseName ($exerciseId)")
             val performanceTrend = analyticsRepository.getExercisePerformanceTrend(exerciseId).first()
+            println("DEBUG: Performance trend result for $exerciseName: ${if (performanceTrend != null) "found" else "null"}")
             
             performanceTrend?.let { trend ->
+                println("DEBUG: Trend has ${trend.dataPoints.size} data points for $exerciseName")
                 // Extract current and previous performance from Analytics data
                 val dataPoints = trend.dataPoints.sortedBy { it.date }
                 
