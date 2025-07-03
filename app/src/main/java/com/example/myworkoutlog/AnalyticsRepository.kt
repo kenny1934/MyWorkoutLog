@@ -153,9 +153,10 @@ class AnalyticsRepository(
     // EXERCISE-SPECIFIC PERFORMANCE TRENDS
     
     fun getExercisePerformanceTrend(exerciseId: String): Flow<PerformanceTrend?> {
+        val exerciseFlow = exerciseDao?.getExerciseById(exerciseId)?.map { it } ?: flowOf(null)
         return combine(
             loggedWorkoutDao.getAllWorkoutsWithExercise(exerciseId),
-            exerciseDao?.getExerciseById(exerciseId) ?: flowOf(null)
+            exerciseFlow
         ) { workouts: List<LoggedWorkout>, exerciseInfo: Exercise? ->
             try {
                 val usesBodyweight = exerciseInfo?.usesBodyweight ?: false
