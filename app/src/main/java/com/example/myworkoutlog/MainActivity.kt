@@ -84,7 +84,8 @@ class MainActivity : ComponentActivity() {
         val analyticsRepository = AnalyticsRepository(
             (application as WorkoutApplication).database.loggedWorkoutDao(),
             (application as WorkoutApplication).database.activeCycleDao(),
-            (application as WorkoutApplication).database.personalRecordDao()
+            (application as WorkoutApplication).database.personalRecordDao(),
+            (application as WorkoutApplication).database.exerciseDao()
         )
         AnalyticsViewModelFactory(
             analyticsRepository,
@@ -144,7 +145,8 @@ class MainActivity : ComponentActivity() {
         val analyticsRepository = AnalyticsRepository(
             (application as WorkoutApplication).database.loggedWorkoutDao(),
             (application as WorkoutApplication).database.activeCycleDao(),
-            (application as WorkoutApplication).database.personalRecordDao()
+            (application as WorkoutApplication).database.personalRecordDao(),
+            (application as WorkoutApplication).database.exerciseDao()
         )
         val widgetRepository = WidgetRepositorySimplified(
             analyticsRepository,

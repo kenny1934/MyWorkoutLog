@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -12,7 +13,8 @@ import kotlin.math.abs
 class AnalyticsRepository(
     private val loggedWorkoutDao: LoggedWorkoutDao,
     private val activeCycleDao: ActiveCycleDao,
-    private val personalRecordDao: PersonalRecordDao
+    private val personalRecordDao: PersonalRecordDao,
+    private val exerciseDao: ExerciseDao? = null
 ) {
     
     // VOLUME PROGRESSION ANALYSIS
@@ -151,38 +153,49 @@ class AnalyticsRepository(
     // EXERCISE-SPECIFIC PERFORMANCE TRENDS
     
     fun getExercisePerformanceTrend(exerciseId: String): Flow<PerformanceTrend?> {
-        return loggedWorkoutDao.getAllWorkoutsWithExercise(exerciseId)
-            .map { workouts ->
-                try {
-                    val dataPoints = workouts.mapNotNull { workout ->
-                        try {
-                            val exercise = workout.loggedExercises.find { it.exerciseId == exerciseId }
-                            exercise?.let {
-                                val bestSet = findBestSetInExercise(it)
-                                val totalVolume = calculateExerciseVolumeInWorkout(workout, exerciseId)
-                                val estimated1RM = bestSet?.let { set ->
-                                    if (set.weight != null && set.reps != null && set.reps > 0) {
-                                        StrengthAnalytics.calculateEpley1RM(set.weight, set.reps)
-                                    } else null
-                                }
-                                
-                                ExercisePerformancePoint(
-                                    date = workout.date,
-                                    exerciseId = exerciseId,
-                                    exerciseName = it.exerciseName,
-                                    bestWeight = bestSet?.weight,
-                                    bestReps = bestSet?.reps,
-                                    totalVolume = totalVolume,
-                                    estimated1RM = estimated1RM,
-                                    workoutId = workout.id,
-                                    cycleId = workout.activeProgramCycleId
-                                )
+        return combine(
+            loggedWorkoutDao.getAllWorkoutsWithExercise(exerciseId),
+            exerciseDao?.getExerciseById(exerciseId) ?: flowOf(null)
+        ) { workouts, exerciseInfo ->
+            try {
+                val usesBodyweight = exerciseInfo?.usesBodyweight ?: false
+                
+                val dataPoints = workouts.mapNotNull { workout ->
+                    try {
+                        val exercise = workout.loggedExercises.find { it.exerciseId == exerciseId }
+                        exercise?.let {
+                            val bestSet = findBestSetInExercise(it, workout, usesBodyweight)
+                            val totalVolume = calculateExerciseVolumeInWorkout(workout, exerciseId)
+                            val userBodyweight = workout.bodyweight ?: 0.0
+                            
+                            val totalEffectiveWeight = bestSet?.weight?.let { weight ->
+                                calculateTotalEffectiveWeight(weight, usesBodyweight, userBodyweight)
                             }
-                        } catch (e: Exception) {
-                            // Log error and skip this workout
-                            null
+                            
+                            val estimated1RM = bestSet?.let { set ->
+                                if (set.weight != null && set.reps != null && set.reps > 0) {
+                                    val effectiveWeight = calculateTotalEffectiveWeight(set.weight, usesBodyweight, userBodyweight)
+                                    StrengthAnalytics.calculateEpley1RM(effectiveWeight, set.reps)
+                                } else null
+                            }
+                            
+                            ExercisePerformancePoint(
+                                date = workout.date,
+                                exerciseId = exerciseId,
+                                exerciseName = it.exerciseName,
+                                bestWeight = totalEffectiveWeight, // Use total effective weight instead of just external weight
+                                bestReps = bestSet?.reps,
+                                totalVolume = totalVolume,
+                                estimated1RM = estimated1RM,
+                                workoutId = workout.id,
+                                cycleId = workout.activeProgramCycleId
+                            )
                         }
+                    } catch (e: Exception) {
+                        // Log error and skip this workout
+                        null
                     }
+                }
                     
                     val trend = analyzeTrend(dataPoints)
                     val exerciseName = dataPoints.firstOrNull()?.exerciseName ?: "Unknown Exercise"
@@ -289,13 +302,25 @@ class AnalyticsRepository(
             }
     }
     
-    private fun findBestSetInExercise(exercise: LoggedExercise): LoggedSet? {
+    private fun findBestSetInExercise(exercise: LoggedExercise, workout: LoggedWorkout, usesBodyweight: Boolean): LoggedSet? {
+        val userBodyweight = workout.bodyweight ?: 0.0
+        
         return exercise.sets
             .filter { it.weight != null && it.reps != null && it.reps > 0 }
             .maxByOrNull { set ->
-                // Calculate estimated 1RM for comparison
-                StrengthAnalytics.calculateEpley1RM(set.weight!!, set.reps!!)
+                // Calculate total effective weight for bodyweight exercises
+                val totalWeight = calculateTotalEffectiveWeight(set.weight!!, usesBodyweight, userBodyweight)
+                // Calculate estimated 1RM using total effective weight
+                StrengthAnalytics.calculateEpley1RM(totalWeight, set.reps!!)
             }
+    }
+    
+    private fun calculateTotalEffectiveWeight(externalWeight: Double, usesBodyweight: Boolean, bodyweight: Double): Double {
+        return if (usesBodyweight) {
+            externalWeight + bodyweight
+        } else {
+            externalWeight
+        }
     }
     
     private data class TrendAnalysis(val direction: TrendDirection, val strength: Double)
