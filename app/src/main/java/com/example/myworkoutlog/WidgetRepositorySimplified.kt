@@ -96,7 +96,8 @@ class WidgetRepositorySimplified(
                         direction = TrendDirection.SLIGHTLY_IMPROVING,
                         percentage = 5.3f,
                         description = "Improving"
-                    )
+                    ),
+                    usesBodyweight = false
                 ),
                 ExerciseProgress(
                     exerciseName = "Squat",
@@ -107,7 +108,8 @@ class WidgetRepositorySimplified(
                         direction = TrendDirection.SLIGHTLY_IMPROVING,
                         percentage = 4.3f,
                         description = "Improving"
-                    )
+                    ),
+                    usesBodyweight = false
                 ),
                 ExerciseProgress(
                     exerciseName = "Deadlift",
@@ -118,7 +120,8 @@ class WidgetRepositorySimplified(
                         direction = TrendDirection.SLIGHTLY_IMPROVING,
                         percentage = 3.7f,
                         description = "Improving"
-                    )
+                    ),
+                    usesBodyweight = false
                 )
             )
         }
@@ -157,7 +160,6 @@ class WidgetRepositorySimplified(
         ))
         
         val generatedInsights = generateBasicInsights(activeCycle = null, dismissedInsights = dismissedInsights)
-        println("DEBUG Dashboard State: NoActiveCycle, insights count: ${generatedInsights.size}")
         
         emit(DashboardState(
             mode = DashboardMode.NoActiveCycle,
@@ -236,7 +238,8 @@ class WidgetRepositorySimplified(
                         direction = TrendDirection.SLIGHTLY_IMPROVING,
                         percentage = 5.3f,
                         description = "Improving"
-                    )
+                    ),
+                    usesBodyweight = false
                 ),
                 ExerciseProgress(
                     exerciseName = "Squat",
@@ -247,7 +250,8 @@ class WidgetRepositorySimplified(
                         direction = TrendDirection.SLIGHTLY_IMPROVING,
                         percentage = 4.3f,
                         description = "Improving"
-                    )
+                    ),
+                    usesBodyweight = false
                 ),
                 ExerciseProgress(
                     exerciseName = "Deadlift",
@@ -258,7 +262,8 @@ class WidgetRepositorySimplified(
                         direction = TrendDirection.SLIGHTLY_IMPROVING,
                         percentage = 3.7f,
                         description = "Improving"
-                    )
+                    ),
+                    usesBodyweight = false
                 )
             )
         }
@@ -312,7 +317,6 @@ class WidgetRepositorySimplified(
         ))
         
         val generatedInsights = generateBasicInsights(activeCycle = activeCycle, dismissedInsights = dismissedInsights)
-        println("DEBUG Dashboard State: ActiveCycle, insights count: ${generatedInsights.size}")
         
         emit(DashboardState(
             mode = DashboardMode.ActiveCycle(activeCycle, CycleProgress(
@@ -562,8 +566,6 @@ class WidgetRepositorySimplified(
         return try {
             // Get the most frequently performed exercises
             val workouts = loggedWorkoutDao.getAllLoggedWorkouts().first()
-            println("DEBUG: Found ${workouts.size} workouts for performance trends")
-            
             val exerciseFrequency = mutableMapOf<String, Pair<String, Int>>() // exerciseId to (name, count)
             
             workouts.forEach { workout ->
@@ -576,34 +578,17 @@ class WidgetRepositorySimplified(
                 }
             }
             
-            println("DEBUG: Found ${exerciseFrequency.size} unique exercises")
-            exerciseFrequency.forEach { (id, nameCount) ->
-                println("DEBUG: Exercise ${nameCount.first} (${id}) performed ${nameCount.second} times")
-            }
-            
             // Get top 3 most frequent exercises
             val topExercises = exerciseFrequency.entries
                 .sortedByDescending { it.value.second }
                 .take(3)
                 .map { it.key to it.value.first }
             
-            println("DEBUG: Top 3 exercises: ${topExercises.map { it.second }}")
-            
             // Use Analytics methods for consistent trend calculation
-            val results = topExercises.mapNotNull { (exerciseId, exerciseName) ->
-                println("DEBUG: Processing analytics for $exerciseName ($exerciseId)")
+            topExercises.mapNotNull { (exerciseId, exerciseName) ->
                 convertAnalyticsTrendToExerciseProgress(exerciseId, exerciseName)
             }
-            
-            println("DEBUG: Successfully processed ${results.size} exercise trends")
-            results.forEach { progress ->
-                println("DEBUG: ${progress.exerciseName}: ${progress.currentMax}kg (${progress.improvementPercentage}%)")
-            }
-            
-            results
         } catch (e: Exception) {
-            println("ERROR in getTopPerformanceTrends: ${e.message}")
-            e.printStackTrace()
             emptyList()
         }
     }
@@ -614,12 +599,9 @@ class WidgetRepositorySimplified(
     ): ExerciseProgress? {
         return try {
             // Use Analytics repository for consistent trend calculation
-            println("DEBUG: Getting performance trend for $exerciseName ($exerciseId)")
             val performanceTrend = analyticsRepository.getExercisePerformanceTrend(exerciseId).first()
-            println("DEBUG: Performance trend result for $exerciseName: ${if (performanceTrend != null) "found" else "null"}")
             
             performanceTrend?.let { trend ->
-                println("DEBUG: Trend has ${trend.dataPoints.size} data points for $exerciseName")
                 // Extract current and previous performance from Analytics data
                 val dataPoints = trend.dataPoints.sortedBy { it.date }
                 
@@ -627,14 +609,31 @@ class WidgetRepositorySimplified(
                 if (dataPoints.isEmpty()) return null
                 
                 val currentPoint = dataPoints.last()
-                val currentMax = currentPoint.estimated1RM?.toFloat() ?: currentPoint.bestWeight?.toFloat() ?: 0f
+                
+                // For performance trends, prioritize actual weight lifted over estimated 1RM for ALL exercises
+                val currentMax = if (currentPoint.usesBodyweight) {
+                    // For bodyweight exercises, show total effective weight
+                    currentPoint.bestWeight?.toFloat() ?: 0f
+                } else {
+                    // For non-bodyweight exercises, show actual external weight lifted (not 1RM)
+                    currentPoint.externalWeight?.toFloat() ?: currentPoint.bestWeight?.toFloat() ?: 0f
+                }
                 
                 if (currentMax == 0f) return null
                 
                 // If we have at least 2 data points, calculate improvement
                 val (previousMax, improvementPercentage) = if (dataPoints.size >= 2) {
                     val previousPoint = dataPoints[dataPoints.size - 2]
-                    val prevMax = previousPoint.estimated1RM?.toFloat() ?: previousPoint.bestWeight?.toFloat() ?: 0f
+                    
+                    // Use actual weight for consistency - same logic as current point
+                    val prevMax = if (previousPoint.usesBodyweight) {
+                        // For bodyweight exercises, show total effective weight
+                        previousPoint.bestWeight?.toFloat() ?: 0f
+                    } else {
+                        // For non-bodyweight exercises, show actual external weight lifted
+                        previousPoint.externalWeight?.toFloat() ?: previousPoint.bestWeight?.toFloat() ?: 0f
+                    }
+                    
                     if (prevMax > 0f) {
                         val improvement = ((currentMax - prevMax) / prevMax) * 100
                         Pair(prevMax, improvement)
@@ -663,13 +662,17 @@ class WidgetRepositorySimplified(
                             trend.trendDirection == TrendDirection.STABLE -> "Maintaining"
                             else -> "Insufficient data"
                         }
-                    )
+                    ),
+                    // Bodyweight breakdown for clearer display
+                    usesBodyweight = currentPoint.usesBodyweight,
+                    currentBodyweight = currentPoint.bodyweight?.toFloat(),
+                    currentExternalWeight = currentPoint.externalWeight?.toFloat(),
+                    previousBodyweight = if (dataPoints.size >= 2) dataPoints[dataPoints.size - 2].bodyweight?.toFloat() else null,
+                    previousExternalWeight = if (dataPoints.size >= 2) dataPoints[dataPoints.size - 2].externalWeight?.toFloat() else null
                 )
             }
         } catch (e: Exception) {
-            // Log the exception for debugging
-            println("Error in convertAnalyticsTrendToExerciseProgress for $exerciseName: ${e.message}")
-            e.printStackTrace()
+            // Return null if processing fails
             null
         }
     }
@@ -1135,9 +1138,6 @@ class WidgetRepositorySimplified(
             val totalWorkouts = withContext(Dispatchers.IO) { analyticsRepository.getTotalWorkoutCount() }
             val thisWeekWorkouts = withContext(Dispatchers.IO) { analyticsRepository.getThisWeekWorkoutCount() }
             
-            println("DEBUG Insights: streak=$streak, totalWorkouts=$totalWorkouts, thisWeekWorkouts=$thisWeekWorkouts")
-            println("DEBUG Dismissed Insights: $dismissedInsights (size: ${dismissedInsights.size})")
-            
             // Welcome back insight for returning users
             if (totalWorkouts > 0 && thisWeekWorkouts == 0) {
                 insights.add(SmartInsight(
@@ -1306,10 +1306,6 @@ class WidgetRepositorySimplified(
             }
             
         } catch (e: Exception) {
-            // Log the error to understand what's failing
-            println("DEBUG Insights Exception: ${e.message}")
-            e.printStackTrace()
-            
             // Fallback insight if analytics fail
             insights.add(SmartInsight(
                 id = "system_ready",
@@ -1325,7 +1321,6 @@ class WidgetRepositorySimplified(
             .filter { it.id !in dismissedInsights } // Filter out dismissed insights
             .take(3) // Limit to 3 insights max
         
-        println("DEBUG Insights Generated: ${insights.size} total, ${finalInsights.size} after filtering. Insights: ${finalInsights.map { it.title }}")
         return finalInsights
     }
 }

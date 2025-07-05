@@ -158,13 +158,11 @@ class AnalyticsRepository(
         return loggedWorkoutDao.getAllWorkoutsWithExercise(exerciseId)
             .map { workouts ->
                 try {
-                    println("DEBUG Analytics: Processing $exerciseId with ${workouts.size} workouts")
                     // Get exercise info once for all workouts (must run on IO thread)
                     val exerciseInfo = withContext(Dispatchers.IO) {
                         exerciseDao?.getExerciseById(exerciseId)
                     }
                     val usesBodyweight = exerciseInfo?.usesBodyweight ?: false
-                    println("DEBUG Analytics: Exercise $exerciseId usesBodyweight=$usesBodyweight")
                     
                     val dataPoints = workouts.mapNotNull { workout ->
                         try {
@@ -194,25 +192,17 @@ class AnalyticsRepository(
                                     totalVolume = totalVolume,
                                     estimated1RM = estimated1RM,
                                     workoutId = workout.id,
-                                    cycleId = workout.activeProgramCycleId
+                                    cycleId = workout.activeProgramCycleId,
+                                    // Bodyweight breakdown for clearer display
+                                    usesBodyweight = usesBodyweight,
+                                    bodyweight = if (usesBodyweight) userBodyweight else null,
+                                    externalWeight = bestSet?.weight
                                 )
                             }
                         } catch (e: Exception) {
                             // Log error and skip this workout
                             null
                         }
-                    }
-                    
-                    println("DEBUG Analytics: Created ${dataPoints.size} data points for $exerciseId")
-                    dataPoints.forEach { point ->
-                        println("DEBUG Analytics: Data point ${point.date}: weight=${point.bestWeight}, 1RM=${point.estimated1RM}, reps=${point.bestReps}")
-                    }
-                    
-                    // Show which data point is being used as "current"
-                    val sortedPoints = dataPoints.sortedBy { it.date }
-                    if (sortedPoints.isNotEmpty()) {
-                        val currentPoint = sortedPoints.last()
-                        println("DEBUG Analytics: Current (latest) point for $exerciseId: ${currentPoint.date}, weight=${currentPoint.bestWeight}, 1RM=${currentPoint.estimated1RM}")
                     }
                     
                     val trend = analyzeTrend(dataPoints)
@@ -226,12 +216,9 @@ class AnalyticsRepository(
                         dataPoints = dataPoints,
                         recommendedAction = generateRecommendation(trend)
                     )
-                    println("DEBUG Analytics: Returning trend for $exerciseName with ${result.dataPoints.size} points")
                     result
                 } catch (e: Exception) {
                     // Return null if processing fails completely
-                    println("ERROR Analytics: Exception in getExercisePerformanceTrend for $exerciseId: ${e.message}")
-                    e.printStackTrace()
                     null
                 }
             }
@@ -328,22 +315,10 @@ class AnalyticsRepository(
         val userBodyweight = workout.bodyweight ?: 0.0
         
         val validSets = exercise.sets.filter { it.weight != null && it.reps != null && it.reps > 0 }
-        println("DEBUG Analytics: findBestSet for ${exercise.exerciseName} on ${workout.date}: ${validSets.size} valid sets, bodyweight=$userBodyweight, usesBodyweight=$usesBodyweight")
-        
-        validSets.forEach { set ->
-            val totalWeight = calculateTotalEffectiveWeight(set.weight!!, usesBodyweight, userBodyweight)
-            val estimated1RM = StrengthAnalytics.calculateEpley1RM(totalWeight, set.reps!!)
-            println("DEBUG Analytics: Set: ${set.weight}kg + ${if (usesBodyweight) userBodyweight else 0.0}kg = ${totalWeight}kg for ${set.reps} reps -> 1RM: $estimated1RM")
-        }
         
         val bestSet = validSets.maxByOrNull { set ->
             val totalWeight = calculateTotalEffectiveWeight(set.weight!!, usesBodyweight, userBodyweight)
             StrengthAnalytics.calculateEpley1RM(totalWeight, set.reps!!)
-        }
-        
-        bestSet?.let { set ->
-            val totalWeight = calculateTotalEffectiveWeight(set.weight!!, usesBodyweight, userBodyweight)
-            println("DEBUG Analytics: Best set selected: ${set.weight}kg for ${set.reps} reps -> total weight: ${totalWeight}kg")
         }
         
         return bestSet

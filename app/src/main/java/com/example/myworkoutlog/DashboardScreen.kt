@@ -603,7 +603,7 @@ fun SimplePerformanceTrendWidgetCard(
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
-                                text = "${topExercise.currentMax.toInt()}kg (${if (topExercise.improvementPercentage >= 0) "+" else ""}${topExercise.improvementPercentage.toInt()}%)",
+                                text = "${topExercise.formatCurrentWeight()} (${if (topExercise.improvementPercentage >= 0) "+" else ""}${topExercise.improvementPercentage.toInt()}%)",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = if (topExercise.improvementPercentage >= 0) 
                                     MaterialTheme.colorScheme.primary 
@@ -1089,7 +1089,7 @@ fun ExercisePerformanceCard(
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "${exercise.previousMax.toInt()}kg → ${exercise.currentMax.toInt()}kg",
+                    text = exercise.formatWeightProgression(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

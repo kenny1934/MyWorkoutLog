@@ -313,7 +313,11 @@ data class ExercisePerformancePoint(
     val totalVolume: Double? = null,
     val estimated1RM: Double? = null,
     val workoutId: String,
-    val cycleId: String? = null
+    val cycleId: String? = null,
+    // Bodyweight breakdown for better display
+    val usesBodyweight: Boolean = false,
+    val bodyweight: Double? = null,
+    val externalWeight: Double? = null
 )
 
 // Personal Record tracking

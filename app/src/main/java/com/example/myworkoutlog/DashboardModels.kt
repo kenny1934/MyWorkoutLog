@@ -140,7 +140,13 @@ data class ExerciseProgress(
     val currentMax: Float,
     val previousMax: Float,
     val improvementPercentage: Float,
-    val trend: ProgressTrend
+    val trend: ProgressTrend,
+    // Bodyweight breakdown for clearer display
+    val usesBodyweight: Boolean = false,
+    val currentBodyweight: Float? = null,
+    val currentExternalWeight: Float? = null,
+    val previousBodyweight: Float? = null,
+    val previousExternalWeight: Float? = null
 )
 
 data class ProgressTrend(
@@ -148,6 +154,27 @@ data class ProgressTrend(
     val percentage: Float,
     val description: String
 )
+
+// Utility extension for formatting weight display with bodyweight breakdown
+fun ExerciseProgress.formatCurrentWeight(): String {
+    return if (usesBodyweight && currentBodyweight != null && currentExternalWeight != null) {
+        "${currentMax.toInt()}kg (${currentBodyweight.toInt()} + ${currentExternalWeight.toInt()})"
+    } else {
+        "${currentMax.toInt()}kg"
+    }
+}
+
+fun ExerciseProgress.formatPreviousWeight(): String {
+    return if (usesBodyweight && previousBodyweight != null && previousExternalWeight != null) {
+        "${previousMax.toInt()}kg (${previousBodyweight.toInt()} + ${previousExternalWeight.toInt()})"
+    } else {
+        "${previousMax.toInt()}kg"
+    }
+}
+
+fun ExerciseProgress.formatWeightProgression(): String {
+    return "${formatPreviousWeight()} → ${formatCurrentWeight()}"
+}
 
 // Using TrendDirection from DataModels.kt - removed duplicate
 

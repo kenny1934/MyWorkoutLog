@@ -154,7 +154,7 @@ fun EnhancedInteractivePerformanceChart(
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
-                                text = "${gain.previousMax.toInt()}kg → ${gain.currentMax.toInt()}kg",
+                                text = gain.formatWeightProgression(),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -360,7 +360,7 @@ private fun ChartTooltip(
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "${exercise.currentMax.toInt()}kg",
+                    text = exercise.formatCurrentWeight(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.8f)
                 )
@@ -455,7 +455,7 @@ private fun EnhancedExerciseDetailCard(
                     else MaterialTheme.colorScheme.error
                 )
                 Text(
-                    text = "${exercise.previousMax.toInt()}kg → ${exercise.currentMax.toInt()}kg",
+                    text = exercise.formatWeightProgression(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                 )
