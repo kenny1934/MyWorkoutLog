@@ -205,7 +205,14 @@ class AnalyticsRepository(
                     
                     println("DEBUG Analytics: Created ${dataPoints.size} data points for $exerciseId")
                     dataPoints.forEach { point ->
-                        println("DEBUG Analytics: Data point ${point.date}: weight=${point.bestWeight}, 1RM=${point.estimated1RM}")
+                        println("DEBUG Analytics: Data point ${point.date}: weight=${point.bestWeight}, 1RM=${point.estimated1RM}, reps=${point.bestReps}")
+                    }
+                    
+                    // Show which data point is being used as "current"
+                    val sortedPoints = dataPoints.sortedBy { it.date }
+                    if (sortedPoints.isNotEmpty()) {
+                        val currentPoint = sortedPoints.last()
+                        println("DEBUG Analytics: Current (latest) point for $exerciseId: ${currentPoint.date}, weight=${currentPoint.bestWeight}, 1RM=${currentPoint.estimated1RM}")
                     }
                     
                     val trend = analyzeTrend(dataPoints)
@@ -320,14 +327,26 @@ class AnalyticsRepository(
     private fun findBestSetInExercise(exercise: LoggedExercise, workout: LoggedWorkout, usesBodyweight: Boolean): LoggedSet? {
         val userBodyweight = workout.bodyweight ?: 0.0
         
-        return exercise.sets
-            .filter { it.weight != null && it.reps != null && it.reps > 0 }
-            .maxByOrNull { set ->
-                // Calculate total effective weight for bodyweight exercises
-                val totalWeight = calculateTotalEffectiveWeight(set.weight!!, usesBodyweight, userBodyweight)
-                // Calculate estimated 1RM using total effective weight
-                StrengthAnalytics.calculateEpley1RM(totalWeight, set.reps!!)
-            }
+        val validSets = exercise.sets.filter { it.weight != null && it.reps != null && it.reps > 0 }
+        println("DEBUG Analytics: findBestSet for ${exercise.exerciseName} on ${workout.date}: ${validSets.size} valid sets, bodyweight=$userBodyweight, usesBodyweight=$usesBodyweight")
+        
+        validSets.forEach { set ->
+            val totalWeight = calculateTotalEffectiveWeight(set.weight!!, usesBodyweight, userBodyweight)
+            val estimated1RM = StrengthAnalytics.calculateEpley1RM(totalWeight, set.reps!!)
+            println("DEBUG Analytics: Set: ${set.weight}kg + ${if (usesBodyweight) userBodyweight else 0.0}kg = ${totalWeight}kg for ${set.reps} reps -> 1RM: $estimated1RM")
+        }
+        
+        val bestSet = validSets.maxByOrNull { set ->
+            val totalWeight = calculateTotalEffectiveWeight(set.weight!!, usesBodyweight, userBodyweight)
+            StrengthAnalytics.calculateEpley1RM(totalWeight, set.reps!!)
+        }
+        
+        bestSet?.let { set ->
+            val totalWeight = calculateTotalEffectiveWeight(set.weight!!, usesBodyweight, userBodyweight)
+            println("DEBUG Analytics: Best set selected: ${set.weight}kg for ${set.reps} reps -> total weight: ${totalWeight}kg")
+        }
+        
+        return bestSet
     }
     
     private fun calculateTotalEffectiveWeight(externalWeight: Double, usesBodyweight: Boolean, bodyweight: Double): Double {
