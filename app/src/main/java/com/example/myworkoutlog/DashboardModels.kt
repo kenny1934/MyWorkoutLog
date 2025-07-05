@@ -136,6 +136,7 @@ data class ExercisePreview(
 )
 
 data class ExerciseProgress(
+    val exerciseId: String,
     val exerciseName: String,
     val currentMax: Float,
     val previousMax: Float,

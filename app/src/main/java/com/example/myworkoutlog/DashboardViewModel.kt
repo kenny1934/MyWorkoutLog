@@ -185,13 +185,13 @@ class DashboardViewModel(
             }
             
             QuickActionType.VIEW_ANALYTICS -> {
-                onNavigate(Screen.Analytics.route)
+                onNavigate(Screen.Analytics.defaultRoute)
             }
             
             QuickActionType.ADD_BODYWEIGHT -> {
                 // For now, navigate to analytics where bodyweight tracking might be
                 // In a future version, this could open a quick entry dialog
-                onNavigate(Screen.Analytics.route)
+                onNavigate(Screen.Analytics.defaultRoute)
             }
             
             QuickActionType.VIEW_HISTORY -> {
@@ -203,12 +203,12 @@ class DashboardViewModel(
                 viewModelScope.launch(Dispatchers.IO) {
                     activeCycleDao.clear()
                 }
-                onNavigate(Screen.Analytics.route)
+                onNavigate(Screen.Analytics.defaultRoute)
             }
             
             QuickActionType.VIEW_CYCLE_ANALYTICS -> {
                 // Navigate to analytics focused on current cycle
-                onNavigate(Screen.Analytics.route)
+                onNavigate(Screen.Analytics.defaultRoute)
             }
             
             QuickActionType.LOG_QUICK_WORKOUT -> {
@@ -263,7 +263,7 @@ class DashboardViewModel(
                 when (insight.actionText) {
                     "View Progress" -> {
                         // Navigate to analytics for progress tracking
-                        onNavigate(Screen.Analytics.route)
+                        onNavigate(Screen.Analytics.defaultRoute)
                     }
                     "View Schedule" -> {
                         // Navigate to programs for schedule/planning view
@@ -306,7 +306,7 @@ class DashboardViewModel(
                     }
                     "View Analytics" -> {
                         // Navigate to analytics dashboard
-                        onNavigate(Screen.Analytics.route)
+                        onNavigate(Screen.Analytics.defaultRoute)
                     }
                     "View History" -> {
                         // Navigate to workout history
@@ -316,13 +316,13 @@ class DashboardViewModel(
                         // Fallback: route based on insight type for unknown actions
                         when (insight.type) {
                             InsightType.PERFORMANCE, InsightType.CELEBRATION -> {
-                                onNavigate(Screen.Analytics.route)
+                                onNavigate(Screen.Analytics.defaultRoute)
                             }
                             InsightType.RECOMMENDATION -> {
                                 onNavigate(Screen.Programs.route)
                             }
                             else -> {
-                                onNavigate(Screen.Analytics.route)
+                                onNavigate(Screen.Analytics.defaultRoute)
                             }
                         }
                     }

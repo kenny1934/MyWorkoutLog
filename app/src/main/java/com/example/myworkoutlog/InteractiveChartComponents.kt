@@ -98,7 +98,7 @@ fun EnhancedInteractivePerformanceChart(
                     FilterChip(
                         onClick = { 
                             if (enableDrillDown) {
-                                navController.navigate("analytics")
+                                navController.navigate(Screen.Analytics.createRoute(gain.exerciseId))
                             }
                         },
                         label = { 
@@ -132,7 +132,7 @@ fun EnhancedInteractivePerformanceChart(
                         .fillMaxWidth()
                         .clickable {
                             if (enableDrillDown) {
-                                navController.navigate("analytics")
+                                navController.navigate(Screen.Analytics.createRoute(gain.exerciseId))
                             }
                         },
                     colors = CardDefaults.cardColors(
@@ -290,7 +290,7 @@ fun EnhancedInteractiveVolumeChart(
                 .height(200.dp)
                 .clickable { 
                     if (enableDrillDown) {
-                        navController.navigate("analytics")
+                        navController.navigate(Screen.Analytics.defaultRoute)
                     }
                 },
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)

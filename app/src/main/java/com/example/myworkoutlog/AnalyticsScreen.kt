@@ -37,7 +37,10 @@ import java.time.format.DateTimeFormatter
 import java.util.*
 
 @Composable
-fun AnalyticsScreen(viewModel: AnalyticsViewModel) {
+fun AnalyticsScreen(
+    viewModel: AnalyticsViewModel,
+    preSelectedExerciseId: String? = null
+) {
     val selectedTimeRange by viewModel.selectedTimeRange.collectAsStateWithLifecycle()
     val selectedExerciseId by viewModel.selectedExerciseId.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
@@ -49,7 +52,17 @@ fun AnalyticsScreen(viewModel: AnalyticsViewModel) {
     val cycleComparison by viewModel.cycleComparison.collectAsStateWithLifecycle()
     val availableExercises by viewModel.availableExercises.collectAsStateWithLifecycle()
 
-    var selectedTab by remember { mutableStateOf(0) }
+    // Handle pre-selected exercise navigation
+    var selectedTab by remember { 
+        mutableStateOf(if (preSelectedExerciseId != null) 2 else 0) // Tab 2 is "Performance"
+    }
+    
+    // Auto-select exercise if provided in navigation
+    LaunchedEffect(preSelectedExerciseId, availableExercises) {
+        if (preSelectedExerciseId != null && availableExercises.any { it.id == preSelectedExerciseId }) {
+            viewModel.selectExercise(preSelectedExerciseId)
+        }
+    }
     val tabs = listOf("Overview", "Volume", "Performance", "PRs", "Comparison")
 
     Column(

@@ -592,7 +592,11 @@ fun SimplePerformanceTrendWidgetCard(
                 if (widget.strengthGains.isNotEmpty()) {
                     val topExercise = widget.strengthGains.first()
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                navController.navigate(Screen.Analytics.createRoute(topExercise.exerciseId))
+                            },
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -645,7 +649,7 @@ fun SimplePerformanceTrendWidgetCard(
                         
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Tap to see all ${widget.strengthGains.size} exercises",
+                            text = "Tap ${widget.strengthGains.first().exerciseName} for details",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -1066,10 +1070,14 @@ fun InteractivePerformanceChart(
 @Composable
 fun ExercisePerformanceCard(
     exercise: ExerciseProgress,
+    navController: NavHostController,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier,
+        modifier = modifier
+            .clickable {
+                navController.navigate(Screen.Analytics.createRoute(exercise.exerciseId))
+            },
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)

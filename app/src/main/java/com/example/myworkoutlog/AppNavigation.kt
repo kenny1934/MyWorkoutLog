@@ -49,5 +49,11 @@ sealed class Screen(val route: String) {
 
     data object VolumeAnalysis : Screen("volume_analysis")
     
-    data object Analytics : Screen("analytics")
+    data object Analytics : Screen("analytics?exerciseId={exerciseId}") {
+        // Route with specific exercise pre-selected
+        fun createRoute(exerciseId: String) = "analytics?exerciseId=$exerciseId"
+        
+        // Default route for general analytics
+        const val defaultRoute = "analytics"
+    }
 }

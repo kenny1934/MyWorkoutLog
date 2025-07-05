@@ -88,6 +88,7 @@ class WidgetRepositorySimplified(
             // Create sample data for demonstration
             listOf(
                 ExerciseProgress(
+                    exerciseId = "bench_press_sample",
                     exerciseName = "Bench Press",
                     currentMax = 100f,
                     previousMax = 95f,
@@ -100,6 +101,7 @@ class WidgetRepositorySimplified(
                     usesBodyweight = false
                 ),
                 ExerciseProgress(
+                    exerciseId = "squat_sample",
                     exerciseName = "Squat",
                     currentMax = 120f,
                     previousMax = 115f,
@@ -112,6 +114,7 @@ class WidgetRepositorySimplified(
                     usesBodyweight = false
                 ),
                 ExerciseProgress(
+                    exerciseId = "deadlift_sample",
                     exerciseName = "Deadlift",
                     currentMax = 140f,
                     previousMax = 135f,
@@ -230,6 +233,7 @@ class WidgetRepositorySimplified(
             // Create sample data for demonstration
             listOf(
                 ExerciseProgress(
+                    exerciseId = "bench_press_sample",
                     exerciseName = "Bench Press",
                     currentMax = 100f,
                     previousMax = 95f,
@@ -242,6 +246,7 @@ class WidgetRepositorySimplified(
                     usesBodyweight = false
                 ),
                 ExerciseProgress(
+                    exerciseId = "squat_sample",
                     exerciseName = "Squat",
                     currentMax = 120f,
                     previousMax = 115f,
@@ -254,6 +259,7 @@ class WidgetRepositorySimplified(
                     usesBodyweight = false
                 ),
                 ExerciseProgress(
+                    exerciseId = "deadlift_sample",
                     exerciseName = "Deadlift",
                     currentMax = 140f,
                     previousMax = 135f,
@@ -646,6 +652,7 @@ class WidgetRepositorySimplified(
                 }
                 
                 ExerciseProgress(
+                    exerciseId = exerciseId,
                     exerciseName = exerciseName,
                     currentMax = currentMax,
                     previousMax = previousMax,

@@ -404,8 +404,12 @@ fun AppNavHost(
         composable(Screen.VolumeAnalysis.route) {
             VolumeAnalysisScreen(viewModel = volumeViewModel)
         }
-        composable(Screen.Analytics.route) {
-            AnalyticsScreen(viewModel = analyticsViewModel)
+        composable(Screen.Analytics.route) { backStackEntry ->
+            val exerciseId = backStackEntry.arguments?.getString("exerciseId")
+            AnalyticsScreen(
+                viewModel = analyticsViewModel,
+                preSelectedExerciseId = exerciseId
+            )
         }
     }
 }
