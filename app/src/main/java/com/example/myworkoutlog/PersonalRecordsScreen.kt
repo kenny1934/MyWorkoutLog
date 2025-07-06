@@ -19,7 +19,8 @@ import kotlin.math.roundToInt
 @Composable
 fun PersonalRecordsScreen(
     viewModel: PrViewModel,
-    onNavigateToWorkout: (String) -> Unit
+    onNavigateToWorkout: (String) -> Unit,
+    onNavigateToExerciseAnalytics: (String) -> Unit = {}
 ) {
     val searchText by viewModel.searchText.collectAsStateWithLifecycle()
     val filteredPRs by viewModel.filteredPRs.collectAsStateWithLifecycle()
@@ -51,11 +52,33 @@ fun PersonalRecordsScreen(
                             elevation = CardDefaults.cardElevation(2.dp)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    exerciseName,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        exerciseName,
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    
+                                    // Analytics button for this exercise
+                                    IconButton(
+                                        onClick = { 
+                                            // Use the exercise ID from the first PR for this exercise
+                                            val exerciseId = prsForExercise.firstOrNull()?.exerciseId
+                                            exerciseId?.let { onNavigateToExerciseAnalytics(it) }
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Analytics,
+                                            contentDescription = "View $exerciseName analytics",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 // Separate PRs by type for clarity

@@ -366,6 +366,9 @@ fun AppNavHost(
                 viewModel = prViewModel,
                 onNavigateToWorkout = { workoutId ->
                     navController.navigate(Screen.HistoryDetail.createRoute(workoutId))
+                },
+                onNavigateToExerciseAnalytics = { exerciseId ->
+                    navController.navigate(Screen.Analytics.createRoute(exerciseId))
                 }
             )
         }
@@ -402,13 +405,24 @@ fun AppNavHost(
             )
         }
         composable(Screen.VolumeAnalysis.route) {
-            VolumeAnalysisScreen(viewModel = volumeViewModel)
+            VolumeAnalysisScreen(
+                viewModel = volumeViewModel,
+                onNavigateToMuscleGroupAnalytics = { muscleGroup ->
+                    navController.navigate(Screen.Analytics.createRouteWithMuscleGroup(muscleGroup))
+                }
+            )
         }
         composable(Screen.Analytics.route) { backStackEntry ->
             val exerciseId = backStackEntry.arguments?.getString("exerciseId")
+            val tab = backStackEntry.arguments?.getString("tab")
+            val cycleId = backStackEntry.arguments?.getString("cycleId")
+            val muscleGroup = backStackEntry.arguments?.getString("muscleGroup")
             AnalyticsScreen(
                 viewModel = analyticsViewModel,
-                preSelectedExerciseId = exerciseId
+                preSelectedExerciseId = exerciseId,
+                preSelectedTab = tab,
+                preSelectedCycleId = cycleId,
+                preSelectedMuscleGroup = muscleGroup
             )
         }
     }

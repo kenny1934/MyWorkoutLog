@@ -39,7 +39,10 @@ import java.util.*
 @Composable
 fun AnalyticsScreen(
     viewModel: AnalyticsViewModel,
-    preSelectedExerciseId: String? = null
+    preSelectedExerciseId: String? = null,
+    preSelectedTab: String? = null,
+    preSelectedCycleId: String? = null,
+    preSelectedMuscleGroup: String? = null
 ) {
     val selectedTimeRange by viewModel.selectedTimeRange.collectAsStateWithLifecycle()
     val selectedExerciseId by viewModel.selectedExerciseId.collectAsStateWithLifecycle()
@@ -52,15 +55,38 @@ fun AnalyticsScreen(
     val cycleComparison by viewModel.cycleComparison.collectAsStateWithLifecycle()
     val availableExercises by viewModel.availableExercises.collectAsStateWithLifecycle()
 
-    // Handle pre-selected exercise navigation
+    // Handle pre-selected navigation parameters
     var selectedTab by remember { 
-        mutableStateOf(if (preSelectedExerciseId != null) 2 else 0) // Tab 2 is "Performance"
+        mutableStateOf(
+            when {
+                preSelectedTab != null -> {
+                    listOf("Overview", "Volume", "Performance", "PRs", "Comparison").indexOf(preSelectedTab).takeIf { it >= 0 } ?: 0
+                }
+                preSelectedExerciseId != null -> 2 // Tab 2 is "Performance"
+                preSelectedCycleId != null -> 4 // Tab 4 is "Comparison"
+                preSelectedMuscleGroup != null -> 1 // Tab 1 is "Volume"
+                else -> 0
+            }
+        )
     }
     
     // Auto-select exercise if provided in navigation
     LaunchedEffect(preSelectedExerciseId, availableExercises) {
         if (preSelectedExerciseId != null && availableExercises.any { it.id == preSelectedExerciseId }) {
             viewModel.selectExercise(preSelectedExerciseId)
+        }
+    }
+    
+    // Handle other pre-selected parameters
+    LaunchedEffect(preSelectedCycleId) {
+        if (preSelectedCycleId != null) {
+            // TODO: Auto-select cycle when cycle selection is implemented
+        }
+    }
+    
+    LaunchedEffect(preSelectedMuscleGroup) {
+        if (preSelectedMuscleGroup != null) {
+            // TODO: Auto-select muscle group filter when implemented
         }
     }
     val tabs = listOf("Overview", "Volume", "Performance", "PRs", "Comparison")

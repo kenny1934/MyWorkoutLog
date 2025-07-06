@@ -2,11 +2,15 @@
 
 package com.example.myworkoutlog
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,7 +30,10 @@ import com.patrykandpatrick.vico.core.axis.formatter.AxisValueFormatter
 import java.util.*
 
 @Composable
-fun VolumeAnalysisScreen(viewModel: VolumeViewModel) {
+fun VolumeAnalysisScreen(
+    viewModel: VolumeViewModel,
+    onNavigateToMuscleGroupAnalytics: (String) -> Unit = {}
+) {
     val volumeData by viewModel.volumeData.collectAsStateWithLifecycle()
     val weeksInCycle by viewModel.weeksInActiveCycle.collectAsStateWithLifecycle()
     val selectedWeek by viewModel.selectedWeek.collectAsStateWithLifecycle()
@@ -141,7 +148,9 @@ fun VolumeAnalysisScreen(viewModel: VolumeViewModel) {
                     LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
                         items(sortedVolumeList) { (muscleGroup, setCount) ->
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onNavigateToMuscleGroupAnalytics(muscleGroup.name) },
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
@@ -149,7 +158,18 @@ fun VolumeAnalysisScreen(viewModel: VolumeViewModel) {
                                         .replaceFirstChar { it.titlecase() },
                                     style = MaterialTheme.typography.bodyLarge
                                 )
-                                Text("$setCount sets", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text("$setCount sets", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                    Icon(
+                                        imageVector = Icons.Default.Analytics,
+                                        contentDescription = "View ${muscleGroup.name} analytics",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                         }

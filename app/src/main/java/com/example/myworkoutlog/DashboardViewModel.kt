@@ -189,9 +189,8 @@ class DashboardViewModel(
             }
             
             QuickActionType.ADD_BODYWEIGHT -> {
-                // For now, navigate to analytics where bodyweight tracking might be
-                // In a future version, this could open a quick entry dialog
-                onNavigate(Screen.Analytics.defaultRoute)
+                // Navigate to analytics with Volume tab focused on bodyweight tracking
+                onNavigate(Screen.Analytics.createRouteWithTab("Volume"))
             }
             
             QuickActionType.VIEW_HISTORY -> {
@@ -199,16 +198,24 @@ class DashboardViewModel(
             }
             
             QuickActionType.COMPLETE_CYCLE -> {
-                // End the current cycle and navigate to analytics with cycle summary
+                // End the current cycle and navigate to analytics with cycle comparison
                 viewModelScope.launch(Dispatchers.IO) {
+                    // Get the current cycle ID before clearing
+                    val currentCycle = getCurrentCycle()
+                    val currentCycleId = currentCycle?.cycleUuid
                     activeCycleDao.clear()
+                    // Navigate to cycle comparison view with the just-completed cycle
+                    currentCycleId?.let { cycleId ->
+                        onNavigate(Screen.Analytics.createRouteWithCycle(cycleId))
+                    } ?: run {
+                        onNavigate(Screen.Analytics.createRouteWithTab("Comparison"))
+                    }
                 }
-                onNavigate(Screen.Analytics.defaultRoute)
             }
             
             QuickActionType.VIEW_CYCLE_ANALYTICS -> {
-                // Navigate to analytics focused on current cycle
-                onNavigate(Screen.Analytics.defaultRoute)
+                // Navigate to analytics focused on current cycle comparison
+                onNavigate(Screen.Analytics.createRouteWithTab("Comparison"))
             }
             
             QuickActionType.LOG_QUICK_WORKOUT -> {
