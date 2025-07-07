@@ -694,7 +694,7 @@ fun HistoryDetailScreen(
                             Text("Bodyweight", style = MaterialTheme.typography.labelMedium)
                             Text(
                                 text = currentWorkout.bodyweight?.let { 
-                                    "${it.toInt()} ${currentWorkout.performedWeightUnit ?: "kg"}" 
+                                    "${formatHistoryWeight(it)} ${currentWorkout.performedWeightUnit ?: "kg"}" 
                                 } ?: "- ${currentWorkout.performedWeightUnit ?: "kg"}",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
@@ -857,19 +857,27 @@ private fun formatHistoryWeightDisplay(set: LoggedSet, exercise: LoggedExercise,
         return when {
             externalWeight > 0.1 -> {
                 val totalWeight = bodyweight + externalWeight
-                "BW(${bodyweight.toInt()}$weightUnit) + ${externalWeight.toInt()}$weightUnit = ${totalWeight.toInt()}$weightUnit"
+                "BW(${formatHistoryWeight(bodyweight)}$weightUnit) + ${formatHistoryWeight(externalWeight)}$weightUnit = ${formatHistoryWeight(totalWeight)}$weightUnit"
             }
-            else -> "BW(${bodyweight.toInt()}$weightUnit)"
+            else -> "BW(${formatHistoryWeight(bodyweight)}$weightUnit)"
         }
     }
     
     // For bodyweight exercises without bodyweight data, show external weight only  
     if (isBodyweightExercise && setWeight > 0) {
-        return "+${setWeight.toInt()}$weightUnit"
+        return "+${formatHistoryWeight(setWeight)}$weightUnit"
     }
     
     // Regular exercise: show total weight only
-    return "${setWeight.toInt()}$weightUnit"
+    return "${formatHistoryWeight(setWeight)}$weightUnit"
+}
+
+// Helper function to format weight with appropriate decimal precision for history
+private fun formatHistoryWeight(weight: Double): String {
+    return when {
+        weight % 1.0 == 0.0 -> weight.toInt().toString() // Show as integer if no decimal part
+        else -> String.format("%.1f", weight) // Show one decimal place
+    }
 }
 
 // Workout calculation utilities for summary statistics

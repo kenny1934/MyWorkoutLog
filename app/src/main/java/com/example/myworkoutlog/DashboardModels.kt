@@ -159,17 +159,25 @@ data class ProgressTrend(
 // Utility extension for formatting weight display with bodyweight breakdown
 fun ExerciseProgress.formatCurrentWeight(): String {
     return if (usesBodyweight && currentBodyweight != null && currentExternalWeight != null) {
-        "${currentMax.toInt()}kg (${currentBodyweight.toInt()} + ${currentExternalWeight.toInt()})"
+        "${formatDashboardWeight(currentMax)}kg (${formatDashboardWeight(currentBodyweight)} + ${formatDashboardWeight(currentExternalWeight)})"
     } else {
-        "${currentMax.toInt()}kg"
+        "${formatDashboardWeight(currentMax)}kg"
     }
 }
 
 fun ExerciseProgress.formatPreviousWeight(): String {
     return if (usesBodyweight && previousBodyweight != null && previousExternalWeight != null) {
-        "${previousMax.toInt()}kg (${previousBodyweight.toInt()} + ${previousExternalWeight.toInt()})"
+        "${formatDashboardWeight(previousMax)}kg (${formatDashboardWeight(previousBodyweight)} + ${formatDashboardWeight(previousExternalWeight)})"
     } else {
-        "${previousMax.toInt()}kg"
+        "${formatDashboardWeight(previousMax)}kg"
+    }
+}
+
+// Helper function to format weight with appropriate decimal precision for dashboard
+private fun formatDashboardWeight(weight: Float): String {
+    return when {
+        weight % 1.0f == 0.0f -> weight.toInt().toString() // Show as integer if no decimal part
+        else -> String.format("%.1f", weight) // Show one decimal place
     }
 }
 

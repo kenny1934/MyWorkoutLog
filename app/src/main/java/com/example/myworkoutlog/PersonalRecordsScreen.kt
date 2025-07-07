@@ -130,15 +130,24 @@ fun formatWeightDisplay(pr: PersonalRecord): String {
     val weightUnit = pr.weightUnit ?: "kg"
     
     return if (pr.usesBodyweight && pr.bodyweightUsed != null && pr.externalWeight != null) {
-        // Bodyweight exercise: show breakdown
+        // Bodyweight exercise: show breakdown with decimal precision
         if (pr.externalWeight > 0) {
-            "BW(${pr.bodyweightUsed.roundToInt()}$weightUnit) + ${pr.externalWeight.roundToInt()}$weightUnit = ${pr.weight?.roundToInt()}$weightUnit"
+            "BW(${formatWeight(pr.bodyweightUsed)}$weightUnit) + ${formatWeight(pr.externalWeight)}$weightUnit = ${formatWeight(pr.weight)}$weightUnit"
         } else {
-            "BW(${pr.bodyweightUsed.roundToInt()}$weightUnit) = ${pr.weight?.roundToInt()}$weightUnit"
+            "BW(${formatWeight(pr.bodyweightUsed)}$weightUnit) = ${formatWeight(pr.weight)}$weightUnit"
         }
     } else {
         // Regular exercise: show total weight only
-        "${pr.weight?.roundToInt()}$weightUnit"
+        "${formatWeight(pr.weight)}$weightUnit"
+    }
+}
+
+// Helper function to format weight with appropriate decimal precision
+private fun formatWeight(weight: Double?): String {
+    return when {
+        weight == null -> "0"
+        weight % 1.0 == 0.0 -> weight.toInt().toString() // Show as integer if no decimal part
+        else -> String.format("%.1f", weight) // Show one decimal place
     }
 }
 

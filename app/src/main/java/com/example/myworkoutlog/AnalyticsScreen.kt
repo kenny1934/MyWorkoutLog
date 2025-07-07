@@ -737,15 +737,24 @@ private fun formatAnalyticsWeightDisplay(pr: PersonalRecord): String {
     val weightUnit = pr.weightUnit ?: "kg"
     
     return if (pr.usesBodyweight && pr.bodyweightUsed != null && pr.externalWeight != null) {
-        // Bodyweight exercise: show breakdown
+        // Bodyweight exercise: show breakdown with decimal precision
         if (pr.externalWeight > 0) {
-            "BW(${pr.bodyweightUsed.toInt()}$weightUnit) + ${pr.externalWeight.toInt()}$weightUnit = ${pr.weight?.toInt()}$weightUnit"
+            "BW(${formatAnalyticsWeight(pr.bodyweightUsed)}$weightUnit) + ${formatAnalyticsWeight(pr.externalWeight)}$weightUnit = ${formatAnalyticsWeight(pr.weight)}$weightUnit"
         } else {
-            "BW(${pr.bodyweightUsed.toInt()}$weightUnit) = ${pr.weight?.toInt()}$weightUnit"
+            "BW(${formatAnalyticsWeight(pr.bodyweightUsed)}$weightUnit) = ${formatAnalyticsWeight(pr.weight)}$weightUnit"
         }
     } else {
         // Regular exercise: show total weight only
-        "${pr.weight?.toInt()}$weightUnit"
+        "${formatAnalyticsWeight(pr.weight)}$weightUnit"
+    }
+}
+
+// Helper function to format weight with appropriate decimal precision for analytics
+private fun formatAnalyticsWeight(weight: Double?): String {
+    return when {
+        weight == null -> "0"
+        weight % 1.0 == 0.0 -> weight.toInt().toString() // Show as integer if no decimal part
+        else -> String.format("%.1f", weight) // Show one decimal place
     }
 }
 

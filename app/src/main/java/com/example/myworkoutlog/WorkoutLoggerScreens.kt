@@ -142,6 +142,14 @@ private fun WorkoutLoggerScreenContent(
     // Get the timer state from the ViewModel
     val timerIsRunning by viewModel.timerIsRunning.collectAsStateWithLifecycle()
     val timerValue by viewModel.timerValueSeconds.collectAsStateWithLifecycle()
+    
+    // Initialize bodyweight field from loaded workout data (for edit mode)
+    LaunchedEffect(activeWorkout?.bodyweight) {
+        val workout = activeWorkout
+        if (workout?.bodyweight != null && bodyweightText.isEmpty()) {
+            bodyweightText = workout.bodyweight.toString()
+        }
+    }
     val sessionElapsedTime by viewModel.sessionElapsedTime.collectAsStateWithLifecycle()
 
     // Handle system back gesture

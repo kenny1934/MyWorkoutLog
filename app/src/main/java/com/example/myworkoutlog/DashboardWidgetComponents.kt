@@ -547,7 +547,7 @@ fun SimpleBodyweightWidgetCard(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "${currentWeight.toInt()} $unit",
+                    text = "${formatDashboardWeightValue(currentWeight)} $unit",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -1002,5 +1002,13 @@ private fun getMuscleGroupIcon(muscleGroup: MuscleGroup): ImageVector {
         MuscleGroup.TRAPS -> Icons.Default.FitnessCenter
         MuscleGroup.LATS -> Icons.Default.FitnessCenter
         MuscleGroup.OTHER -> Icons.Default.FitnessCenter
+    }
+}
+
+// Helper function to format weight with appropriate decimal precision for dashboard widgets
+private fun formatDashboardWeightValue(weight: Double): String {
+    return when {
+        weight % 1.0 == 0.0 -> weight.toInt().toString() // Show as integer if no decimal part
+        else -> String.format("%.1f", weight) // Show one decimal place
     }
 }
