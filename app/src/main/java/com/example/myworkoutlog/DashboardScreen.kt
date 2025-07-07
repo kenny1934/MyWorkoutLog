@@ -52,6 +52,14 @@ private fun formatWeightValue(weight: Double): String {
     }
 }
 
+// Overloaded function for Float values
+private fun formatWeightValue(weight: Float): String {
+    return when {
+        weight % 1.0f == 0.0f -> weight.toInt().toString() // Show as integer if no decimal part
+        else -> String.format("%.1f", weight) // Show one decimal place
+    }
+}
+
 // Widget component definitions - must be defined before they're used
 
 @Composable

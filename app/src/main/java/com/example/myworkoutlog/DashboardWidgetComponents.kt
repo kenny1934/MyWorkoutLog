@@ -528,9 +528,6 @@ fun ActivityHeatmapGrid(
     }
 }
 
-// Simple bodyweight widget card
-@Composable
-
 // Workout Heatmap Grid Component
 @Composable
 fun WorkoutHeatmapGrid(
