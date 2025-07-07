@@ -530,48 +530,6 @@ fun ActivityHeatmapGrid(
 
 // Simple bodyweight widget card
 @Composable
-fun SimpleBodyweightWidgetCard(
-    currentWeight: Double?,
-    lastRecordedDate: String?,
-    unit: String,
-    modifier: Modifier = Modifier
-) {
-    DashboardWidgetCard(
-        title = "Current Weight",
-        icon = Icons.Default.MonitorWeight,
-        modifier = modifier
-    ) {
-        if (currentWeight != null) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "${formatDashboardWeightValue(currentWeight)} $unit",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                
-                lastRecordedDate?.let { date ->
-                    Text(
-                        text = "Last recorded: $date",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        } else {
-            Text(
-                text = "No bodyweight data",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
 
 // Workout Heatmap Grid Component
 @Composable
@@ -1005,10 +963,3 @@ private fun getMuscleGroupIcon(muscleGroup: MuscleGroup): ImageVector {
     }
 }
 
-// Helper function to format weight with appropriate decimal precision for dashboard widgets
-private fun formatDashboardWeightValue(weight: Double): String {
-    return when {
-        weight % 1.0 == 0.0 -> weight.toInt().toString() // Show as integer if no decimal part
-        else -> String.format("%.1f", weight) // Show one decimal place
-    }
-}

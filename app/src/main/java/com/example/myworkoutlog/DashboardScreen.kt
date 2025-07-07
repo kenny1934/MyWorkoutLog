@@ -44,6 +44,14 @@ import com.patrykandpatrick.vico.core.axis.AxisPosition
 import com.patrykandpatrick.vico.core.axis.formatter.AxisValueFormatter
 import java.time.LocalDate
 
+// Helper function to format weight with appropriate decimal precision
+private fun formatWeightValue(weight: Double): String {
+    return when {
+        weight % 1.0 == 0.0 -> weight.toInt().toString() // Show as integer if no decimal part
+        else -> String.format("%.1f", weight) // Show one decimal place
+    }
+}
+
 // Widget component definitions - must be defined before they're used
 
 @Composable
@@ -237,7 +245,7 @@ fun SimpleBodyweightWidgetCard(
             
             if (currentWeight != null) {
                 Text(
-                    text = "${currentWeight.toInt()} $unit",
+                    text = "${formatWeightValue(currentWeight)} $unit",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -510,7 +518,7 @@ fun SimpleBodyweightTrendWidgetCard(widget: DashboardWidget.BodyweightTrendWidge
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "${currentWeight?.toInt() ?: 0} kg",
+                            text = "${if (currentWeight != null) formatWeightValue(currentWeight) else "0"} kg",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
