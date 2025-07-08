@@ -411,6 +411,14 @@ class WidgetRepositorySimplified(
                     icon = Icons.Default.Refresh,
                     action = QuickActionType.START_NEXT_SESSION
                 ))
+                // Allow early completion of cycle
+                actions.add(QuickAction(
+                    id = "complete_cycle",
+                    title = "Complete Cycle",
+                    description = "End current cycle early and view results",
+                    icon = Icons.Default.CheckCircle,
+                    action = QuickActionType.COMPLETE_CYCLE
+                ))
             }
         } else {
             actions.add(QuickAction(
@@ -422,12 +430,21 @@ class WidgetRepositorySimplified(
             ))
         }
         
+        // Always available actions
         actions.add(QuickAction(
             id = "analytics",
             title = "View Analytics",
             description = "Check your progress",
             icon = Icons.Default.Info,
             action = QuickActionType.VIEW_ANALYTICS
+        ))
+        
+        actions.add(QuickAction(
+            id = "add_bodyweight",
+            title = "Add Bodyweight",
+            description = "Record your current weight",
+            icon = Icons.Default.Person,
+            action = QuickActionType.ADD_BODYWEIGHT
         ))
         
         return actions

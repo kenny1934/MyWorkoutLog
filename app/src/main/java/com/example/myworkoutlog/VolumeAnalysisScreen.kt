@@ -6,16 +6,19 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.util.Log
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
@@ -145,33 +148,51 @@ fun VolumeAnalysisScreen(
                     Text("Details", style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
+                    LazyColumn(
+                        modifier = Modifier.heightIn(max = 200.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Display muscle group breakdown with clickable navigation to Analytics
                         items(sortedVolumeList) { (muscleGroup, setCount) ->
-                            Row(
+                            Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { onNavigateToMuscleGroupAnalytics(muscleGroup.name) },
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { 
+                                        Log.d("VolumeAnalysis", "Muscle group clicked: ${muscleGroup.name}")
+                                        Log.d("VolumeAnalysis", "Navigating to analytics with muscle group: ${muscleGroup.name}")
+                                        onNavigateToMuscleGroupAnalytics(muscleGroup.name)
+                                    },
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                tonalElevation = 2.dp
                             ) {
-                                Text(
-                                    muscleGroup.name.replace("_", " ").lowercase()
-                                        .replaceFirstChar { it.titlecase() },
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
                                 Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 16.dp, horizontal = 16.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("$setCount sets", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                                    Icon(
-                                        imageVector = Icons.Default.Analytics,
-                                        contentDescription = "View ${muscleGroup.name} analytics",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(16.dp)
+                                    Text(
+                                        muscleGroup.name.replace("_", " ").lowercase()
+                                            .replaceFirstChar { it.titlecase() },
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium
                                     )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text("$setCount sets", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                        Icon(
+                                            imageVector = Icons.Default.Analytics,
+                                            contentDescription = "View ${muscleGroup.name} analytics",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
                                 }
                             }
-                            Spacer(modifier = Modifier.height(4.dp))
                         }
                     }
                 }

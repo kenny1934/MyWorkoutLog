@@ -27,6 +27,12 @@ class AnalyticsViewModel(
     private val _selectedExerciseId = MutableStateFlow<String?>(null)
     val selectedExerciseId: StateFlow<String?> = _selectedExerciseId
 
+    private val _selectedCycleId = MutableStateFlow<String?>(null)
+    val selectedCycleId: StateFlow<String?> = _selectedCycleId
+
+    private val _selectedMuscleGroup = MutableStateFlow<String?>(null)
+    val selectedMuscleGroup: StateFlow<String?> = _selectedMuscleGroup
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
@@ -91,6 +97,14 @@ class AnalyticsViewModel(
 
     fun selectExercise(exerciseId: String?) {
         _selectedExerciseId.value = exerciseId
+    }
+    
+    fun selectCycle(cycleId: String?) {
+        _selectedCycleId.value = cycleId
+    }
+    
+    fun selectMuscleGroup(muscleGroup: String?) {
+        _selectedMuscleGroup.value = muscleGroup
     }
 
     fun refreshAnalytics() {

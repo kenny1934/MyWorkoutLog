@@ -344,10 +344,36 @@ class DashboardViewModel(
     }
     
     fun toggleWidget(widgetId: String, isVisible: Boolean) {
-        // TODO: Implement widget visibility toggle
         viewModelScope.launch {
-            // Save preference and refresh
-            refreshDashboard()
+            val currentState = dashboardState.value
+            val currentConfigs = _dashboardPreferences.value.widgetConfigs.toMutableList()
+            val configIndex = currentConfigs.indexOfFirst { it.widgetType == widgetId }
+            
+            if (configIndex >= 0) {
+                // Update existing config with explicit visibility
+                currentConfigs[configIndex] = currentConfigs[configIndex].copy(
+                    isEnabled = isVisible
+                )
+            } else {
+                // Create configs for all current widgets if they don't exist
+                val allWidgetConfigs = currentState.widgets.mapIndexed { index, widget ->
+                    WidgetConfig(
+                        widgetType = widget.id,
+                        isEnabled = if (widget.id == widgetId) isVisible else true,
+                        position = index
+                    )
+                }
+                currentConfigs.clear()
+                currentConfigs.addAll(allWidgetConfigs)
+            }
+            
+            // Update preferences immediately
+            _dashboardPreferences.value = _dashboardPreferences.value.copy(
+                widgetConfigs = currentConfigs
+            )
+            
+            // Save preferences
+            saveDashboardPreferences()
         }
     }
     

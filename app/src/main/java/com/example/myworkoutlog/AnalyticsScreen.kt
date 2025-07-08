@@ -46,6 +46,8 @@ fun AnalyticsScreen(
 ) {
     val selectedTimeRange by viewModel.selectedTimeRange.collectAsStateWithLifecycle()
     val selectedExerciseId by viewModel.selectedExerciseId.collectAsStateWithLifecycle()
+    val selectedCycleId by viewModel.selectedCycleId.collectAsStateWithLifecycle()
+    val selectedMuscleGroup by viewModel.selectedMuscleGroup.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     
     val volumeData by viewModel.volumeProgressionData.collectAsStateWithLifecycle()
@@ -80,13 +82,13 @@ fun AnalyticsScreen(
     // Handle other pre-selected parameters
     LaunchedEffect(preSelectedCycleId) {
         if (preSelectedCycleId != null) {
-            // TODO: Auto-select cycle when cycle selection is implemented
+            viewModel.selectCycle(preSelectedCycleId)
         }
     }
     
     LaunchedEffect(preSelectedMuscleGroup) {
         if (preSelectedMuscleGroup != null) {
-            // TODO: Auto-select muscle group filter when implemented
+            viewModel.selectMuscleGroup(preSelectedMuscleGroup)
         }
     }
     val tabs = listOf("Overview", "Volume", "Performance", "PRs", "Comparison")
