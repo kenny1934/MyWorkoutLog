@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -189,8 +190,9 @@ class DashboardViewModel(
             }
             
             QuickActionType.ADD_BODYWEIGHT -> {
-                // Navigate to analytics with Volume tab focused on bodyweight tracking
-                onNavigate(Screen.Analytics.createRouteWithTab("Volume"))
+                // Navigate to workout logger for bodyweight entry
+                // This will open the workout logger where users can enter bodyweight at the top
+                onNavigate(Screen.WorkoutLogger.route)
             }
             
             QuickActionType.VIEW_HISTORY -> {
@@ -199,16 +201,32 @@ class DashboardViewModel(
             
             QuickActionType.COMPLETE_CYCLE -> {
                 // End the current cycle and navigate to analytics with cycle comparison
-                viewModelScope.launch(Dispatchers.IO) {
-                    // Get the current cycle ID before clearing
-                    val currentCycle = getCurrentCycle()
-                    val currentCycleId = currentCycle?.cycleUuid
-                    activeCycleDao.clear()
-                    // Navigate to cycle comparison view with the just-completed cycle
-                    currentCycleId?.let { cycleId ->
-                        onNavigate(Screen.Analytics.createRouteWithCycle(cycleId))
-                    } ?: run {
-                        onNavigate(Screen.Analytics.createRouteWithTab("Comparison"))
+                viewModelScope.launch {
+                    try {
+                        // Get the current cycle ID before clearing
+                        val currentCycle = getCurrentCycle()
+                        val currentCycleId = currentCycle?.cycleUuid
+                        
+                        // Clear the cycle on IO dispatcher
+                        withContext(Dispatchers.IO) {
+                            activeCycleDao.clear()
+                        }
+                        
+                        // Navigate on main thread with proper error handling
+                        try {
+                            currentCycleId?.let { cycleId ->
+                                onNavigate(Screen.Analytics.createRouteWithCycle(cycleId))
+                            } ?: run {
+                                onNavigate(Screen.Analytics.createRouteWithTab("Comparison"))
+                            }
+                        } catch (navError: Exception) {
+                            // Fallback navigation if specific route fails
+                            onNavigate(Screen.Analytics.defaultRoute)
+                        }
+                    } catch (e: Exception) {
+                        // Log error but don't crash - just navigate to analytics
+                        println("Error completing cycle: ${e.message}")
+                        onNavigate(Screen.Analytics.defaultRoute)
                     }
                 }
             }

@@ -3,6 +3,7 @@
 package com.example.myworkoutlog
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -408,7 +409,17 @@ fun AppNavHost(
             VolumeAnalysisScreen(
                 viewModel = volumeViewModel,
                 onNavigateToMuscleGroupAnalytics = { muscleGroup ->
-                    navController.navigate(Screen.Analytics.createRouteWithMuscleGroup(muscleGroup))
+                    Log.d("MainActivity", "=== NAVIGATION CALLBACK DEBUG ===")
+                    Log.d("MainActivity", "Received muscle group for navigation: $muscleGroup")
+                    val route = Screen.Analytics.createRouteWithMuscleGroup(muscleGroup)
+                    Log.d("MainActivity", "Generated route: $route")
+                    try {
+                        navController.navigate(route)
+                        Log.d("MainActivity", "Navigation executed successfully")
+                    } catch (e: Exception) {
+                        Log.e("MainActivity", "Navigation failed: ${e.message}", e)
+                    }
+                    Log.d("MainActivity", "=== END NAVIGATION CALLBACK DEBUG ===")
                 }
             )
         }

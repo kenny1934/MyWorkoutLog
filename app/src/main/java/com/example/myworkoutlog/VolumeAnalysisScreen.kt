@@ -159,9 +159,18 @@ fun VolumeAnalysisScreen(
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(8.dp))
                                     .clickable { 
+                                        Log.d("VolumeAnalysis", "=== MUSCLE GROUP CLICK DEBUG ===")
                                         Log.d("VolumeAnalysis", "Muscle group clicked: ${muscleGroup.name}")
-                                        Log.d("VolumeAnalysis", "Navigating to analytics with muscle group: ${muscleGroup.name}")
-                                        onNavigateToMuscleGroupAnalytics(muscleGroup.name)
+                                        Log.d("VolumeAnalysis", "Muscle group type: ${muscleGroup::class.simpleName}")
+                                        Log.d("VolumeAnalysis", "onNavigateToMuscleGroupAnalytics function: $onNavigateToMuscleGroupAnalytics")
+                                        try {
+                                            Log.d("VolumeAnalysis", "Calling navigation with: ${muscleGroup.name}")
+                                            onNavigateToMuscleGroupAnalytics(muscleGroup.name)
+                                            Log.d("VolumeAnalysis", "Navigation call completed successfully")
+                                        } catch (e: Exception) {
+                                            Log.e("VolumeAnalysis", "Navigation failed: ${e.message}", e)
+                                        }
+                                        Log.d("VolumeAnalysis", "=== END MUSCLE GROUP CLICK DEBUG ===")
                                     },
                                 color = MaterialTheme.colorScheme.surfaceVariant,
                                 tonalElevation = 2.dp

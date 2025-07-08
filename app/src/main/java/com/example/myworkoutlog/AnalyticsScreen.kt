@@ -87,9 +87,16 @@ fun AnalyticsScreen(
     }
     
     LaunchedEffect(preSelectedMuscleGroup) {
+        android.util.Log.d("AnalyticsScreen", "=== MUSCLE GROUP PARAMETER DEBUG ===")
+        android.util.Log.d("AnalyticsScreen", "preSelectedMuscleGroup: $preSelectedMuscleGroup")
         if (preSelectedMuscleGroup != null) {
+            android.util.Log.d("AnalyticsScreen", "Calling viewModel.selectMuscleGroup with: $preSelectedMuscleGroup")
             viewModel.selectMuscleGroup(preSelectedMuscleGroup)
+            android.util.Log.d("AnalyticsScreen", "selectMuscleGroup call completed")
+        } else {
+            android.util.Log.d("AnalyticsScreen", "preSelectedMuscleGroup is null, skipping selection")
         }
+        android.util.Log.d("AnalyticsScreen", "=== END MUSCLE GROUP PARAMETER DEBUG ===")
     }
     val tabs = listOf("Overview", "Volume", "Performance", "PRs", "Comparison")
 

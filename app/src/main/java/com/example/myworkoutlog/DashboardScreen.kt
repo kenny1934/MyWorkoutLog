@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -1806,14 +1807,48 @@ fun EnhancedDashboardScreen(
                             title = "Quick Actions",
                             icon = Icons.Default.FlashOn
                         ) {
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                items(dashboardState.quickActions) { action ->
-                                    EnhancedQuickActionButton(
-                                        action = action,
-                                        onClick = { selectedAction -> dashboardViewModel.executeQuickAction(selectedAction) { route -> navController.navigate(route) } }
-                                    )
+                            Column {
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 4.dp)
+                                ) {
+                                    items(dashboardState.quickActions) { action ->
+                                        EnhancedQuickActionButton(
+                                            action = action,
+                                            onClick = { selectedAction -> dashboardViewModel.executeQuickAction(selectedAction) { route -> navController.navigate(route) } }
+                                        )
+                                    }
+                                }
+                                
+                                // Scroll indicator when there are more than 3 actions
+                                if (dashboardState.quickActions.size > 3) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        repeat(3) { index ->
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(4.dp)
+                                                    .background(
+                                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                                        CircleShape
+                                                    )
+                                            )
+                                            if (index < 2) {
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.ArrowForward,
+                                            contentDescription = "Swipe for more actions",
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        )
+                                    }
                                 }
                             }
                         }
