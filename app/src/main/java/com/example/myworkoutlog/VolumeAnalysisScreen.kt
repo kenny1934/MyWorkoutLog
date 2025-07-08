@@ -3,6 +3,8 @@
 package com.example.myworkoutlog
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -157,8 +159,10 @@ fun VolumeAnalysisScreen(
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { 
+                                    .clickable(
+                                        indication = rememberRipple(),
+                                        interactionSource = remember { MutableInteractionSource() }
+                                    ) { 
                                         Log.d("VolumeAnalysis", "=== MUSCLE GROUP CLICK DEBUG ===")
                                         Log.d("VolumeAnalysis", "Muscle group clicked: ${muscleGroup.name}")
                                         Log.d("VolumeAnalysis", "Muscle group type: ${muscleGroup::class.simpleName}")
@@ -171,7 +175,8 @@ fun VolumeAnalysisScreen(
                                             Log.e("VolumeAnalysis", "Navigation failed: ${e.message}", e)
                                         }
                                         Log.d("VolumeAnalysis", "=== END MUSCLE GROUP CLICK DEBUG ===")
-                                    },
+                                    }
+                                    .clip(RoundedCornerShape(8.dp)),
                                 color = MaterialTheme.colorScheme.surfaceVariant,
                                 tonalElevation = 2.dp
                             ) {

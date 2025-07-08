@@ -428,6 +428,16 @@ fun AppNavHost(
             val tab = backStackEntry.arguments?.getString("tab")
             val cycleId = backStackEntry.arguments?.getString("cycleId")
             val muscleGroup = backStackEntry.arguments?.getString("muscleGroup")
+            
+            Log.d("MainActivity", "=== ANALYTICS ROUTE PARAMETER DEBUG ===")
+            Log.d("MainActivity", "Route: ${backStackEntry.destination.route}")
+            Log.d("MainActivity", "All arguments: ${backStackEntry.arguments}")
+            Log.d("MainActivity", "exerciseId: $exerciseId")
+            Log.d("MainActivity", "tab: $tab")
+            Log.d("MainActivity", "cycleId: $cycleId")
+            Log.d("MainActivity", "muscleGroup: $muscleGroup")
+            Log.d("MainActivity", "=== END ANALYTICS ROUTE PARAMETER DEBUG ===")
+            
             AnalyticsScreen(
                 viewModel = analyticsViewModel,
                 preSelectedExerciseId = exerciseId,
