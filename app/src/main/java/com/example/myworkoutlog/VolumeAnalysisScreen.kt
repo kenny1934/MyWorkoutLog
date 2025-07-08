@@ -4,7 +4,6 @@ package com.example.myworkoutlog
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -160,8 +159,8 @@ fun VolumeAnalysisScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable(
-                                        indication = rememberRipple(),
-                                        interactionSource = remember { MutableInteractionSource() }
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
                                     ) { 
                                         Log.d("VolumeAnalysis", "=== MUSCLE GROUP CLICK DEBUG ===")
                                         Log.d("VolumeAnalysis", "Muscle group clicked: ${muscleGroup.name}")
