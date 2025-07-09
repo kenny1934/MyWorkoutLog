@@ -98,7 +98,7 @@ fun EnhancedInteractivePerformanceChart(
                     FilterChip(
                         onClick = { 
                             if (enableDrillDown) {
-                                navController.navigate(Screen.Analytics.createRoute(gain.exerciseId))
+                                navController.navigate(Screen.Analytics.createRouteWithTab("Performance", gain.exerciseId))
                             }
                         },
                         label = { 
@@ -132,7 +132,7 @@ fun EnhancedInteractivePerformanceChart(
                         .fillMaxWidth()
                         .clickable {
                             if (enableDrillDown) {
-                                navController.navigate(Screen.Analytics.createRoute(gain.exerciseId))
+                                navController.navigate(Screen.Analytics.createRouteWithTab("Performance", gain.exerciseId))
                             }
                         },
                     colors = CardDefaults.cardColors(

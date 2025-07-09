@@ -371,7 +371,7 @@ fun AppNavHost(
                     navController.navigate(Screen.HistoryDetail.createRoute(workoutId))
                 },
                 onNavigateToExerciseAnalytics = { exerciseId ->
-                    navController.navigate(Screen.Analytics.createRoute(exerciseId))
+                    navController.navigate(Screen.Analytics.createRouteWithTab("Performance", exerciseId))
                 }
             )
         }

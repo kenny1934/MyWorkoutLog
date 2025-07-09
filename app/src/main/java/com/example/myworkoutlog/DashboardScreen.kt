@@ -612,7 +612,7 @@ fun SimplePerformanceTrendWidgetCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                navController.navigate(Screen.Analytics.createRoute(topExercise.exerciseId))
+                                navController.navigate(Screen.Analytics.createRouteWithTab("Performance", topExercise.exerciseId))
                             },
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -1093,7 +1093,7 @@ fun ExercisePerformanceCard(
     Card(
         modifier = modifier
             .clickable {
-                navController.navigate(Screen.Analytics.createRoute(exercise.exerciseId))
+                navController.navigate(Screen.Analytics.createRouteWithTab("Performance", exercise.exerciseId))
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         colors = CardDefaults.cardColors(
