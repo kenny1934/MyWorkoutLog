@@ -18,10 +18,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.myworkoutlog.ui.theme.MyWorkoutLogTheme
 
 class MainActivity : ComponentActivity() {
@@ -423,7 +425,31 @@ fun AppNavHost(
                 }
             )
         }
-        composable(Screen.Analytics.route) { backStackEntry ->
+        composable(
+            route = "analytics?exerciseId={exerciseId}&tab={tab}&cycleId={cycleId}&muscleGroup={muscleGroup}",
+            arguments = listOf(
+                navArgument("exerciseId") { 
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("tab") { 
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("cycleId") { 
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("muscleGroup") { 
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
             val exerciseId = backStackEntry.arguments?.getString("exerciseId")
             val tab = backStackEntry.arguments?.getString("tab")
             val cycleId = backStackEntry.arguments?.getString("cycleId")
@@ -444,6 +470,18 @@ fun AppNavHost(
                 preSelectedTab = tab,
                 preSelectedCycleId = cycleId,
                 preSelectedMuscleGroup = muscleGroup
+            )
+        }
+        
+        // Default Analytics route without parameters
+        composable("analytics") { backStackEntry ->
+            Log.d("MainActivity", "=== DEFAULT ANALYTICS ROUTE ===")
+            AnalyticsScreen(
+                viewModel = analyticsViewModel,
+                preSelectedExerciseId = null,
+                preSelectedTab = null,
+                preSelectedCycleId = null,
+                preSelectedMuscleGroup = null
             )
         }
     }

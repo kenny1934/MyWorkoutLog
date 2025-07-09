@@ -49,7 +49,7 @@ sealed class Screen(val route: String) {
 
     data object VolumeAnalysis : Screen("volume_analysis")
     
-    data object Analytics : Screen("analytics?exerciseId={exerciseId}&tab={tab}&cycleId={cycleId}&muscleGroup={muscleGroup}") {
+    data object Analytics : Screen("analytics") {
         // Route with specific exercise pre-selected
         fun createRoute(exerciseId: String) = "analytics?exerciseId=$exerciseId"
         
