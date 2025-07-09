@@ -42,8 +42,13 @@ class AnalyticsViewModel(
         _selectedExerciseId
     ) { timeRange, exerciseId ->
         val (startDate, endDate) = getDateRangeForTimeRange(timeRange)
+        android.util.Log.d("AnalyticsViewModel", "=== VOLUME DATA DEBUG ===")
+        android.util.Log.d("AnalyticsViewModel", "TimeRange: $timeRange")
+        android.util.Log.d("AnalyticsViewModel", "ExerciseId: $exerciseId")
+        android.util.Log.d("AnalyticsViewModel", "Date range: $startDate to $endDate")
         Pair(startDate to endDate, exerciseId)
     }.flatMapLatest { (dateRange, exerciseId) ->
+        android.util.Log.d("AnalyticsViewModel", "Calling getVolumeProgressionData with: ${dateRange.first} to ${dateRange.second}, exerciseId: $exerciseId")
         analyticsRepository.getVolumeProgressionData(dateRange.first, dateRange.second, exerciseId)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

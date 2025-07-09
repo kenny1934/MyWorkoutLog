@@ -51,6 +51,16 @@ fun AnalyticsScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     
     val volumeData by viewModel.volumeProgressionData.collectAsStateWithLifecycle()
+    
+    LaunchedEffect(volumeData) {
+        android.util.Log.d("AnalyticsScreen", "=== VOLUME DATA RECEIVED DEBUG ===")
+        android.util.Log.d("AnalyticsScreen", "Volume data size: ${volumeData.size}")
+        volumeData.forEach { point ->
+            android.util.Log.d("AnalyticsScreen", "VolumeDataPoint: ${point.date} - ${point.totalVolume}kg - ${point.workoutName}")
+        }
+        android.util.Log.d("AnalyticsScreen", "Total volume sum: ${volumeData.sumOf { it.totalVolume }}")
+        android.util.Log.d("AnalyticsScreen", "=== END VOLUME DATA RECEIVED DEBUG ===")
+    }
     val muscleGroupDistribution by viewModel.muscleGroupDistribution.collectAsStateWithLifecycle()
     val exercisePerformanceTrend by viewModel.exercisePerformanceTrend.collectAsStateWithLifecycle()
     val personalRecordProgress by viewModel.personalRecordProgress.collectAsStateWithLifecycle()
