@@ -51,19 +51,19 @@ sealed class Screen(val route: String) {
     
     data object Analytics : Screen("analytics") {
         // Route with specific exercise pre-selected
-        fun createRoute(exerciseId: String) = "analytics?exerciseId=$exerciseId"
+        fun createRoute(exerciseId: String) = "analytics?exerciseId=$exerciseId&tab=&cycleId=&muscleGroup="
         
         // Route with specific tab pre-selected
-        fun createRouteWithTab(tab: String) = "analytics?tab=$tab"
+        fun createRouteWithTab(tab: String) = "analytics?exerciseId=&tab=$tab&cycleId=&muscleGroup="
         
         // Route with exercise and tab pre-selected
-        fun createRouteWithTab(tab: String, exerciseId: String) = "analytics?tab=$tab&exerciseId=$exerciseId"
+        fun createRouteWithTab(tab: String, exerciseId: String) = "analytics?exerciseId=$exerciseId&tab=$tab&cycleId=&muscleGroup="
         
         // Route with cycle pre-selected (for cycle analytics)
-        fun createRouteWithCycle(cycleId: String) = "analytics?tab=Comparison&cycleId=$cycleId"
+        fun createRouteWithCycle(cycleId: String) = "analytics?exerciseId=&tab=Comparison&cycleId=$cycleId&muscleGroup="
         
         // Route with muscle group pre-selected
-        fun createRouteWithMuscleGroup(muscleGroup: String) = "analytics?tab=Volume&muscleGroup=$muscleGroup"
+        fun createRouteWithMuscleGroup(muscleGroup: String) = "analytics?exerciseId=&tab=Volume&cycleId=&muscleGroup=$muscleGroup"
         
         // Default route for general analytics
         const val defaultRoute = "analytics"

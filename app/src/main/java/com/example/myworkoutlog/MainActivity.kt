@@ -415,6 +415,8 @@ fun AppNavHost(
                     Log.d("MainActivity", "Received muscle group for navigation: $muscleGroup")
                     val route = Screen.Analytics.createRouteWithMuscleGroup(muscleGroup)
                     Log.d("MainActivity", "Generated route: $route")
+                    Log.d("MainActivity", "Expected route pattern: analytics?exerciseId={exerciseId}&tab={tab}&cycleId={cycleId}&muscleGroup={muscleGroup}")
+                    Log.d("MainActivity", "Should match parameterized route: ${route.contains("exerciseId=") && route.contains("tab=") && route.contains("cycleId=") && route.contains("muscleGroup=")}")
                     try {
                         navController.navigate(route)
                         Log.d("MainActivity", "Navigation executed successfully")
