@@ -26,19 +26,11 @@ class AnalyticsRepository(
         endDate: String,
         exerciseId: String? = null
     ): Flow<List<VolumeDataPoint>> {
-        android.util.Log.d("AnalyticsRepository", "=== VOLUME PROGRESSION DATA DEBUG ===")
-        android.util.Log.d("AnalyticsRepository", "StartDate: $startDate, EndDate: $endDate, ExerciseId: $exerciseId")
-        
         return if (exerciseId != null) {
             loggedWorkoutDao.getWorkoutsWithExerciseInDateRange(exerciseId, startDate, endDate)
         } else {
             loggedWorkoutDao.getWorkoutsByDateRange(startDate, endDate)
         }.map { workouts ->
-            android.util.Log.d("AnalyticsRepository", "Found ${workouts.size} workouts in date range")
-            workouts.forEach { workout ->
-                android.util.Log.d("AnalyticsRepository", "Workout: ${workout.name} on ${workout.date}")
-            }
-            
             workouts.mapNotNull { workout ->
                 try {
                     val totalVolume = if (exerciseId != null) {
@@ -46,8 +38,6 @@ class AnalyticsRepository(
                     } else {
                         calculateTotalWorkoutVolume(workout)
                     }
-                    
-                    android.util.Log.d("AnalyticsRepository", "Workout ${workout.name}: totalVolume = $totalVolume")
                     
                     VolumeDataPoint(
                         date = workout.date,
@@ -57,15 +47,8 @@ class AnalyticsRepository(
                     )
                 } catch (e: Exception) {
                     // Skip workouts that cause errors
-                    android.util.Log.e("AnalyticsRepository", "Error calculating volume for workout ${workout.name}: ${e.message}")
                     null
                 }
-            }.also { volumeDataPoints ->
-                android.util.Log.d("AnalyticsRepository", "Final volume data points: ${volumeDataPoints.size}")
-                volumeDataPoints.forEach { point ->
-                    android.util.Log.d("AnalyticsRepository", "VolumeDataPoint: ${point.date} - ${point.totalVolume}kg")
-                }
-                android.util.Log.d("AnalyticsRepository", "=== END VOLUME PROGRESSION DATA DEBUG ===")
             }
         }
     }

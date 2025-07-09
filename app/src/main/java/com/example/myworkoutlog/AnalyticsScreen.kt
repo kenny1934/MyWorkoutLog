@@ -51,16 +51,6 @@ fun AnalyticsScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     
     val volumeData by viewModel.volumeProgressionData.collectAsStateWithLifecycle()
-    
-    LaunchedEffect(volumeData) {
-        android.util.Log.d("AnalyticsScreen", "=== VOLUME DATA RECEIVED DEBUG ===")
-        android.util.Log.d("AnalyticsScreen", "Volume data size: ${volumeData.size}")
-        volumeData.forEach { point ->
-            android.util.Log.d("AnalyticsScreen", "VolumeDataPoint: ${point.date} - ${point.totalVolume}kg - ${point.workoutName}")
-        }
-        android.util.Log.d("AnalyticsScreen", "Total volume sum: ${volumeData.sumOf { it.totalVolume }}")
-        android.util.Log.d("AnalyticsScreen", "=== END VOLUME DATA RECEIVED DEBUG ===")
-    }
     val muscleGroupDistribution by viewModel.muscleGroupDistribution.collectAsStateWithLifecycle()
     val exercisePerformanceTrend by viewModel.exercisePerformanceTrend.collectAsStateWithLifecycle()
     val personalRecordProgress by viewModel.personalRecordProgress.collectAsStateWithLifecycle()
@@ -131,6 +121,52 @@ fun AnalyticsScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        // Show exercise filter indicator if one is selected
+        selectedExerciseId?.let { exerciseId ->
+            val selectedExercise = availableExercises.find { it.id == exerciseId }
+            selectedExercise?.let { exercise ->
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FilterList,
+                                contentDescription = "Exercise filter active",
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Filtered by: ${exercise.name}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                        
+                        TextButton(
+                            onClick = { viewModel.clearSelections() }
+                        ) {
+                            Text("Clear Filter")
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
 
         // Time Range Selector
         TimeRangeSelector(

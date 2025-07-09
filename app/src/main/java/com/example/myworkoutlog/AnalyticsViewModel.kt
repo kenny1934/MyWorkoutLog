@@ -42,13 +42,8 @@ class AnalyticsViewModel(
         _selectedExerciseId
     ) { timeRange, exerciseId ->
         val (startDate, endDate) = getDateRangeForTimeRange(timeRange)
-        android.util.Log.d("AnalyticsViewModel", "=== VOLUME DATA DEBUG ===")
-        android.util.Log.d("AnalyticsViewModel", "TimeRange: $timeRange")
-        android.util.Log.d("AnalyticsViewModel", "ExerciseId: $exerciseId")
-        android.util.Log.d("AnalyticsViewModel", "Date range: $startDate to $endDate")
         Pair(startDate to endDate, exerciseId)
     }.flatMapLatest { (dateRange, exerciseId) ->
-        android.util.Log.d("AnalyticsViewModel", "Calling getVolumeProgressionData with: ${dateRange.first} to ${dateRange.second}, exerciseId: $exerciseId")
         analyticsRepository.getVolumeProgressionData(dateRange.first, dateRange.second, exerciseId)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -116,13 +111,22 @@ class AnalyticsViewModel(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // Force refresh by emitting current values
+                // Reset all selections and force refresh
+                _selectedExerciseId.value = null
+                _selectedCycleId.value = null  
+                _selectedMuscleGroup.value = null
+                // Keep current time range but force refresh
                 _selectedTimeRange.value = _selectedTimeRange.value
-                _selectedExerciseId.value = _selectedExerciseId.value
             } finally {
                 _isLoading.value = false
             }
         }
+    }
+    
+    fun clearSelections() {
+        _selectedExerciseId.value = null
+        _selectedCycleId.value = null
+        _selectedMuscleGroup.value = null
     }
 
     // --- Helper Functions ---
