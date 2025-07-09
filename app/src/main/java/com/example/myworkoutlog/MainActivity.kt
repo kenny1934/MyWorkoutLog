@@ -411,19 +411,9 @@ fun AppNavHost(
             VolumeAnalysisScreen(
                 viewModel = volumeViewModel,
                 onNavigateToMuscleGroupAnalytics = { muscleGroup ->
-                    Log.d("MainActivity", "=== NAVIGATION CALLBACK DEBUG ===")
-                    Log.d("MainActivity", "Received muscle group for navigation: $muscleGroup")
+                    Log.d("MainActivity", "Navigating to muscle group analytics: $muscleGroup")
                     val route = Screen.Analytics.createRouteWithMuscleGroup(muscleGroup)
-                    Log.d("MainActivity", "Generated route: $route")
-                    Log.d("MainActivity", "Expected route pattern: analytics?exerciseId={exerciseId}&tab={tab}&cycleId={cycleId}&muscleGroup={muscleGroup}")
-                    Log.d("MainActivity", "Should match parameterized route: ${route.contains("exerciseId=") && route.contains("tab=") && route.contains("cycleId=") && route.contains("muscleGroup=")}")
-                    try {
-                        navController.navigate(route)
-                        Log.d("MainActivity", "Navigation executed successfully")
-                    } catch (e: Exception) {
-                        Log.e("MainActivity", "Navigation failed: ${e.message}", e)
-                    }
-                    Log.d("MainActivity", "=== END NAVIGATION CALLBACK DEBUG ===")
+                    navController.navigate(route)
                 }
             )
         }
@@ -457,14 +447,9 @@ fun AppNavHost(
             val cycleId = backStackEntry.arguments?.getString("cycleId")
             val muscleGroup = backStackEntry.arguments?.getString("muscleGroup")
             
-            Log.d("MainActivity", "=== ANALYTICS ROUTE PARAMETER DEBUG ===")
-            Log.d("MainActivity", "Route: ${backStackEntry.destination.route}")
-            Log.d("MainActivity", "All arguments: ${backStackEntry.arguments}")
-            Log.d("MainActivity", "exerciseId: $exerciseId")
-            Log.d("MainActivity", "tab: $tab")
-            Log.d("MainActivity", "cycleId: $cycleId")
-            Log.d("MainActivity", "muscleGroup: $muscleGroup")
-            Log.d("MainActivity", "=== END ANALYTICS ROUTE PARAMETER DEBUG ===")
+            if (muscleGroup != null) {
+                Log.d("MainActivity", "Analytics opened with muscle group filter: $muscleGroup")
+            }
             
             AnalyticsScreen(
                 viewModel = analyticsViewModel,

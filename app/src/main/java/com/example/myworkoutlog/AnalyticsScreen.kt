@@ -87,16 +87,10 @@ fun AnalyticsScreen(
     }
     
     LaunchedEffect(preSelectedMuscleGroup) {
-        android.util.Log.d("AnalyticsScreen", "=== MUSCLE GROUP PARAMETER DEBUG ===")
-        android.util.Log.d("AnalyticsScreen", "preSelectedMuscleGroup: $preSelectedMuscleGroup")
         if (preSelectedMuscleGroup != null) {
-            android.util.Log.d("AnalyticsScreen", "Calling viewModel.selectMuscleGroup with: $preSelectedMuscleGroup")
+            android.util.Log.d("AnalyticsScreen", "Auto-selecting muscle group: $preSelectedMuscleGroup")
             viewModel.selectMuscleGroup(preSelectedMuscleGroup)
-            android.util.Log.d("AnalyticsScreen", "selectMuscleGroup call completed")
-        } else {
-            android.util.Log.d("AnalyticsScreen", "preSelectedMuscleGroup is null, skipping selection")
         }
-        android.util.Log.d("AnalyticsScreen", "=== END MUSCLE GROUP PARAMETER DEBUG ===")
     }
     val tabs = listOf("Overview", "Volume", "Performance", "PRs", "Comparison")
 
@@ -158,7 +152,8 @@ fun AnalyticsScreen(
             )
             1 -> VolumeTab(
                 volumeData = volumeData,
-                muscleGroupDistribution = muscleGroupDistribution
+                muscleGroupDistribution = muscleGroupDistribution,
+                selectedMuscleGroup = selectedMuscleGroup
             )
             2 -> PerformanceTab(
                 availableExercises = availableExercises,
@@ -253,21 +248,80 @@ private fun OverviewTab(
 @Composable
 private fun VolumeTab(
     volumeData: List<VolumeDataPoint>,
-    muscleGroupDistribution: List<MuscleGroupVolume>
+    muscleGroupDistribution: List<MuscleGroupVolume>,
+    selectedMuscleGroup: String? = null
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Show muscle group filter indicator if one is selected
+        selectedMuscleGroup?.let { muscleGroup ->
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FilterList,
+                            contentDescription = "Filtered by muscle group",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Filtered by: ${muscleGroup.replace("_", " ").lowercase().replaceFirstChar { it.titlecase() }}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+            }
+        }
+        
         item {
             VolumeProgressionChart(volumeData = volumeData)
         }
         
         item {
-            MuscleGroupDistributionChart(muscleGroupDistribution = muscleGroupDistribution)
+            MuscleGroupDistributionChart(
+                muscleGroupDistribution = if (selectedMuscleGroup != null) {
+                    // Highlight the selected muscle group
+                    muscleGroupDistribution.map { volume ->
+                        if (volume.muscleGroup.name.equals(selectedMuscleGroup, ignoreCase = true)) {
+                            volume // Keep selected muscle group prominent
+                        } else {
+                            volume
+                        }
+                    }
+                } else {
+                    muscleGroupDistribution
+                }
+            )
         }
         
         item {
-            MuscleGroupDetailsList(muscleGroupDistribution = muscleGroupDistribution)
+            MuscleGroupDetailsList(
+                muscleGroupDistribution = if (selectedMuscleGroup != null) {
+                    // Filter to show selected muscle group first, then others
+                    val selected = muscleGroupDistribution.filter { 
+                        it.muscleGroup.name.equals(selectedMuscleGroup, ignoreCase = true) 
+                    }
+                    val others = muscleGroupDistribution.filter { 
+                        !it.muscleGroup.name.equals(selectedMuscleGroup, ignoreCase = true) 
+                    }
+                    selected + others
+                } else {
+                    muscleGroupDistribution
+                }
+            )
         }
     }
 }
