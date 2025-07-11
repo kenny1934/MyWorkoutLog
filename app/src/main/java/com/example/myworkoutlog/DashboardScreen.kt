@@ -1654,6 +1654,10 @@ fun EnhancedDashboardScreen(
     // Setup simple LazyColumn state (non-widget items)
     val lazyListState = rememberLazyListState()
     
+    // Confirmation dialog state
+    var showCompleteCycleConfirmation by remember { mutableStateOf(false) }
+    var pendingCompleteCycleAction by remember { mutableStateOf<QuickAction?>(null) }
+    
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = { dashboardViewModel.onPullToRefresh() },
@@ -1815,7 +1819,16 @@ fun EnhancedDashboardScreen(
                                     items(dashboardState.quickActions) { action ->
                                         EnhancedQuickActionButton(
                                             action = action,
-                                            onClick = { selectedAction -> dashboardViewModel.executeQuickAction(selectedAction) { route -> navController.navigate(route) } }
+                                            onClick = { selectedAction -> 
+                                                if (selectedAction.action == QuickActionType.COMPLETE_CYCLE) {
+                                                    // Show confirmation dialog for cycle completion
+                                                    pendingCompleteCycleAction = selectedAction
+                                                    showCompleteCycleConfirmation = true
+                                                } else {
+                                                    // Execute other actions directly
+                                                    dashboardViewModel.executeQuickAction(selectedAction) { route -> navController.navigate(route) }
+                                                }
+                                            }
                                         )
                                     }
                                 }
@@ -1991,6 +2004,54 @@ fun EnhancedDashboardScreen(
                 }
             }
         }
+    }
+    
+    // Complete Cycle Confirmation Dialog
+    if (showCompleteCycleConfirmation && pendingCompleteCycleAction != null) {
+        AlertDialog(
+            onDismissRequest = { 
+                showCompleteCycleConfirmation = false
+                pendingCompleteCycleAction = null
+            },
+            title = { 
+                Text(
+                    text = "Complete Cycle",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = { 
+                Text(
+                    text = "Are you sure you want to complete the current cycle? This will end your current program and you can start a new one.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showCompleteCycleConfirmation = false
+                        pendingCompleteCycleAction?.let { action ->
+                            dashboardViewModel.executeQuickAction(action) { route -> 
+                                navController.navigate(route) 
+                            }
+                        }
+                        pendingCompleteCycleAction = null
+                    }
+                ) {
+                    Text("Complete Cycle")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showCompleteCycleConfirmation = false
+                        pendingCompleteCycleAction = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
