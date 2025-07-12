@@ -214,9 +214,10 @@ private fun WorkoutLoggerScreenContent(
         },
 
         bottomBar = {
-            TimerBar(
+            EnhancedTimerBar(
                 isRunning = timerIsRunning,
                 currentTime = timerValue,
+                targetTime = 120, // 2 minutes default rest time
                 onPause = { viewModel.pauseRestTimer() },
                 onResume = { viewModel.resumeRestTimer() },
                 onStop = { viewModel.stopRestTimer() },
@@ -238,131 +239,114 @@ private fun WorkoutLoggerScreenContent(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Enhanced bodyweight input field with prominence
+                // Enhanced bodyweight input section
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                         ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                        shape = RoundedCornerShape(20.dp)
                     ) {
                         Column(
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(20.dp)
                         ) {
-                            Text(
-                                text = "Today's Session",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.FitnessCenter,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Text(
+                                    text = "Today's Session",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
                             
-                            OutlinedTextField(
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            EnhancedStepperInputField(
                                 value = bodyweightText,
                                 onValueChange = { newText ->
                                     if (newText.matches(Regex("^\\d*\\.?\\d*\$"))) {
                                         bodyweightText = newText
                                     }
                                 },
-                                label = { Text("Your Bodyweight ($weightUnit)") },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .onFocusChanged { focusState ->
-                                        if (!focusState.isFocused) {
-                                            viewModel.updateBodyweight(bodyweightText)
-                                        }
+                                label = "Your Bodyweight",
+                                unit = weightUnit,
+                                step = 0.5,
+                                minValue = 30.0,
+                                maxValue = 300.0,
+                                decimalPlaces = 1,
+                                onFocusChanged = { isFocused ->
+                                    if (!isFocused) {
+                                        viewModel.updateBodyweight(bodyweightText)
                                     }
+                                },
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }
                 }
                 items(activeWorkout!!.loggedExercises) { exercise ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .combinedClickable(
-                                onClick = { /* Regular click - no action needed */ },
-                                onLongClick = {
-                                    selectedExerciseForMenu = exercise
-                                    showExerciseContextMenu = true
-                                }
-                            )
+                    // Calculate completion metrics for enhanced display
+                    val setsCompleted = exercise.sets.count { set -> 
+                        (set.weight != null && set.reps != null) || set.secs != null 
+                    }
+                    val totalSets = exercise.sets.size
+                    
+                    // Get last performance info (placeholder for now)
+                    val lastPerformance = null // TODO: Implement based on available data
+                    
+                    EnhancedExerciseCard(
+                        exerciseName = exercise.exerciseName,
+                        isSubstitute = exercise.isSubstitute == true,
+                        setsCompleted = setsCompleted,
+                        totalSets = totalSets,
+                        lastPerformance = lastPerformance,
+                        onAddSet = { viewModel.addSetToExercise(exercise.id) },
+                        onLongClick = {
+                            selectedExerciseForMenu = exercise
+                            showExerciseContextMenu = true
+                        }
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = exercise.exerciseName, 
-                                    fontSize = 18.sp, 
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    // Add Set button
-                                    IconButton(
-                                        onClick = { viewModel.addSetToExercise(exercise.id) }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Filled.Add,
-                                            contentDescription = "Add Set",
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                    // Show substitution indicator if exercise is substituted
-                                    if (exercise.isSubstitute == true) {
-                                        Icon(
-                                            imageVector = Icons.Filled.SwapHoriz,
-                                            contentDescription = "Substituted Exercise",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-                            }
-                            Spacer(Modifier.height(8.dp))
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                            // For each exercise, display its sets
-                            exercise.sets.forEachIndexed { index, set ->
-                                LoggedSetRow(
-                                    set = set,
-                                    setNumber = index + 1,
-                                    weightUnit = weightUnit,
-                                    showDeleteButton = exercise.sets.size > 1, // Only show delete if more than 1 set
-                                    exerciseId = exercise.exerciseId,
-                                    viewModel = viewModel,
-                                    onRepsChange = { newReps ->
-                                        viewModel.updateSet(exercise.id, set.id, newReps, set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes)
-                                    },
-                                    onWeightChange = { newWeight ->
-                                        viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", newWeight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes)
-                                    },
-                                    onSecsChange = { newSecs ->
-                                        viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, newSecs, set.rir?.toString(), set.bands, set.notes)
-                                    },
-                                    onRirChange = { newRir ->
-                                        viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", newRir, set.bands, set.notes)
-                                    },
-                                    onBandsChange = { newBands ->
-                                        viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), newBands, set.notes)
-                                    },
-                                    onNotesChange = { newNotes ->
-                                        viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, newNotes)
-                                    },
-                                    onStartRest = { viewModel.startRestTimer() },
-                                    onDeleteSet = {
-                                        selectedSetForRemoval = Pair(exercise.id, set.id)
-                                        showRemoveSetConfirmation = true
-                                    },
-                                    onSetUpdate = { newReps, newWeight, newSecs, newRir, newBands, newNotes ->
-                                        viewModel.updateSet(exercise.id, set.id, newReps, newWeight, newSecs, newRir, newBands, newNotes)
-                                    }
-                                )
-                            }
+                        // Enhanced set rows
+                        exercise.sets.forEachIndexed { index, set ->
+                            EnhancedSetRow(
+                                setNumber = index + 1,
+                                weightValue = set.weight?.toString() ?: "",
+                                repsValue = set.reps?.toString() ?: "",
+                                secsValue = set.secs?.toString() ?: "",
+                                rirValue = set.rir?.toString() ?: "",
+                                weightUnit = weightUnit,
+                                showWeightReps = !set.targetReps.isNullOrBlank(),
+                                showSecs = !set.targetSecs.isNullOrBlank(),
+                                onWeightChange = { newWeight ->
+                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", newWeight.toDoubleOrNull(), set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes)
+                                },
+                                onRepsChange = { newReps ->
+                                    viewModel.updateSet(exercise.id, set.id, newReps, set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes)
+                                },
+                                onSecsChange = { newSecs ->
+                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, newSecs, set.rir?.toString(), set.bands, set.notes)
+                                },
+                                onRirChange = { newRir ->
+                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", newRir, set.bands, set.notes)
+                                },
+                                onStartRest = { viewModel.startRestTimer() },
+                                onDeleteSet = {
+                                    selectedSetForRemoval = Pair(exercise.id, set.id)
+                                    showRemoveSetConfirmation = true
+                                },
+                                modifier = Modifier.padding(vertical = 6.dp)
+                            )
                         }
                     }
                 }
