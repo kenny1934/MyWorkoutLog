@@ -238,24 +238,44 @@ private fun WorkoutLoggerScreenContent(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Add a bodyweight input field as the first item in the list
+                // Enhanced bodyweight input field with prominence
                 item {
-                    OutlinedTextField(
-                        value = bodyweightText,
-                        onValueChange = { newText ->
-                            if (newText.matches(Regex("^\\d*\\.?\\d*\$"))) {
-                                bodyweightText = newText
-                            }
-                        },
-                        label = { Text("Bodyweight ($weightUnit)") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .onFocusChanged { focusState ->
-                                if (!focusState.isFocused) {
-                                    viewModel.updateBodyweight(bodyweightText)
-                                }
-                            }
-                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Today's Session",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            OutlinedTextField(
+                                value = bodyweightText,
+                                onValueChange = { newText ->
+                                    if (newText.matches(Regex("^\\d*\\.?\\d*\$"))) {
+                                        bodyweightText = newText
+                                    }
+                                },
+                                label = { Text("Your Bodyweight ($weightUnit)") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .onFocusChanged { focusState ->
+                                        if (!focusState.isFocused) {
+                                            viewModel.updateBodyweight(bodyweightText)
+                                        }
+                                    }
+                            )
+                        }
+                    }
                 }
                 items(activeWorkout!!.loggedExercises) { exercise ->
                     Card(
@@ -723,75 +743,80 @@ fun LoggedSetRow(
             }
         }
 
-        Row(
+        // Enhanced input fields with better visual design
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Text field for weight
-            OutlinedTextField(
-                value = weightText,
-                onValueChange = { newText ->
-                    // Allow only digits and one decimal point
-                    if (newText.matches(Regex("^\\d*\\.?\\d*\$"))) {
-                        weightText = newText
-                    }
-                },
-                label = { Text("Weight ($weightUnit)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier
-                    .weight(1f)
-                    .onFocusChanged { focusState ->
-                        if (!focusState.isFocused) {
-                            onWeightChange(weightText.toDoubleOrNull())
-                        }
-                    }
-            )
-
-            if (showWeightReps) {
-                // Text field for reps
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Weight input field
                 OutlinedTextField(
-                    value = repsText,
+                    value = weightText,
                     onValueChange = { newText ->
-                        if (newText.all { it.isDigit() }) {
-                            repsText = newText
+                        // Allow only digits and one decimal point
+                        if (newText.matches(Regex("^\\d*\\.?\\d*\$"))) {
+                            weightText = newText
                         }
                     },
-                    label = { Text("Reps") },
+                    label = { Text("Weight ($weightUnit)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier
                         .weight(1f)
                         .onFocusChanged { focusState ->
                             if (!focusState.isFocused) {
-                                onRepsChange(repsText)
+                                onWeightChange(weightText.toDoubleOrNull())
                             }
                         }
                 )
-            }
 
-            // This TextField will only appear for time-based exercises
-            if (showSecs) {
-                OutlinedTextField(
-                    value = secsText,
-                    onValueChange = { newText ->
-                        if (newText.all { it.isDigit() }) {
-                            secsText = newText
-                        }
-                    },
-                    label = { Text("Secs") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier
-                        .weight(1f)
-                        .onFocusChanged { focusState ->
-                            if (!focusState.isFocused) {
-                                onSecsChange(secsText)
+                if (showWeightReps) {
+                    // Reps input field
+                    OutlinedTextField(
+                        value = repsText,
+                        onValueChange = { newText ->
+                            if (newText.all { it.isDigit() }) {
+                                repsText = newText
                             }
-                        }
-                )
+                        },
+                        label = { Text("Reps") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier
+                            .weight(1f)
+                            .onFocusChanged { focusState ->
+                                if (!focusState.isFocused) {
+                                    onRepsChange(repsText)
+                                }
+                            }
+                    )
+                }
+
+                // Time input for time-based exercises
+                if (showSecs) {
+                    OutlinedTextField(
+                        value = secsText,
+                        onValueChange = { newText ->
+                            if (newText.all { it.isDigit() }) {
+                                secsText = newText
+                            }
+                        },
+                        label = { Text("Secs") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier
+                            .weight(1f)
+                            .onFocusChanged { focusState ->
+                                if (!focusState.isFocused) {
+                                    onSecsChange(secsText)
+                                }
+                            }
+                    )
+                }
             }
         }
 
-        // Second row for RIR and Bands
+        // RIR and Bands row
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -829,8 +854,14 @@ fun LoggedSetRow(
                         }
                     }
             )
+        }
 
-            // Notes toggle button
+        // Notes toggle button
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             IconButton(
                 onClick = { 
                     // Save current values when toggling notes visibility
