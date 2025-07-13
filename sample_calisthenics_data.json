@@ -1,10 +1,11 @@
 {
   "metadata": {
     "exportType": "complete_backup",
-    "exportDate": "2024-06-26 14:30:45",
-    "appVersion": "1.0.0",
+    "exportDate": "2025-07-13 15:45:30",
+    "appVersion": "2.0.0",
     "schemaVersion": "19",
-    "dateRange": "all_data"
+    "dateRange": "all_data",
+    "description": "Enhanced with video references, rest time tracking, and modern workout logging features"
   },
   "exercises": [
     {
@@ -498,9 +499,9 @@
           "equipment": ["OTHER"],
           "isSubstitute": false,
           "sets": [
-            {"id": "set_001", "reps": 10, "weight": 74.5, "bodyweightUsed": 74.5, "externalWeight": 0.0, "rir": 3, "targetReps": "8-12"},
-            {"id": "set_002", "reps": 9, "weight": 74.5, "bodyweightUsed": 74.5, "externalWeight": 0.0, "rir": 2, "targetReps": "8-12"},
-            {"id": "set_003", "reps": 8, "weight": 74.5, "bodyweightUsed": 74.5, "externalWeight": 0.0, "rir": 2, "targetReps": "8-12"}
+            {"id": "set_001", "reps": 10, "weight": 74.5, "bodyweightUsed": 74.5, "externalWeight": 0.0, "rir": 3, "targetReps": "8-12", "restTimeSeconds": 75, "notes": "Good form, controlled descent"},
+            {"id": "set_002", "reps": 9, "weight": 74.5, "bodyweightUsed": 74.5, "externalWeight": 0.0, "rir": 2, "targetReps": "8-12", "restTimeSeconds": 90, "notes": "Feeling fatigue"},
+            {"id": "set_003", "reps": 8, "weight": 74.5, "bodyweightUsed": 74.5, "externalWeight": 0.0, "rir": 2, "targetReps": "8-12", "restTimeSeconds": 120}
           ]
         },
         {
@@ -511,8 +512,8 @@
           "equipment": ["PARALLETTES"],
           "isSubstitute": false,
           "sets": [
-            {"id": "set_004", "reps": 6, "weight": 74.5, "bodyweightUsed": 74.5, "externalWeight": 0.0, "rir": 3, "targetReps": "5-8"},
-            {"id": "set_005", "reps": 5, "weight": 74.5, "bodyweightUsed": 74.5, "externalWeight": 0.0, "rir": 2, "targetReps": "5-8"}
+            {"id": "set_004", "reps": 6, "weight": 74.5, "bodyweightUsed": 74.5, "externalWeight": 0.0, "rir": 3, "targetReps": "5-8", "restTimeSeconds": 120, "notes": "Full range of motion"},
+            {"id": "set_005", "reps": 5, "weight": 74.5, "bodyweightUsed": 74.5, "externalWeight": 0.0, "rir": 2, "targetReps": "5-8", "restTimeSeconds": 135}
           ]
         },
         {
@@ -551,9 +552,9 @@
           "equipment": ["OTHER"],
           "isSubstitute": false,
           "sets": [
-            {"id": "set_007", "reps": 6, "weight": 74.7, "bodyweightUsed": 74.7, "externalWeight": 0.0, "rir": 3, "targetReps": "5-8"},
-            {"id": "set_008", "reps": 5, "weight": 74.7, "bodyweightUsed": 74.7, "externalWeight": 0.0, "rir": 2, "targetReps": "5-8"},
-            {"id": "set_009", "reps": 5, "weight": 74.7, "bodyweightUsed": 74.7, "externalWeight": 0.0, "rir": 2, "targetReps": "5-8"}
+            {"id": "set_007", "reps": 6, "weight": 74.7, "bodyweightUsed": 74.7, "externalWeight": 0.0, "rir": 3, "targetReps": "5-8", "restTimeSeconds": 105, "videoReference": "content://com.google.android.apps.photos.content/media/pullups_form_check", "notes": "Recorded form for review"},
+            {"id": "set_008", "reps": 5, "weight": 74.7, "bodyweightUsed": 74.7, "externalWeight": 0.0, "rir": 2, "targetReps": "5-8", "restTimeSeconds": 120},
+            {"id": "set_009", "reps": 5, "weight": 74.7, "bodyweightUsed": 74.7, "externalWeight": 0.0, "rir": 2, "targetReps": "5-8", "restTimeSeconds": 135, "notes": "Maintained form despite fatigue"}
           ]
         },
         {
@@ -593,8 +594,8 @@
           "equipment": ["OTHER"],
           "isSubstitute": false,
           "sets": [
-            {"id": "set_012", "reps": 4, "weight": 74.6, "bodyweightUsed": 74.6, "externalWeight": 0.0, "rir": 3, "targetReps": "3-5", "notes": "Each leg"},
-            {"id": "set_013", "reps": 3, "weight": 74.6, "bodyweightUsed": 74.6, "externalWeight": 0.0, "rir": 2, "targetReps": "3-5", "notes": "Each leg"}
+            {"id": "set_012", "reps": 4, "weight": 74.6, "bodyweightUsed": 74.6, "externalWeight": 0.0, "rir": 3, "targetReps": "3-5", "restTimeSeconds": 150, "videoReference": "content://com.google.android.apps.photos.content/media/pistol_squat_progression", "notes": "Each leg - recorded technique"},
+            {"id": "set_013", "reps": 3, "weight": 74.6, "bodyweightUsed": 74.6, "externalWeight": 0.0, "rir": 2, "targetReps": "3-5", "restTimeSeconds": 180, "bands": "Light resistance for assistance", "notes": "Each leg - used band for balance"}
           ]
         },
         {
@@ -605,8 +606,8 @@
           "equipment": ["PARALLETTES"],
           "isSubstitute": false,
           "sets": [
-            {"id": "set_014", "reps": null, "weight": 74.6, "bodyweightUsed": 74.6, "externalWeight": 0.0, "rir": 3, "targetSecs": "10-20", "duration": 12},
-            {"id": "set_015", "reps": null, "weight": 74.6, "bodyweightUsed": 74.6, "externalWeight": 0.0, "rir": 2, "targetSecs": "10-20", "duration": 10}
+            {"id": "set_014", "reps": null, "secs": 12, "weight": 74.6, "bodyweightUsed": 74.6, "externalWeight": 0.0, "rir": 3, "targetSecs": "10-20", "restTimeSeconds": 90, "notes": "Legs fully extended"},
+            {"id": "set_015", "reps": null, "secs": 10, "weight": 74.6, "bodyweightUsed": 74.6, "externalWeight": 0.0, "rir": 2, "targetSecs": "10-20", "restTimeSeconds": 120, "notes": "Slight shake in final seconds"}
           ]
         }
       ]
@@ -745,9 +746,9 @@
           "equipment": ["PARALLETTES"],
           "isSubstitute": false,
           "sets": [
-            {"id": "set_033", "reps": null, "weight": 75.0, "bodyweightUsed": 75.0, "externalWeight": 0.0, "rir": 3, "targetSecs": "15-25", "duration": 18},
-            {"id": "set_034", "reps": null, "weight": 75.0, "bodyweightUsed": 75.0, "externalWeight": 0.0, "rir": 2, "targetSecs": "15-25", "duration": 16},
-            {"id": "set_035", "reps": null, "weight": 75.0, "bodyweightUsed": 75.0, "externalWeight": 0.0, "rir": 2, "targetSecs": "10-15", "duration": 12}
+            {"id": "set_033", "reps": null, "secs": 18, "weight": 75.0, "bodyweightUsed": 75.0, "externalWeight": 0.0, "rir": 3, "targetSecs": "15-25", "restTimeSeconds": 120, "notes": "Improved hold time"},
+            {"id": "set_034", "reps": null, "secs": 16, "weight": 75.0, "bodyweightUsed": 75.0, "externalWeight": 0.0, "rir": 2, "targetSecs": "15-25", "restTimeSeconds": 135, "notes": "Core burning"},
+            {"id": "set_035", "reps": null, "secs": 12, "weight": 75.0, "bodyweightUsed": 75.0, "externalWeight": 0.0, "rir": 2, "targetSecs": "10-15", "restTimeSeconds": 150, "notes": "Final set - form maintained"}
           ]
         }
       ]
@@ -788,8 +789,8 @@
           "equipment": ["OTHER"],
           "isSubstitute": false,
           "sets": [
-            {"id": "set_039", "reps": 3, "weight": 75.2, "bodyweightUsed": 75.2, "externalWeight": 0.0, "rir": 3, "targetReps": "2-5"},
-            {"id": "set_040", "reps": 2, "weight": 75.2, "bodyweightUsed": 75.2, "externalWeight": 0.0, "rir": 2, "targetReps": "2-5"}
+            {"id": "set_039", "reps": 3, "weight": 75.2, "bodyweightUsed": 75.2, "externalWeight": 0.0, "rir": 3, "targetReps": "2-5", "restTimeSeconds": 180, "videoReference": "content://com.google.android.apps.photos.content/media/handstand_pushup_form", "notes": "Wall-assisted - recorded for form check"},
+            {"id": "set_040", "reps": 2, "weight": 75.2, "bodyweightUsed": 75.2, "externalWeight": 0.0, "rir": 2, "targetReps": "2-5", "restTimeSeconds": 240, "notes": "Getting stronger in this position"}
           ]
         },
         {
@@ -891,7 +892,7 @@
       "bodyweightUsed": 75.0,
       "externalWeight": 0.0,
       "usesBodyweight": true,
-      "duration": 18
+      "durationSecs": 18
     }
   ]
 }

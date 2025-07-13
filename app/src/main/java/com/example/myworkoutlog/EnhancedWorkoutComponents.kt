@@ -52,8 +52,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
-import java.io.File
-import java.util.UUID
+import android.content.Intent
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -1138,26 +1137,21 @@ fun VideoReferenceSelector(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         uri?.let { selectedUri ->
-            // Copy video to app's private storage and get the path
+            // Store the URI directly (no copying to local storage)
             try {
-                val fileName = "video_${UUID.randomUUID()}.mp4"
-                val internalDir = File(context.filesDir, "workout_videos")
-                if (!internalDir.exists()) {
-                    internalDir.mkdirs()
-                }
-                val destinationFile = File(internalDir, fileName)
+                // Grant persistent permission to access the URI
+                context.contentResolver.takePersistableUriPermission(
+                    selectedUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
                 
-                context.contentResolver.openInputStream(selectedUri)?.use { input ->
-                    destinationFile.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
-                }
-                
-                onVideoSelected(destinationFile.absolutePath)
+                onVideoSelected(selectedUri.toString())
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
             } catch (e: Exception) {
-                // Handle error - could show a toast or log
-                e.printStackTrace()
+                // Handle error - URI might not support persistent permissions
+                // Still store the URI as it might work for current session
+                onVideoSelected(selectedUri.toString())
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
             }
         }
     }
@@ -1186,7 +1180,7 @@ fun VideoReferenceSelector(
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Form video attached",
+                    text = "Form video referenced",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium
@@ -1233,7 +1227,7 @@ fun VideoReferenceSelector(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Add Form Video",
+                    text = "Reference Form Video",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
