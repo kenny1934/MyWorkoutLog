@@ -1,68 +1,43 @@
 # Claude Development Context
 
 ## Current Status
-- Branch: `feature/dashboard-enhancements`
-- Last commit: `fix: Resolve compilation errors and add enhanced workout input components`
-- Development Phase: **Production-Ready App + UI Enhancement Foundation** ✅
+- Branch: `feature/workout-logger-ui-improvements`
+- Last commit: `feat: Implement video reference system for workout form tracking`
+- Development Phase: **Advanced Workout Logger with Video References** ✅
 
 ## App State Summary
-**Production-ready fitness app** with comprehensive dashboard management, precision tracking, and intelligent navigation.
+**Production-ready fitness app** with enhanced workout logging, video form references, rest time tracking, and modern UI components.
 
 ## 🏆 Major Completed Features
+- ✅ **Enhanced Workout Logger**: Modern UI with advanced input components, rest time tracking, and video references
 - ✅ **Core Workout System**: Complete logging with timers, detailed set tracking, and session management
 - ✅ **Enterprise Analytics**: Advanced charts, export/import, cloud backup functionality
 - ✅ **Interactive Dashboard**: Customizable widgets with edit mode, reordering, and visibility controls
 - ✅ **Smart Insights Engine**: Priority-based insight cards with dismissal and action handling
 - ✅ **Enhanced Navigation**: Contextual routing with auto-selection throughout app
-- ✅ **Precision Tracking**: Accurate bodyweight decimal tracking with smart edit mode
-- ✅ **Performance Analytics**: Clear weight display with bodyweight breakdown for exercises
-- ✅ **Filter System**: Enhanced analytics filters with clear indicators and dual reset options
 
-## 🎯 Recent Enhancements
+## 🎯 Latest Enhancement: Video Reference System
 
-### **Enhanced Workout Input Components Foundation - COMPLETE** ✅
-- **Professional Component Library**: Created comprehensive enhanced input field system
-- **Visual Design System**: Material 3 styling with animations, haptic feedback, and color schemes
-- **Advanced Input Types**: EnhancedStepperInputField, RirInputField, and enhanced color management
-- **Better Layout Structure**: Improved spacing, visual hierarchy, and prominent bodyweight section
-- **Compilation Safety**: Fixed all syntax errors and maintained backward compatibility
-- **Ready for Integration**: Foundation prepared for gradual component replacement
+### **Video Reference Implementation - COMPLETE** ✅
+- **VideoReferenceSelector Component**: Android Photo Picker integration with secure storage
+- **Enhanced Set Row Integration**: Video selection in expandable "Additional Options" section
+- **Data Model Enhancement**: Added videoReference field to LoggedSet with complete ViewModel support
+- **Secure Storage**: Videos stored in app's private directory with proper file management
+- **Visual Indicators**: Clear UI feedback for attached videos with add/remove functionality
 
-### **Complete Cycle Confirmation Dialog - COMPLETE** ✅
-- **Safety Enhancement**: Added confirmation dialog for Complete Cycle button in quick actions
-- **User Protection**: Prevents accidental cycle completion with clear warning message
-- **Professional Dialog**: AlertDialog with descriptive text and confirm/cancel buttons
-- **State Management**: Proper dialog state handling with cleanup on dismiss and confirm
-- **Selective Confirmation**: Only Complete Cycle action shows confirmation, other actions execute directly
+### **Previous Enhancements - COMPLETE** ✅
+- **Enhanced UI Components**: Modern Material 3 design with animations and haptic feedback
+- **Rest Time Tracking**: Timer association with specific sets and actual rest time recording
+- **Complete Cycle Confirmation**: Safety dialog preventing accidental cycle completion
+- **Analytics Filter Reset**: Enhanced filtering with clear indicators and reset options
+- **Bodyweight Precision**: Accurate decimal tracking with smart edit mode pre-filling
+- **Enhanced Navigation**: Contextual routing with auto-selection throughout app
+## 🔧 Technical Stack
+- **Modern Android**: Jetpack Compose, Material 3, Room database, StateFlow/ViewModel architecture
+- **Enhanced UX**: Professional component library with animations, haptic feedback, and thread-safe operations
+- **Advanced Features**: Video form references, rest time tracking, contextual navigation, precision decimal tracking
 
-### **Analytics Filter Reset - COMPLETE** ✅
-- **Enhanced Refresh Button**: Clears all filter selections (exercise, cycle, muscle group) when clicked
-- **Clear Filter Indicator**: Visual card with "Clear Filter" button when exercise filter is active
-- **Time Range Preservation**: Filter reset maintains current time range selection
-- **Dual Reset Options**: Both refresh button and dedicated clear filter button
-
-### **Bodyweight Tracking Precision - COMPLETE** ✅
-- **Decimal Precision**: Fixed "68kg" → "68.5kg" display across all screens
-- **Edit Mode Pre-fill**: Bodyweight field now pre-fills with existing workout data
-- **Smart Formatting**: Intelligent display showing integers for whole numbers, decimals when needed
-- **Type Safety**: Resolved Float/Double compilation errors with overloaded functions
-
-### **Enhanced Navigation System - COMPLETE** ✅
-- **Parameterized Routes**: Support for exercise, tab, cycle, and muscle group pre-selection
-- **Direct Exercise Navigation**: Tap performance entries → immediate exercise analytics
-- **Smart Context**: Analytics opens with appropriate tab and filters applied
-- **Reduced Clicks**: Eliminates 2-3 manual navigation steps throughout app
-
-## 🔧 Technical Implementation Highlights
-- **Professional Widget Management**: Toggle edit mode, arrow reordering, visibility controls
-- **Thread-Safe Operations**: Proper coroutine handling with loading states
-- **Persistent Preferences**: SharedPreferences-based storage for customization
-- **Enhanced Analytics**: Real-time calculations with proper database thread safety
-- **Smart Weight Logic**: Bodyweight exercises show total effective weight display
-- **Filter State Management**: Isolated state between tabs with clear visual indicators
-
-## Development Guidelines
-- Testing and building done on Android Studio by user
-- All major features implemented and stable
-- Production-ready codebase with comprehensive error handling
-- Enhanced UX with intuitive navigation and clear visual feedback
+## Development Status
+- **Production-Ready**: Complete fitness app with comprehensive feature set
+- **Testing Environment**: Android Studio build and testing by user
+- **Current Focus**: Enhanced workout logging with modern UI components
