@@ -1,10 +1,10 @@
 # MyWorkoutLog - Native Android App
 
-A comprehensive native Android workout logger application built in Kotlin using Jetpack Compose. This production-ready app provides a complete offline-first experience for tracking structured workout programs with advanced analytics and intelligent dashboard management.
+A comprehensive native Android workout logger application built in Kotlin using Jetpack Compose. This production-ready app provides a complete offline-first experience for tracking structured workout programs with advanced analytics, video form references, and modern UI components.
 
 ## 🏆 Current State: Production-Ready
 
-The application is feature-complete with enterprise-level functionality including advanced analytics, cloud backup, customizable dashboards, and intelligent navigation.
+The application is feature-complete with enterprise-level functionality including advanced analytics, cloud backup, customizable dashboards, video form references, and intelligent navigation.
 
 ## ✅ Core Features
 
@@ -13,7 +13,9 @@ The application is feature-complete with enterprise-level functionality includin
 - **Reusable Templates**: Multi-set workout templates for consistent training
 - **Program Blueprints**: Complex multi-week programs with structured session assignments
 - **Active Cycle Management**: Dynamic dashboard with current week/session progress
-- **Live Workout Logging**: Complete set tracking (reps, weight, duration, RIR, bands, notes)
+- **Enhanced Workout Logger**: Modern UI with complete set tracking (reps, weight, duration, RIR, bands, notes, video references)
+- **Video Form References**: Attach videos to workout sets for form analysis and technique tracking
+- **Rest Time Tracking**: Timer association with specific sets and actual rest time recording
 - **Precision Tracking**: Unit-aware weight and bodyweight system with decimal precision
 - **Integrated Timers**: Rest timer with pause/resume/add-time + total session stopwatch
 
@@ -38,14 +40,21 @@ The application is feature-complete with enterprise-level functionality includin
 - **Thread-Safe Operations**: Proper coroutine handling with loading states
 - **Type Safety**: Comprehensive error handling and validation
 
-## 🎯 Recent Enhancements
+## 🎯 Latest Enhancements
 
-### **Enhanced Workout Input Components**
+### **Video Reference System**
+- VideoReferenceSelector component with Android Photo Picker integration
+- Secure video storage in app's private directory with proper file management
+- Enhanced set row integration in expandable "Additional Options" section
+- Visual indicators for attached videos with add/remove functionality
+- Complete data model and ViewModel integration for persistent video references
+
+### **Enhanced Workout UI Components**
 - Professional component library with Material 3 styling and animations
 - Advanced input types with stepper controls and visual RIR scales
 - Haptic feedback and smooth focus animations for premium experience
 - Improved layout structure with better visual hierarchy
-- Foundation ready for comprehensive workout logger UI transformation
+- Modern enhanced set rows with expandable options for bands, notes, and video references
 
 ### **Complete Cycle Safety Features**
 - Confirmation dialog prevents accidental cycle completion
@@ -85,10 +94,12 @@ The application is feature-complete with enterprise-level functionality includin
 ## 🚀 App Highlights
 
 - **Production-Ready**: Comprehensive feature set with enterprise-level functionality
+- **Video Form References**: Attach and manage workout videos for technique analysis
+- **Enhanced Workout Logger**: Modern UI with rest time tracking and advanced input components
 - **Offline-First**: Complete functionality without internet dependency
 - **Intelligent UX**: Contextual navigation with smart auto-selection
 - **Precision Tracking**: Accurate decimal bodyweight tracking system
-- **Professional Polish**: Material 3 design with smooth interactions
+- **Professional Polish**: Material 3 design with smooth interactions and haptic feedback
 - **Advanced Analytics**: Real-time calculations with thread-safe operations
 
 ---
