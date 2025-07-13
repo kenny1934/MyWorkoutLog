@@ -320,15 +320,22 @@ private fun WorkoutLoggerScreenContent(
                     ) {
                         // Enhanced set rows
                         exercise.sets.forEachIndexed { index, set ->
+                            // Get performance suggestion for this exercise
+                            val performanceSuggestion = viewModel.getPerformanceSuggestion(exercise.exerciseId)
+                            
                             EnhancedSetRow(
                                 setNumber = index + 1,
                                 weightValue = set.weight?.toString() ?: "",
                                 repsValue = set.reps?.toString() ?: "",
                                 secsValue = set.secs?.toString() ?: "",
                                 rirValue = set.rir?.toString() ?: "",
+                                bandsValue = set.bands ?: "",
+                                notesValue = set.notes ?: "",
                                 weightUnit = weightUnit,
                                 showWeightReps = !set.targetReps.isNullOrBlank(),
                                 showSecs = !set.targetSecs.isNullOrBlank(),
+                                showDeleteButton = exercise.sets.size > 1, // Only show delete if more than 1 set
+                                performanceSuggestion = performanceSuggestion,
                                 onWeightChange = { newWeight ->
                                     viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", newWeight.toDoubleOrNull(), set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes)
                                 },
@@ -341,10 +348,25 @@ private fun WorkoutLoggerScreenContent(
                                 onRirChange = { newRir ->
                                     viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", newRir, set.bands, set.notes)
                                 },
+                                onBandsChange = { newBands ->
+                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), newBands, set.notes)
+                                },
+                                onNotesChange = { newNotes ->
+                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, newNotes)
+                                },
                                 onStartRest = { viewModel.startRestTimer() },
                                 onDeleteSet = {
                                     selectedSetForRemoval = Pair(exercise.id, set.id)
                                     showRemoveSetConfirmation = true
+                                },
+                                onApplySuggestion = {
+                                    // Apply suggestions from performance data
+                                    performanceSuggestion?.let { suggestion ->
+                                        val weightText = suggestion.suggestedWeight?.toString() ?: ""
+                                        val repsText = suggestion.suggestedReps?.toString() ?: ""
+                                        val rirText = suggestion.suggestedRir?.toString() ?: ""
+                                        viewModel.updateSet(exercise.id, set.id, repsText, weightText.toDoubleOrNull(), set.secs?.toString() ?: "", rirText, set.bands, set.notes)
+                                    }
                                 },
                                 modifier = Modifier.padding(vertical = 6.dp)
                             )

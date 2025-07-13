@@ -22,6 +22,10 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
@@ -643,20 +647,28 @@ fun EnhancedSetRow(
     repsValue: String,
     secsValue: String = "",
     rirValue: String = "",
+    bandsValue: String = "",
+    notesValue: String = "",
     weightUnit: String,
     showWeightReps: Boolean = true,
     showSecs: Boolean = false,
     showTimer: Boolean = true,
+    showDeleteButton: Boolean = false,
+    performanceSuggestion: Any? = null, // TODO: Replace with proper type
     onWeightChange: (String) -> Unit = {},
     onRepsChange: (String) -> Unit = {},
     onSecsChange: (String) -> Unit = {},
     onRirChange: (String) -> Unit = {},
+    onBandsChange: (String) -> Unit = {},
+    onNotesChange: (String) -> Unit = {},
     onStartRest: () -> Unit = {},
     onDeleteSet: () -> Unit = {},
+    onApplySuggestion: () -> Unit = {},
     modifier: Modifier = Modifier,
     colors: WorkoutInputColors = WorkoutInputDefaults.colors()
 ) {
     val haptics = LocalHapticFeedback.current
+    var showExpandedOptions by remember { mutableStateOf(false) }
     
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -671,7 +683,7 @@ fun EnhancedSetRow(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Set header with number and timer
+            // Set header with number and action buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -691,22 +703,71 @@ fun EnhancedSetRow(
                     )
                 }
                 
-                // Timer button
-                if (showTimer) {
-                    FilledTonalIconButton(
-                        onClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onStartRest()
-                        },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Timer,
-                            contentDescription = "Start Rest Timer",
-                            modifier = Modifier.size(18.dp)
-                        )
+                // Action buttons row
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Delete button (only show if more than 1 set)
+                    if (showDeleteButton) {
+                        IconButton(
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onDeleteSet()
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = "Delete Set",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                    
+                    // Timer button
+                    if (showTimer) {
+                        FilledTonalIconButton(
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onStartRest()
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Timer,
+                                contentDescription = "Start Rest Timer",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
+            }
+            
+            // Performance suggestion chip (only show for empty sets)
+            if (performanceSuggestion != null && weightValue.isEmpty() && repsValue.isEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                AssistChip(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onApplySuggestion()
+                    },
+                    label = { 
+                        Text(
+                            text = "Suggested from previous session",
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.AutoAwesome,
+                            contentDescription = "Smart suggestion",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
             
             Spacer(modifier = Modifier.height(12.dp))
@@ -763,6 +824,65 @@ fun EnhancedSetRow(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+            
+            // Expandable options toggle
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Additional Options",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                IconButton(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showExpandedOptions = !showExpandedOptions
+                    }
+                ) {
+                    Icon(
+                        imageVector = if (showExpandedOptions) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = if (showExpandedOptions) "Hide Options" else "Show Options",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            // Expandable bands and notes section
+            AnimatedVisibility(visible = showExpandedOptions) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Bands input
+                    EnhancedWorkoutInputField(
+                        value = bandsValue,
+                        onValueChange = onBandsChange,
+                        label = "Resistance Bands",
+                        placeholder = "e.g., Red, Blue",
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = colors
+                    )
+                    
+                    // Notes input
+                    EnhancedWorkoutInputField(
+                        value = notesValue,
+                        onValueChange = onNotesChange,
+                        label = "Notes",
+                        placeholder = "Personal notes...",
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = colors
+                    )
+                }
+            }
         }
     }
 }
@@ -784,7 +904,7 @@ fun EnhancedTimerBar(
     modifier: Modifier = Modifier
 ) {
     val haptics = LocalHapticFeedback.current
-    val progress = if (targetTime > 0) currentTime.toFloat() / targetTime.toFloat() else 0f
+    val progress = if (targetTime > 0) (currentTime.toFloat() / targetTime.toFloat()).coerceIn(0f, 1f) else 0f
     
     // Animated progress for smooth transitions
     val animatedProgress by animateFloatAsState(
@@ -850,7 +970,7 @@ fun EnhancedTimerBar(
                         )
                         if (targetTime > 0) {
                             Text(
-                                text = "/${formatTime(targetTime)}",
+                                text = "/ ${formatTime(targetTime)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
