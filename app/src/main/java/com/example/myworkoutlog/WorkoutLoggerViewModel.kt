@@ -67,6 +67,10 @@ class WorkoutLoggerViewModel(
     val timerValueSeconds: StateFlow<Int> = _timerValueSeconds.asStateFlow()
     private val _timerIsRunning = MutableStateFlow(false)
     val timerIsRunning: StateFlow<Boolean> = _timerIsRunning.asStateFlow()
+    
+    // Rest time tracking for specific sets
+    private var currentRestTimerSet: Pair<String, String>? = null // (exerciseId, setId)
+    private var restStartTime: Long = 0L
 
     // --- TIMER AND STOPWATCH CONTROLS ---
 
@@ -108,9 +112,16 @@ class WorkoutLoggerViewModel(
     }
 
     fun stopRestTimer() {
+        // Record rest time before stopping
+        recordCurrentRestTime()
+        
         restTimerJob?.cancel()
         _timerIsRunning.value = false
         _timerValueSeconds.value = 0
+        
+        // Clear current set tracking
+        currentRestTimerSet = null
+        restStartTime = 0L
     }
 
     fun resetRestTimer(durationSeconds: Int = 120) {
@@ -121,6 +132,48 @@ class WorkoutLoggerViewModel(
     fun addTimeToRestTimer(secondsToAdd: Int) {
         val newDuration = _timerValueSeconds.value + secondsToAdd
         startRestTimer(newDuration)
+    }
+    
+    // Start rest timer for a specific set to track rest time
+    fun startRestTimerForSet(exerciseId: String, setId: String, durationSeconds: Int = 120) {
+        // Record rest time for previous set if timer was running
+        recordCurrentRestTime()
+        
+        // Set up for new set
+        currentRestTimerSet = Pair(exerciseId, setId)
+        restStartTime = System.currentTimeMillis()
+        
+        // Start the timer
+        startRestTimer(durationSeconds)
+    }
+    
+    // Record the actual rest time for the current set
+    private fun recordCurrentRestTime() {
+        currentRestTimerSet?.let { (exerciseId, setId) ->
+            if (restStartTime > 0) {
+                val actualRestSeconds = ((System.currentTimeMillis() - restStartTime) / 1000).toInt()
+                updateSetRestTime(exerciseId, setId, actualRestSeconds)
+            }
+        }
+    }
+    
+    // Update a specific set with recorded rest time
+    private fun updateSetRestTime(exerciseId: String, setId: String, restSeconds: Int) {
+        _activeWorkoutState.update { currentWorkout ->
+            currentWorkout?.copy(
+                loggedExercises = currentWorkout.loggedExercises.map { exercise ->
+                    if (exercise.id == exerciseId) {
+                        exercise.copy(
+                            sets = exercise.sets.map { set ->
+                                if (set.id == setId) {
+                                    set.copy(restTimeSeconds = restSeconds)
+                                } else set
+                            }
+                        )
+                    } else exercise
+                }
+            )
+        }
     }
 
     // Load an existing workout for editing
@@ -215,7 +268,8 @@ class WorkoutLoggerViewModel(
         secs: String, 
         rir: String? = null, 
         bands: String? = null, 
-        notes: String? = null
+        notes: String? = null,
+        videoReference: String? = null
     ) {
         _activeWorkoutState.update { currentWorkout ->
             currentWorkout?.copy(
@@ -230,7 +284,8 @@ class WorkoutLoggerViewModel(
                                         secs = secs.toIntOrNull(),
                                         rir = rir?.toIntOrNull(),
                                         bands = bands?.takeIf { it.isNotBlank() },
-                                        notes = notes?.takeIf { it.isNotBlank() }
+                                        notes = notes?.takeIf { it.isNotBlank() },
+                                        videoReference = videoReference?.takeIf { it.isNotBlank() }
                                     )
                                 } else {
                                     set
@@ -247,7 +302,7 @@ class WorkoutLoggerViewModel(
 
     // Overloaded function to maintain backward compatibility
     fun updateSet(exerciseId: String, setId: String, reps: String, weight: Double?, secs: String) {
-        updateSet(exerciseId, setId, reps, weight, secs, null, null, null)
+        updateSet(exerciseId, setId, reps, weight, secs, null, null, null, null)
     }
 
     // Saves the completed workout to the database
@@ -352,6 +407,7 @@ class WorkoutLoggerViewModel(
                         bands = null,
                         notes = null,
                         restTimeSeconds = null,
+                        videoReference = null,
                         targetReps = "8-12", // Default target reps for ad-hoc exercises
                         targetSecs = null
                     )
@@ -435,6 +491,8 @@ class WorkoutLoggerViewModel(
                             rir = null,
                             bands = null,
                             notes = null,
+                            restTimeSeconds = null,
+                            videoReference = null,
                             targetReps = "8-12", // Default target for added sets
                             targetSecs = null
                         )

@@ -33,8 +33,13 @@ import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.BorderStroke
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,7 +50,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import java.io.File
+import java.util.UUID
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -649,6 +657,8 @@ fun EnhancedSetRow(
     rirValue: String = "",
     bandsValue: String = "",
     notesValue: String = "",
+    videoReference: String? = null,
+    restTimeSeconds: Int? = null,
     weightUnit: String,
     showWeightReps: Boolean = true,
     showSecs: Boolean = false,
@@ -661,6 +671,8 @@ fun EnhancedSetRow(
     onRirChange: (String) -> Unit = {},
     onBandsChange: (String) -> Unit = {},
     onNotesChange: (String) -> Unit = {},
+    onVideoSelected: (String) -> Unit = {},
+    onVideoRemoved: () -> Unit = {},
     onStartRest: () -> Unit = {},
     onDeleteSet: () -> Unit = {},
     onApplySuggestion: () -> Unit = {},
@@ -689,18 +701,51 @@ fun EnhancedSetRow(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Set number badge
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                // Set number and rest time display
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Set $setNumber",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
+                    // Set number badge
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                    ) {
+                        Text(
+                            text = "Set $setNumber",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
+                    
+                    // Rest time badge (if recorded)
+                    restTimeSeconds?.let { restTime ->
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Timer,
+                                    contentDescription = "Rest Time",
+                                    tint = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = formatTime(restTime),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
+                        }
+                    }
                 }
                 
                 // Action buttons row
@@ -886,6 +931,23 @@ fun EnhancedSetRow(
                         modifier = Modifier.fillMaxWidth(),
                         colors = colors
                     )
+                    
+                    // Video reference selector
+                    Column {
+                        Text(
+                            text = "Form Reference",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        VideoReferenceSelector(
+                            currentVideoPath = videoReference,
+                            onVideoSelected = onVideoSelected,
+                            onVideoRemoved = onVideoRemoved,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
         }
@@ -1056,4 +1118,125 @@ private fun formatTime(seconds: Int): String {
     val minutes = seconds / 60
     val remainingSeconds = seconds % 60
     return "%02d:%02d".format(minutes, remainingSeconds)
+}
+
+/**
+ * Video selection component for recording form references
+ */
+@Composable
+fun VideoReferenceSelector(
+    currentVideoPath: String?,
+    onVideoSelected: (String) -> Unit,
+    onVideoRemoved: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
+    
+    // Video picker launcher
+    val videoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        uri?.let { selectedUri ->
+            // Copy video to app's private storage and get the path
+            try {
+                val fileName = "video_${UUID.randomUUID()}.mp4"
+                val internalDir = File(context.filesDir, "workout_videos")
+                if (!internalDir.exists()) {
+                    internalDir.mkdirs()
+                }
+                val destinationFile = File(internalDir, fileName)
+                
+                context.contentResolver.openInputStream(selectedUri)?.use { input ->
+                    destinationFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                
+                onVideoSelected(destinationFile.absolutePath)
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            } catch (e: Exception) {
+                // Handle error - could show a toast or log
+                e.printStackTrace()
+            }
+        }
+    }
+    
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // Video status indicator
+        if (currentVideoPath != null) {
+            // Show video attached indicator
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.VideoLibrary,
+                    contentDescription = "Video attached",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Form video attached",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            
+            // Remove video button
+            IconButton(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onVideoRemoved()
+                },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = "Remove video",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
+        } else {
+            // Show add video button
+            OutlinedButton(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    videoPickerLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                ),
+                border = BorderStroke(
+                    1.dp, 
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.VideoLibrary,
+                    contentDescription = "Add form video",
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Add Form Video",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+    }
 }

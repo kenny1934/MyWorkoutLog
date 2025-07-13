@@ -165,6 +165,7 @@ data class LoggedSet(
     val bands: String? = null,
     val notes: String? = null,
     val restTimeSeconds: Int? = null, // Actual rest time taken after this set
+    val videoReference: String? = null, // Path to video file for form reference
     // ADD THESE TWO PROPERTIES TO SNAPSHOT THE TARGETS
     val targetReps: String? = null,
     val targetSecs: String? = null
