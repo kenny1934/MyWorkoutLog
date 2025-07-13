@@ -164,6 +164,7 @@ data class LoggedSet(
     val rir: Int? = null,
     val bands: String? = null,
     val notes: String? = null,
+    val restTimeSeconds: Int? = null, // Actual rest time taken after this set
     // ADD THESE TWO PROPERTIES TO SNAPSHOT THE TARGETS
     val targetReps: String? = null,
     val targetSecs: String? = null

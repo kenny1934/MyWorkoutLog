@@ -87,6 +87,9 @@ private fun WorkoutLoggerScreenContent(
     // Local state for the bodyweight text field
     var bodyweightText by remember { mutableStateOf("") }
     
+    // Local state for session notes
+    var sessionNotesText by remember { mutableStateOf("") }
+    
     // State for exit confirmation dialog
     var showExitConfirmation by remember { mutableStateOf(false) }
     var exitAction by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -116,6 +119,8 @@ private fun WorkoutLoggerScreenContent(
     suspend fun saveAllPendingData() {
         // Save bodyweight if changed
         viewModel.updateBodyweight(bodyweightText)
+        // Save session notes if changed
+        viewModel.updateOverallComments(sessionNotesText)
         // Give a brief moment for any active typing to be captured by debounced saves
         kotlinx.coroutines.delay(100)
         // Note: Individual set data is automatically saved via DisposableEffect and debounced LaunchedEffect
@@ -135,6 +140,14 @@ private fun WorkoutLoggerScreenContent(
             viewModel.updateBodyweight(bodyweightText)
         }
     }
+    
+    // Debounced auto-save for session notes field
+    LaunchedEffect(sessionNotesText) {
+        if (sessionNotesText.isNotBlank()) {
+            kotlinx.coroutines.delay(1000) // 1 second debounce
+            viewModel.updateOverallComments(sessionNotesText)
+        }
+    }
 
     // Collect the active workout state from the ViewModel.
     val activeWorkout by viewModel.activeWorkoutState.collectAsStateWithLifecycle()
@@ -149,6 +162,14 @@ private fun WorkoutLoggerScreenContent(
         val workout = activeWorkout
         if (workout?.bodyweight != null && bodyweightText.isEmpty()) {
             bodyweightText = workout.bodyweight.toString()
+        }
+    }
+    
+    // Initialize session notes field from loaded workout data (for edit mode)
+    LaunchedEffect(activeWorkout?.overallComments) {
+        val workout = activeWorkout
+        if (workout?.overallComments != null && sessionNotesText.isEmpty()) {
+            sessionNotesText = workout.overallComments
         }
     }
     val sessionElapsedTime by viewModel.sessionElapsedTime.collectAsStateWithLifecycle()
@@ -289,6 +310,25 @@ private fun WorkoutLoggerScreenContent(
                                 onFocusChanged = { isFocused ->
                                     if (!isFocused) {
                                         viewModel.updateBodyweight(bodyweightText)
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            // Session notes input
+                            EnhancedWorkoutInputField(
+                                value = sessionNotesText,
+                                onValueChange = { newText ->
+                                    sessionNotesText = newText
+                                },
+                                label = "Session Notes",
+                                placeholder = "How are you feeling today? Any observations?",
+                                keyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
+                                onFocusChanged = { isFocused ->
+                                    if (!isFocused) {
+                                        viewModel.updateOverallComments(sessionNotesText)
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth()

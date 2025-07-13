@@ -70,7 +70,7 @@ class WorkoutLoggerViewModel(
 
     // --- TIMER AND STOPWATCH CONTROLS ---
 
-    fun startRestTimer(durationSeconds: Int = 90) {
+    fun startRestTimer(durationSeconds: Int = 120) {
         restTimerJob?.cancel()
         // If a duration is passed, start from that. Otherwise, continue from the current value.
         if (_timerValueSeconds.value == 0 || durationSeconds != _timerValueSeconds.value) {
@@ -113,7 +113,7 @@ class WorkoutLoggerViewModel(
         _timerValueSeconds.value = 0
     }
 
-    fun resetRestTimer(durationSeconds: Int = 90) {
+    fun resetRestTimer(durationSeconds: Int = 120) {
         stopRestTimer()
         startRestTimer(durationSeconds)
     }
@@ -329,6 +329,12 @@ class WorkoutLoggerViewModel(
         }
     }
     
+    fun updateOverallComments(comments: String) {
+        _activeWorkoutState.update { currentWorkout ->
+            currentWorkout?.copy(overallComments = comments.takeIf { it.isNotBlank() })
+        }
+    }
+    
     // Add exercise to the current workout
     fun addExerciseToWorkout(exerciseId: String, numberOfSets: Int) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -345,6 +351,7 @@ class WorkoutLoggerViewModel(
                         rir = null,
                         bands = null,
                         notes = null,
+                        restTimeSeconds = null,
                         targetReps = "8-12", // Default target reps for ad-hoc exercises
                         targetSecs = null
                     )
