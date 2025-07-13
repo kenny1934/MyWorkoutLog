@@ -280,6 +280,7 @@ data class CycleWorkoutCount(
 data class PerformanceSuggestion(
     val suggestedWeight: Double? = null,
     val suggestedReps: Int? = null,
+    val suggestedSecs: Int? = null, // Duration for time-based exercises like L-sits
     val suggestedRir: Int? = null,
     val confidence: Float = 0f, // 0.0 to 1.0 confidence level
     val basedonLastWorkout: Boolean = false,

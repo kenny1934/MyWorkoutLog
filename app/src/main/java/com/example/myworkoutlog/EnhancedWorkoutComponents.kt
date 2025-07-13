@@ -654,7 +654,7 @@ fun EnhancedSetRow(
     showSecs: Boolean = false,
     showTimer: Boolean = true,
     showDeleteButton: Boolean = false,
-    performanceSuggestion: Any? = null, // TODO: Replace with proper type
+    performanceSuggestion: PerformanceSuggestion? = null,
     onWeightChange: (String) -> Unit = {},
     onRepsChange: (String) -> Unit = {},
     onSecsChange: (String) -> Unit = {},
@@ -755,7 +755,12 @@ fun EnhancedSetRow(
                     },
                     label = { 
                         Text(
-                            text = "Suggested from previous session",
+                            text = buildString {
+                                performanceSuggestion.suggestedWeight?.let { append("${it}kg ") }
+                                performanceSuggestion.suggestedReps?.let { append("${it}r ") }
+                                performanceSuggestion.suggestedSecs?.let { append("${it}s ") }
+                                performanceSuggestion.daysAgo?.let { append("(${it}d ago)") }
+                            }.trim(),
                             style = MaterialTheme.typography.labelSmall
                         )
                     },

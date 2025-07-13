@@ -364,8 +364,9 @@ private fun WorkoutLoggerScreenContent(
                                     performanceSuggestion?.let { suggestion ->
                                         val weightText = suggestion.suggestedWeight?.toString() ?: ""
                                         val repsText = suggestion.suggestedReps?.toString() ?: ""
+                                        val secsText = suggestion.suggestedSecs?.toString() ?: ""
                                         val rirText = suggestion.suggestedRir?.toString() ?: ""
-                                        viewModel.updateSet(exercise.id, set.id, repsText, weightText.toDoubleOrNull(), set.secs?.toString() ?: "", rirText, set.bands, set.notes)
+                                        viewModel.updateSet(exercise.id, set.id, repsText, weightText.toDoubleOrNull(), secsText, rirText, set.bands, set.notes)
                                     }
                                 },
                                 modifier = Modifier.padding(vertical = 6.dp)
