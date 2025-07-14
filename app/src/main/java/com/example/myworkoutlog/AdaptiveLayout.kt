@@ -3,6 +3,7 @@ package com.example.myworkoutlog
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 
 /**
@@ -118,4 +119,115 @@ fun shouldUseMasterDetail(): Boolean {
 @Composable
 fun shouldUseTwoColumns(): Boolean {
     return rememberAdaptiveLayoutInfo().useTwoColumns
+}
+
+/**
+ * Adaptive text sizing based on layout context
+ */
+@Composable
+fun adaptiveTextSize(
+    baseSize: TextUnit,
+    compactMultiplier: Float = 0.85f,
+    mediumMultiplier: Float = 0.9f,
+    expandedMultiplier: Float = 1f
+): TextUnit {
+    val layoutInfo = rememberAdaptiveLayoutInfo()
+    val multiplier = when (layoutInfo.screenSize) {
+        ScreenSize.COMPACT -> compactMultiplier
+        ScreenSize.MEDIUM -> if (layoutInfo.useTwoColumns) mediumMultiplier else compactMultiplier
+        ScreenSize.EXPANDED -> if (layoutInfo.useTwoColumns) expandedMultiplier * 0.8f else expandedMultiplier
+    }
+    return baseSize * multiplier
+}
+
+/**
+ * Adaptive padding for widget internals
+ */
+@Composable
+fun adaptivePadding(
+    compact: Dp = 12.dp,
+    medium: Dp = 16.dp,
+    expanded: Dp = 20.dp
+): Dp {
+    val layoutInfo = rememberAdaptiveLayoutInfo()
+    return when (layoutInfo.screenSize) {
+        ScreenSize.COMPACT -> compact
+        ScreenSize.MEDIUM -> if (layoutInfo.useTwoColumns) compact else medium
+        ScreenSize.EXPANDED -> if (layoutInfo.useTwoColumns) medium else expanded
+    }
+}
+
+/**
+ * Smart column count that considers minimum widget width
+ */
+@Composable
+fun smartColumnCount(
+    minWidgetWidth: Dp = 280.dp
+): Int {
+    val layoutInfo = rememberAdaptiveLayoutInfo()
+    val availableWidth = layoutInfo.screenWidth - (layoutInfo.contentPadding * 2)
+    val spacingNeeded = adaptiveSpacing() * 2 // Spacing between 3 columns
+    
+    return when {
+        availableWidth < minWidgetWidth -> 1
+        availableWidth < (minWidgetWidth * 2 + spacingNeeded) -> 2
+        layoutInfo.screenSize == ScreenSize.EXPANDED -> 3
+        else -> 2
+    }
+}
+
+/**
+ * Determine if widgets are in compact mode (narrow columns)
+ */
+@Composable
+fun isCompactWidgetMode(): Boolean {
+    val layoutInfo = rememberAdaptiveLayoutInfo()
+    val columnCount = smartColumnCount()
+    val availableWidthPerWidget = (layoutInfo.screenWidth - (layoutInfo.contentPadding * 2)) / columnCount
+    return availableWidthPerWidget < 240.dp
+}
+
+/**
+ * Determine if difficulty badges should use compact mode
+ */
+@Composable
+fun isCompactBadgeMode(): Boolean {
+    val layoutInfo = rememberAdaptiveLayoutInfo()
+    val columnCount = smartColumnCount()
+    val availableWidthPerWidget = (layoutInfo.screenWidth - (layoutInfo.contentPadding * 2)) / columnCount
+    return availableWidthPerWidget < 260.dp
+}
+
+/**
+ * Get optimal widget height for consistent grid appearance
+ */
+@Composable
+fun adaptiveWidgetHeight(): Dp {
+    val layoutInfo = rememberAdaptiveLayoutInfo()
+    val isCompact = isCompactWidgetMode()
+    
+    return when {
+        isCompact -> 180.dp
+        layoutInfo.screenSize == ScreenSize.EXPANDED -> 220.dp
+        else -> 200.dp
+    }
+}
+
+/**
+ * Get content-aware padding that scales with widget density
+ */
+@Composable
+fun adaptiveContentPadding(
+    compact: Dp = 8.dp,
+    medium: Dp = 12.dp,
+    expanded: Dp = 16.dp
+): Dp {
+    val isCompact = isCompactWidgetMode()
+    val layoutInfo = rememberAdaptiveLayoutInfo()
+    
+    return when {
+        isCompact -> compact
+        layoutInfo.screenSize == ScreenSize.EXPANDED -> expanded
+        else -> medium
+    }
 }

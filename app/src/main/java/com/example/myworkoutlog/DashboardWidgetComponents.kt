@@ -809,44 +809,52 @@ private fun getCategoryColor(category: AchievementCategory): Color {
 @Composable
 fun DifficultyBadge(
     difficulty: SessionDifficulty,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isCompact: Boolean = false
 ) {
+    val shouldUseCompactBadge = isCompact || isCompactBadgeMode()
     val (color, label, dots) = when (difficulty) {
-        SessionDifficulty.LIGHT -> Triple(Color(0xFF4CAF50), "Light", 1)
-        SessionDifficulty.MODERATE -> Triple(Color(0xFFFF9800), "Moderate", 2)
-        SessionDifficulty.HARD -> Triple(Color(0xFFFF5722), "Hard", 3)
-        SessionDifficulty.VERY_HARD -> Triple(Color(0xFFF44336), "Very Hard", 4)
+        SessionDifficulty.LIGHT -> Triple(Color(0xFF4CAF50), if (shouldUseCompactBadge) "L" else "Light", 1)
+        SessionDifficulty.MODERATE -> Triple(Color(0xFFFF9800), if (shouldUseCompactBadge) "M" else "Moderate", 2)
+        SessionDifficulty.HARD -> Triple(Color(0xFFFF5722), if (shouldUseCompactBadge) "H" else "Hard", 3)
+        SessionDifficulty.VERY_HARD -> Triple(Color(0xFFF44336), if (shouldUseCompactBadge) "VH" else "Very Hard", 4)
     }
     
     Surface(
         modifier = modifier,
         color = color.copy(alpha = 0.1f),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(if (shouldUseCompactBadge) 8.dp else 12.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.padding(
+                horizontal = if (shouldUseCompactBadge) 6.dp else 8.dp, 
+                vertical = if (shouldUseCompactBadge) 2.dp else 4.dp
+            ),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(if (shouldUseCompactBadge) 2.dp else 4.dp)
         ) {
-            // Difficulty dots
-            repeat(4) { index ->
-                Box(
-                    modifier = Modifier
-                        .size(4.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (index < dots) color else color.copy(alpha = 0.3f)
-                        )
-                )
+            // Difficulty dots (smaller in compact mode)
+            if (!shouldUseCompactBadge) {
+                repeat(4) { index ->
+                    Box(
+                        modifier = Modifier
+                            .size(4.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (index < dots) color else color.copy(alpha = 0.3f)
+                            )
+                    )
+                }
+                
+                Spacer(modifier = Modifier.width(2.dp))
             }
-            
-            Spacer(modifier = Modifier.width(2.dp))
             
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelSmall,
+                fontSize = if (shouldUseCompactBadge) 10.sp else MaterialTheme.typography.labelSmall.fontSize,
                 color = color,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                maxLines = 1
             )
         }
     }

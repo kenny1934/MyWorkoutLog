@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -71,9 +72,12 @@ fun SimpleWelcomeWidgetCard(widget: DashboardWidget.WelcomeWidget) {
         label = "welcome_scale"
     )
     
+    val isCompactMode = isCompactWidgetMode()
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .fillMaxHeight()
             .graphicsLayer(
                 scaleX = animatedScale,
                 scaleY = animatedScale
@@ -83,7 +87,7 @@ fun SimpleWelcomeWidgetCard(widget: DashboardWidget.WelcomeWidget) {
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .background(
                     brush = Brush.linearGradient(
                         colors = listOf(
@@ -94,34 +98,58 @@ fun SimpleWelcomeWidgetCard(widget: DashboardWidget.WelcomeWidget) {
                     )
                 )
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(modifier = Modifier.padding(adaptiveContentPadding())) {
                 Text(
                     text = widget.greeting,
-                    style = MaterialTheme.typography.headlineMedium,
+                    fontSize = adaptiveTextSize(
+                        baseSize = MaterialTheme.typography.headlineMedium.fontSize,
+                        compactMultiplier = 0.75f,
+                        mediumMultiplier = 0.85f,
+                        expandedMultiplier = 1f
+                    ),
                     fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = if (isCompactMode) 2 else 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(if (isCompactMode) 8.dp else 12.dp))
                 Text(
                     text = widget.motivationalMessage,
-                    style = MaterialTheme.typography.bodyLarge,
+                    fontSize = adaptiveTextSize(
+                        baseSize = MaterialTheme.typography.bodyLarge.fontSize,
+                        compactMultiplier = 0.8f,
+                        mediumMultiplier = 0.9f,
+                        expandedMultiplier = 1f
+                    ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 22.sp
+                    lineHeight = if (isCompactMode) 18.sp else 22.sp,
+                    maxLines = if (isCompactMode) 3 else 4,
+                    overflow = TextOverflow.Ellipsis
                 )
                 if (widget.currentStreak > 0) {
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(if (isCompactMode) 12.dp else 16.dp))
                     Surface(
-                        shape = RoundedCornerShape(20.dp),
+                        shape = RoundedCornerShape(if (isCompactMode) 16.dp else 20.dp),
                         color = Color(0xFFFF6B35).copy(alpha = 0.15f),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "🔥 ${widget.currentStreak} day streak - You're on fire!",
-                            style = MaterialTheme.typography.labelLarge,
+                            text = if (isCompactMode) "🔥 ${widget.currentStreak} days" else "🔥 ${widget.currentStreak} day streak - You're on fire!",
+                            fontSize = adaptiveTextSize(
+                                baseSize = MaterialTheme.typography.labelLarge.fontSize,
+                                compactMultiplier = 0.85f,
+                                mediumMultiplier = 0.9f,
+                                expandedMultiplier = 1f
+                            ),
                             color = Color(0xFFFF6B35),
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            textAlign = TextAlign.Center
+                            modifier = Modifier.padding(
+                                horizontal = if (isCompactMode) 12.dp else 16.dp,
+                                vertical = if (isCompactMode) 6.dp else 8.dp
+                            ),
+                            textAlign = TextAlign.Center,
+                            maxLines = if (isCompactMode) 2 else 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -132,12 +160,22 @@ fun SimpleWelcomeWidgetCard(widget: DashboardWidget.WelcomeWidget) {
 
 @Composable
 fun SimpleQuickStatsWidgetCard(widget: DashboardWidget.QuickStatsWidget) {
+    val isCompactMode = isCompactWidgetMode()
+    
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(adaptiveContentPadding()),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Header
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -146,40 +184,128 @@ fun SimpleQuickStatsWidgetCard(widget: DashboardWidget.QuickStatsWidget) {
                     imageVector = Icons.Default.Analytics,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(if (isCompactMode) 16.dp else 20.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(if (isCompactMode) 6.dp else 8.dp))
                 Text(
                     text = "Quick Stats",
-                    style = MaterialTheme.typography.titleLarge,
+                    fontSize = adaptiveTextSize(
+                        baseSize = MaterialTheme.typography.titleLarge.fontSize,
+                        compactMultiplier = 0.8f,
+                        mediumMultiplier = 0.9f,
+                        expandedMultiplier = 1f
+                    ),
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            Spacer(modifier = Modifier.height(16.dp))
             
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+            // Stats content - simplified layout without complex nesting
+            BoxWithConstraints(
+                modifier = Modifier.weight(1f)
             ) {
-                StatCard(
-                    value = widget.totalWorkouts.toString(),
-                    label = "Total Workouts",
-                    color = MaterialTheme.colorScheme.primary,
-                    icon = Icons.Default.FitnessCenter
-                )
-                StatCard(
-                    value = widget.currentStreak.toString(),
-                    label = "Day Streak",
-                    color = Color(0xFFFF6B35),
-                    icon = Icons.Default.LocalFireDepartment
-                )
-                StatCard(
-                    value = widget.recentPRs.size.toString(),
-                    label = "Recent PRs",
-                    color = MaterialTheme.colorScheme.secondary,
-                    icon = Icons.Default.TrendingUp
-                )
+                val availableWidth = maxWidth
+                
+                when {
+                    availableWidth < 200.dp -> {
+                        // Very compact: Single column layout
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            StatCard(
+                                value = widget.totalWorkouts.toString(),
+                                label = "Workouts",
+                                color = MaterialTheme.colorScheme.primary,
+                                icon = Icons.Default.FitnessCenter
+                            )
+                            StatCard(
+                                value = widget.currentStreak.toString(),
+                                label = "Streak",
+                                color = Color(0xFFFF6B35),
+                                icon = Icons.Default.LocalFireDepartment
+                            )
+                            StatCard(
+                                value = widget.recentPRs.size.toString(),
+                                label = "PRs",
+                                color = MaterialTheme.colorScheme.secondary,
+                                icon = Icons.Default.TrendingUp
+                            )
+                        }
+                    }
+                    availableWidth < 280.dp -> {
+                        // Compact: 2+1 layout
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            StatCard(
+                                value = widget.totalWorkouts.toString(),
+                                label = "Workouts",
+                                color = MaterialTheme.colorScheme.primary,
+                                icon = Icons.Default.FitnessCenter
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(modifier = Modifier.weight(1f)) {
+                                    StatCard(
+                                        value = widget.currentStreak.toString(),
+                                        label = "Streak",
+                                        color = Color(0xFFFF6B35),
+                                        icon = Icons.Default.LocalFireDepartment
+                                    )
+                                }
+                                Box(modifier = Modifier.weight(1f)) {
+                                    StatCard(
+                                        value = widget.recentPRs.size.toString(),
+                                        label = "PRs",
+                                        color = MaterialTheme.colorScheme.secondary,
+                                        icon = Icons.Default.TrendingUp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    else -> {
+                        // Normal: Horizontal layout
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            StatCard(
+                                value = widget.totalWorkouts.toString(),
+                                label = "Workouts",
+                                color = MaterialTheme.colorScheme.primary,
+                                icon = Icons.Default.FitnessCenter
+                            )
+                            StatCard(
+                                value = widget.currentStreak.toString(),
+                                label = "Streak",
+                                color = Color(0xFFFF6B35),
+                                icon = Icons.Default.LocalFireDepartment
+                            )
+                            StatCard(
+                                value = widget.recentPRs.size.toString(),
+                                label = "PRs",
+                                color = MaterialTheme.colorScheme.secondary,
+                                icon = Icons.Default.TrendingUp
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -198,10 +324,13 @@ private fun StatCard(
         label = "stat_scale"
     )
     
+    val isCompactMode = isCompactWidgetMode()
+    
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(if (isCompactMode) 8.dp else 12.dp),
         color = color.copy(alpha = 0.1f),
         modifier = Modifier
+            .fillMaxWidth()
             .graphicsLayer(
                 scaleX = animatedScale,
                 scaleY = animatedScale
@@ -209,26 +338,45 @@ private fun StatCard(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(12.dp)
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(
+                horizontal = if (isCompactMode) 8.dp else 12.dp,
+                vertical = if (isCompactMode) 12.dp else 16.dp
+            )
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = color,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(if (isCompactMode) 20.dp else 24.dp)
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(if (isCompactMode) 4.dp else 6.dp))
             Text(
                 text = value,
-                style = MaterialTheme.typography.headlineSmall,
+                fontSize = adaptiveTextSize(
+                    baseSize = MaterialTheme.typography.headlineSmall.fontSize,
+                    compactMultiplier = 0.8f,
+                    mediumMultiplier = 0.9f,
+                    expandedMultiplier = 1f
+                ),
                 fontWeight = FontWeight.ExtraBold,
-                color = color
+                color = color,
+                maxLines = 1
             )
+            Spacer(modifier = Modifier.height(if (isCompactMode) 2.dp else 4.dp))
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodySmall,
+                fontSize = adaptiveTextSize(
+                    baseSize = MaterialTheme.typography.bodySmall.fontSize,
+                    compactMultiplier = 0.85f,
+                    mediumMultiplier = 0.9f,
+                    expandedMultiplier = 1f
+                ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                maxLines = if (isCompactMode) 2 else 1,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = if (isCompactMode) 14.sp else 16.sp
             )
         }
     }
@@ -240,37 +388,69 @@ fun SimpleBodyweightWidgetCard(
     lastRecordedDate: String?,
     unit: String
 ) {
+    val isCompactMode = isCompactWidgetMode()
+    
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(adaptiveContentPadding())) {
             Text(
                 text = "Current Weight",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                fontSize = adaptiveTextSize(
+                    baseSize = MaterialTheme.typography.titleMedium.fontSize,
+                    compactMultiplier = 0.8f,
+                    mediumMultiplier = 0.9f,
+                    expandedMultiplier = 1f
+                ),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(if (isCompactMode) 6.dp else 8.dp))
             
             if (currentWeight != null) {
                 Text(
                     text = "${formatWeightValue(currentWeight)} $unit",
-                    style = MaterialTheme.typography.headlineMedium,
+                    fontSize = adaptiveTextSize(
+                        baseSize = MaterialTheme.typography.headlineMedium.fontSize,
+                        compactMultiplier = 0.8f,
+                        mediumMultiplier = 0.9f,
+                        expandedMultiplier = 1f
+                    ),
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 lastRecordedDate?.let { date ->
                     Text(
-                        text = "Last recorded: $date",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = if (isCompactMode) date else "Last recorded: $date",
+                        fontSize = adaptiveTextSize(
+                            baseSize = MaterialTheme.typography.bodySmall.fontSize,
+                            compactMultiplier = 0.85f,
+                            mediumMultiplier = 0.9f,
+                            expandedMultiplier = 1f
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = if (isCompactMode) 2 else 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             } else {
                 Text(
-                    text = "No weight recorded",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = if (isCompactMode) "No weight" else "No weight recorded",
+                    fontSize = adaptiveTextSize(
+                        baseSize = MaterialTheme.typography.bodyMedium.fontSize,
+                        compactMultiplier = 0.85f,
+                        mediumMultiplier = 0.9f,
+                        expandedMultiplier = 1f
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -366,7 +546,17 @@ fun SimpleCycleProgressWidgetCard(
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("View Analytics")
+                            Text(
+                                text = "Analytics",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                fontSize = adaptiveTextSize(
+                                    baseSize = MaterialTheme.typography.labelMedium.fontSize,
+                                    compactMultiplier = 0.8f,
+                                    mediumMultiplier = 0.9f,
+                                    expandedMultiplier = 1f
+                                )
+                            )
                         }
                     }
                     
@@ -711,37 +901,59 @@ fun SimpleNextSessionWidgetCard(widget: DashboardWidget.NextSessionWidget, navCo
         isExpandable = widget.isExpandable,
         collapsedContent = {
             // Collapsed: Show session overview
+            val isCompactMode = isCompactWidgetMode()
+            
             Column {
                 Text(
                     text = widget.session.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = adaptiveTextSize(
+                        baseSize = MaterialTheme.typography.titleMedium.fontSize,
+                        compactMultiplier = 0.8f,
+                        mediumMultiplier = 0.9f,
+                        expandedMultiplier = 1f
+                    ),
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = if (isCompactMode) 2 else 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(if (isCompactMode) 2.dp else 4.dp))
                 Text(
                     text = widget.session.weekLabel,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    fontSize = adaptiveTextSize(
+                        baseSize = MaterialTheme.typography.bodySmall.fontSize,
+                        compactMultiplier = 0.85f,
+                        mediumMultiplier = 0.9f,
+                        expandedMultiplier = 1f
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(if (isCompactMode) 6.dp else 8.dp))
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Filled.Timer,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(if (isCompactMode) 14.dp else 16.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(if (isCompactMode) 2.dp else 4.dp))
                         Text(
                             text = "${widget.estimatedDuration} min",
-                            style = MaterialTheme.typography.bodySmall,
+                            fontSize = adaptiveTextSize(
+                                baseSize = MaterialTheme.typography.bodySmall.fontSize,
+                                compactMultiplier = 0.8f,
+                                mediumMultiplier = 0.9f,
+                                expandedMultiplier = 1f
+                            ),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -1537,11 +1749,13 @@ fun ArrowReorderWidgetCard(
 ) {
     // Use transparent Card to preserve enhanced styling while maintaining structure  
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
-        Box {
+        Box(modifier = Modifier.fillMaxHeight()) {
             // Render the actual widget content
             when (widget) {
             is DashboardWidget.WelcomeWidget -> SimpleWelcomeWidgetCard(widget)
@@ -1651,23 +1865,35 @@ fun AdaptiveWidgetGrid(
     onShowCompleteCycleConfirmation: (Boolean) -> Unit,
     onPendingCompleteCycleAction: (QuickAction?) -> Unit
 ) {
+    // Calculate layout values before LazyColumn
+    val columnCount = if (layoutInfo.useTwoColumns) {
+        smartColumnCount(minWidgetWidth = 280.dp)
+    } else {
+        1
+    }
+    val spacing = adaptiveSpacing()
+    val widgetHeight = adaptiveWidgetHeight()
+    
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(adaptiveSpacing())
+        verticalArrangement = Arrangement.spacedBy(spacing)
     ) {
         // Widgets Section with Adaptive Grid
         if (layoutInfo.useTwoColumns) {
-            // Two-column grid layout for large screens
-            val columnCount = if (layoutInfo.screenSize == ScreenSize.EXPANDED) 3 else 2
+            // Smart grid layout that prevents widget squishing
             val chunkedWidgets = widgets.chunked(columnCount)
             
             items(chunkedWidgets) { widgetRow ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(adaptiveSpacing())
+                    horizontalArrangement = Arrangement.spacedBy(spacing)
                 ) {
                     widgetRow.forEach { widget ->
-                        Box(modifier = Modifier.weight(1f)) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = widgetHeight)
+                        ) {
                             val index = widgets.indexOf(widget)
                             ArrowReorderWidgetCard(
                                 widget = widget,
@@ -1725,6 +1951,8 @@ fun AdaptiveDashboardContent(
     onShowCompleteCycleConfirmation: (Boolean) -> Unit,
     onPendingCompleteCycleAction: (QuickAction?) -> Unit
 ) {
+    val spacing = adaptiveSpacing()
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1768,7 +1996,7 @@ fun AdaptiveDashboardContent(
             }
         }
         
-        Spacer(modifier = Modifier.height(adaptiveSpacing()))
+        Spacer(modifier = Modifier.height(spacing))
         
         when {
             isLoading && dashboardState.widgets.isEmpty() -> {
@@ -1835,6 +2063,7 @@ fun EnhancedDashboardScreen(
     
     // Adaptive layout information
     val layoutInfo = rememberAdaptiveLayoutInfo()
+    val spacing = adaptiveSpacing()
     
     // Setup simple LazyColumn state (non-widget items)
     val lazyListState = rememberLazyListState()
@@ -1872,7 +2101,7 @@ fun EnhancedDashboardScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(layoutInfo.contentPadding),
-                verticalArrangement = Arrangement.spacedBy(adaptiveSpacing())
+                verticalArrangement = Arrangement.spacedBy(spacing)
             ) {
             // Header with customization toggle
             item {

@@ -26,7 +26,9 @@ fun ExpandableWidgetCard(
     var isExpanded by remember { mutableStateOf(false) }
     
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .fillMaxHeight(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -108,13 +110,16 @@ fun SimpleExpandableWidgetCard(
     expandedContent: @Composable (() -> Unit)? = null
 ) {
     var isExpanded by remember { mutableStateOf(false) }
+    val isCompactMode = isCompactWidgetMode()
     
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .fillMaxHeight(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(adaptiveContentPadding())
         ) {
             // Header with optional expand/collapse functionality
             if (isExpandable && expandedContent != null) {
@@ -127,8 +132,15 @@ fun SimpleExpandableWidgetCard(
                 ) {
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontSize = adaptiveTextSize(
+                            baseSize = MaterialTheme.typography.titleMedium.fontSize,
+                            compactMultiplier = 0.8f,
+                            mediumMultiplier = 0.9f,
+                            expandedMultiplier = 1f
+                        ),
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = if (isCompactMode) 2 else 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                     
                     // Animated expand/collapse icon
@@ -143,20 +155,27 @@ fun SimpleExpandableWidgetCard(
                         contentDescription = if (isExpanded) "Collapse" else "Expand",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
-                            .size(24.dp)
+                            .size(if (isCompactMode) 20.dp else 24.dp)
                             .rotate(rotationAngle)
                     )
                 }
                 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(if (isCompactMode) 8.dp else 12.dp))
             } else {
                 // Static title for non-expandable widgets
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                    fontSize = adaptiveTextSize(
+                        baseSize = MaterialTheme.typography.titleMedium.fontSize,
+                        compactMultiplier = 0.8f,
+                        mediumMultiplier = 0.9f,
+                        expandedMultiplier = 1f
+                    ),
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = if (isCompactMode) 2 else 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(if (isCompactMode) 8.dp else 12.dp))
             }
             
             // Collapsed content (always shown)
