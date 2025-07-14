@@ -1637,6 +1637,188 @@ fun ArrowReorderWidgetCard(
     }
 }
 
+@Composable
+fun AdaptiveWidgetGrid(
+    widgets: List<DashboardWidget>,
+    quickActions: List<QuickAction>,
+    insights: List<SmartInsight>,
+    isCustomizationMode: Boolean,
+    dashboardPreferences: DashboardPreferences,
+    hiddenWidgets: List<DashboardWidget>,
+    dashboardViewModel: DashboardViewModel,
+    navController: NavHostController,
+    layoutInfo: AdaptiveLayoutInfo,
+    onShowCompleteCycleConfirmation: (Boolean) -> Unit,
+    onPendingCompleteCycleAction: (QuickAction?) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(adaptiveSpacing())
+    ) {
+        // Widgets Section with Adaptive Grid
+        if (layoutInfo.useTwoColumns) {
+            // Two-column grid layout for large screens
+            val columnCount = if (layoutInfo.screenSize == ScreenSize.EXPANDED) 3 else 2
+            val chunkedWidgets = widgets.chunked(columnCount)
+            
+            items(chunkedWidgets) { widgetRow ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(adaptiveSpacing())
+                ) {
+                    widgetRow.forEach { widget ->
+                        Box(modifier = Modifier.weight(1f)) {
+                            val index = widgets.indexOf(widget)
+                            ArrowReorderWidgetCard(
+                                widget = widget,
+                                navController = navController,
+                                isCustomizationMode = isCustomizationMode,
+                                isWidgetVisible = dashboardPreferences.widgetConfigs.find { it.widgetType == widget.id }?.isEnabled != false,
+                                canMoveUp = index > 0,
+                                canMoveDown = index < widgets.size - 1,
+                                onToggleVisibility = { widgetId -> dashboardViewModel.toggleWidgetVisibility(widgetId) },
+                                onMoveUp = { dashboardViewModel.moveWidgetUp(index) },
+                                onMoveDown = { dashboardViewModel.moveWidgetDown(index) },
+                                onEndCycle = null
+                            )
+                        }
+                    }
+                    // Fill remaining space if row is not complete
+                    repeat(columnCount - widgetRow.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        } else {
+            // Single column layout for compact screens
+            itemsIndexed(widgets) { index, widget ->
+                ArrowReorderWidgetCard(
+                    widget = widget,
+                    navController = navController,
+                    isCustomizationMode = isCustomizationMode,
+                    isWidgetVisible = dashboardPreferences.widgetConfigs.find { it.widgetType == widget.id }?.isEnabled != false,
+                    canMoveUp = index > 0,
+                    canMoveDown = index < widgets.size - 1,
+                    onToggleVisibility = { widgetId -> dashboardViewModel.toggleWidgetVisibility(widgetId) },
+                    onMoveUp = { dashboardViewModel.moveWidgetUp(index) },
+                    onMoveDown = { dashboardViewModel.moveWidgetDown(index) },
+                    onEndCycle = null
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AdaptiveDashboardContent(
+    dashboardState: DashboardState,
+    isLoading: Boolean,
+    error: String?,
+    isCustomizationMode: Boolean,
+    dashboardPreferences: DashboardPreferences,
+    hiddenWidgets: List<DashboardWidget>,
+    dashboardViewModel: DashboardViewModel,
+    navController: NavHostController,
+    layoutInfo: AdaptiveLayoutInfo,
+    showCompleteCycleConfirmation: Boolean,
+    pendingCompleteCycleAction: QuickAction?,
+    onShowCompleteCycleConfirmation: (Boolean) -> Unit,
+    onPendingCompleteCycleAction: (QuickAction?) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(layoutInfo.contentPadding)
+    ) {
+        // Header with customization toggle
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            var showDebugDialog by remember { mutableStateOf(false) }
+            
+            Text(
+                text = "Dashboard",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.combinedClickable(
+                    onClick = { /* Normal click does nothing */ },
+                    onLongClick = { showDebugDialog = true }
+                )
+            )
+            
+            OutlinedButton(
+                onClick = { dashboardViewModel.toggleCustomizationMode() },
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = if (isCustomizationMode) 
+                        MaterialTheme.colorScheme.primary 
+                    else 
+                        MaterialTheme.colorScheme.onSurface
+                )
+            ) {
+                Icon(
+                    imageVector = if (isCustomizationMode) Icons.Default.Done else Icons.Default.Edit,
+                    contentDescription = if (isCustomizationMode) "Done" else "Customize",
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(if (isCustomizationMode) "Done" else "Edit")
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(adaptiveSpacing()))
+        
+        when {
+            isLoading && dashboardState.widgets.isEmpty() -> {
+                // Loading state
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+            error != null -> {
+                // Error state  
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Error: $error",
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = { dashboardViewModel.onPullToRefresh() }) {
+                            Text("Retry")
+                        }
+                    }
+                }
+            }
+            else -> {
+                // Content with adaptive layout
+                AdaptiveWidgetGrid(
+                    widgets = dashboardState.widgets,
+                    quickActions = dashboardState.quickActions,
+                    insights = dashboardState.insights,
+                    isCustomizationMode = isCustomizationMode,
+                    dashboardPreferences = dashboardPreferences,
+                    hiddenWidgets = hiddenWidgets,
+                    dashboardViewModel = dashboardViewModel,
+                    navController = navController,
+                    layoutInfo = layoutInfo,
+                    onShowCompleteCycleConfirmation = onShowCompleteCycleConfirmation,
+                    onPendingCompleteCycleAction = onPendingCompleteCycleAction
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun EnhancedDashboardScreen(
@@ -1651,6 +1833,9 @@ fun EnhancedDashboardScreen(
     val dashboardPreferences by dashboardViewModel.dashboardPreferences.collectAsStateWithLifecycle()
     val hiddenWidgets by dashboardViewModel.hiddenWidgets.collectAsStateWithLifecycle()
     
+    // Adaptive layout information
+    val layoutInfo = rememberAdaptiveLayoutInfo()
+    
     // Setup simple LazyColumn state (non-widget items)
     val lazyListState = rememberLazyListState()
     
@@ -1663,13 +1848,32 @@ fun EnhancedDashboardScreen(
         onRefresh = { dashboardViewModel.onPullToRefresh() },
         modifier = Modifier.fillMaxSize()
     ) {
-        LazyColumn(
-            state = lazyListState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        if (layoutInfo.useTwoColumns) {
+            // Use adaptive grid layout for large screens
+            AdaptiveDashboardContent(
+                dashboardState = dashboardState,
+                isLoading = isLoading,
+                error = error,
+                isCustomizationMode = isCustomizationMode,
+                dashboardPreferences = dashboardPreferences,
+                hiddenWidgets = hiddenWidgets,
+                dashboardViewModel = dashboardViewModel,
+                navController = navController,
+                layoutInfo = layoutInfo,
+                showCompleteCycleConfirmation = showCompleteCycleConfirmation,
+                pendingCompleteCycleAction = pendingCompleteCycleAction,
+                onShowCompleteCycleConfirmation = { showCompleteCycleConfirmation = it },
+                onPendingCompleteCycleAction = { pendingCompleteCycleAction = it }
+            )
+        } else {
+            // Use single column layout for compact screens
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(layoutInfo.contentPadding),
+                verticalArrangement = Arrangement.spacedBy(adaptiveSpacing())
+            ) {
             // Header with customization toggle
             item {
                 Row(
@@ -2003,6 +2207,7 @@ fun EnhancedDashboardScreen(
                     }
                 }
             }
+        }
         }
     }
     
