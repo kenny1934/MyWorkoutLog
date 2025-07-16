@@ -184,7 +184,8 @@ fun isCompactWidgetMode(): Boolean {
     val layoutInfo = rememberAdaptiveLayoutInfo()
     val columnCount = smartColumnCount()
     val availableWidthPerWidget = (layoutInfo.screenWidth - (layoutInfo.contentPadding * 2)) / columnCount
-    return availableWidthPerWidget < 240.dp
+    // More lenient threshold for better large screen experience
+    return availableWidthPerWidget < 200.dp
 }
 
 /**
@@ -195,7 +196,8 @@ fun isCompactBadgeMode(): Boolean {
     val layoutInfo = rememberAdaptiveLayoutInfo()
     val columnCount = smartColumnCount()
     val availableWidthPerWidget = (layoutInfo.screenWidth - (layoutInfo.contentPadding * 2)) / columnCount
-    return availableWidthPerWidget < 260.dp
+    // Only use compact badges on very small widgets (like phone portrait mode)
+    return availableWidthPerWidget < 180.dp
 }
 
 /**

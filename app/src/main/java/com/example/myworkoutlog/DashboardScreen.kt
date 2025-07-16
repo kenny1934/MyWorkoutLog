@@ -77,7 +77,6 @@ fun SimpleWelcomeWidgetCard(widget: DashboardWidget.WelcomeWidget) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight()
             .graphicsLayer(
                 scaleX = animatedScale,
                 scaleY = animatedScale
@@ -161,19 +160,21 @@ fun SimpleWelcomeWidgetCard(widget: DashboardWidget.WelcomeWidget) {
 @Composable
 fun SimpleQuickStatsWidgetCard(widget: DashboardWidget.QuickStatsWidget) {
     val isCompactMode = isCompactWidgetMode()
+    val layoutInfo = rememberAdaptiveLayoutInfo()
+    val columnCount = smartColumnCount()
+    val availableWidthPerWidget = (layoutInfo.screenWidth - (layoutInfo.contentPadding * 2)) / columnCount
     
     Card(
         modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight(),
+            .fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(adaptiveContentPadding()),
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Header
             Row(
@@ -202,108 +203,69 @@ fun SimpleQuickStatsWidgetCard(widget: DashboardWidget.QuickStatsWidget) {
                 )
             }
             
-            // Stats content - simplified layout without complex nesting
-            BoxWithConstraints(
-                modifier = Modifier.weight(1f)
+            // Stats content - clean layout
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val availableWidth = maxWidth
                 
-                when {
-                    availableWidth < 200.dp -> {
-                        // Very compact: Single column layout
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .fillMaxHeight(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            StatCard(
-                                value = widget.totalWorkouts.toString(),
-                                label = "Workouts",
-                                color = MaterialTheme.colorScheme.primary,
-                                icon = Icons.Default.FitnessCenter
-                            )
-                            StatCard(
-                                value = widget.currentStreak.toString(),
-                                label = "Streak",
-                                color = Color(0xFFFF6B35),
-                                icon = Icons.Default.LocalFireDepartment
-                            )
-                            StatCard(
-                                value = widget.recentPRs.size.toString(),
-                                label = "PRs",
-                                color = MaterialTheme.colorScheme.secondary,
-                                icon = Icons.Default.TrendingUp
-                            )
-                        }
+                if (isCompactMode) {
+                    // Compact: Top stat + bottom row
+                    StatCard(
+                        value = widget.totalWorkouts.toString(),
+                        label = "Workouts",
+                        color = MaterialTheme.colorScheme.primary,
+                        icon = Icons.Default.FitnessCenter
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        StatCard(
+                            value = widget.currentStreak.toString(),
+                            label = "Streak",
+                            color = Color(0xFFFF6B35),
+                            icon = Icons.Default.LocalFireDepartment,
+                            modifier = Modifier.weight(1f)
+                        )
+                        StatCard(
+                            value = widget.recentPRs.size.toString(),
+                            label = "PRs",
+                            color = MaterialTheme.colorScheme.secondary,
+                            icon = Icons.Default.TrendingUp,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
-                    availableWidth < 280.dp -> {
-                        // Compact: 2+1 layout
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .fillMaxHeight(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            StatCard(
-                                value = widget.totalWorkouts.toString(),
-                                label = "Workouts",
-                                color = MaterialTheme.colorScheme.primary,
-                                icon = Icons.Default.FitnessCenter
-                            )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Box(modifier = Modifier.weight(1f)) {
-                                    StatCard(
-                                        value = widget.currentStreak.toString(),
-                                        label = "Streak",
-                                        color = Color(0xFFFF6B35),
-                                        icon = Icons.Default.LocalFireDepartment
-                                    )
-                                }
-                                Box(modifier = Modifier.weight(1f)) {
-                                    StatCard(
-                                        value = widget.recentPRs.size.toString(),
-                                        label = "PRs",
-                                        color = MaterialTheme.colorScheme.secondary,
-                                        icon = Icons.Default.TrendingUp
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    else -> {
-                        // Normal: Horizontal layout
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .fillMaxHeight(),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            StatCard(
-                                value = widget.totalWorkouts.toString(),
-                                label = "Workouts",
-                                color = MaterialTheme.colorScheme.primary,
-                                icon = Icons.Default.FitnessCenter
-                            )
-                            StatCard(
-                                value = widget.currentStreak.toString(),
-                                label = "Streak",
-                                color = Color(0xFFFF6B35),
-                                icon = Icons.Default.LocalFireDepartment
-                            )
-                            StatCard(
-                                value = widget.recentPRs.size.toString(),
-                                label = "PRs",
-                                color = MaterialTheme.colorScheme.secondary,
-                                icon = Icons.Default.TrendingUp
-                            )
-                        }
+                } else {
+                    // Normal: Horizontal layout
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        StatCard(
+                            value = widget.totalWorkouts.toString(),
+                            label = "Workouts",
+                            color = MaterialTheme.colorScheme.primary,
+                            icon = Icons.Default.FitnessCenter,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        StatCard(
+                            value = widget.currentStreak.toString(),
+                            label = "Streak",
+                            color = Color(0xFFFF6B35),
+                            icon = Icons.Default.LocalFireDepartment,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        StatCard(
+                            value = widget.recentPRs.size.toString(),
+                            label = "PRs",
+                            color = MaterialTheme.colorScheme.secondary,
+                            icon = Icons.Default.TrendingUp,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
             }
@@ -316,67 +278,58 @@ private fun StatCard(
     value: String,
     label: String,
     color: Color,
-    icon: androidx.compose.ui.graphics.vector.ImageVector
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier
 ) {
-    val animatedScale by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = spring(dampingRatio = 0.7f),
-        label = "stat_scale"
-    )
-    
     val isCompactMode = isCompactWidgetMode()
     
     Surface(
         shape = RoundedCornerShape(if (isCompactMode) 8.dp else 12.dp),
         color = color.copy(alpha = 0.1f),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .graphicsLayer(
-                scaleX = animatedScale,
-                scaleY = animatedScale
-            )
+            .heightIn(min = if (isCompactMode) 60.dp else 80.dp)
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(
                 horizontal = if (isCompactMode) 8.dp else 12.dp,
-                vertical = if (isCompactMode) 12.dp else 16.dp
+                vertical = if (isCompactMode) 8.dp else 12.dp
             )
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = color,
-                modifier = Modifier.size(if (isCompactMode) 20.dp else 24.dp)
-            )
-            Spacer(modifier = Modifier.height(if (isCompactMode) 4.dp else 6.dp))
-            Text(
-                text = value,
-                fontSize = adaptiveTextSize(
-                    baseSize = MaterialTheme.typography.headlineSmall.fontSize,
-                    compactMultiplier = 0.8f,
-                    mediumMultiplier = 0.9f,
-                    expandedMultiplier = 1f
-                ),
-                fontWeight = FontWeight.ExtraBold,
-                color = color,
-                maxLines = 1
+                modifier = Modifier.size(if (isCompactMode) 18.dp else 22.dp)
             )
             Spacer(modifier = Modifier.height(if (isCompactMode) 2.dp else 4.dp))
             Text(
-                text = label,
+                text = value,
                 fontSize = adaptiveTextSize(
-                    baseSize = MaterialTheme.typography.bodySmall.fontSize,
+                    baseSize = MaterialTheme.typography.titleLarge.fontSize,
                     compactMultiplier = 0.85f,
                     mediumMultiplier = 0.9f,
                     expandedMultiplier = 1f
                 ),
+                fontWeight = FontWeight.Bold,
+                color = color,
+                maxLines = 1
+            )
+            Spacer(modifier = Modifier.height(if (isCompactMode) 1.dp else 2.dp))
+            Text(
+                text = label,
+                fontSize = adaptiveTextSize(
+                    baseSize = MaterialTheme.typography.bodySmall.fontSize,
+                    compactMultiplier = 0.9f,
+                    mediumMultiplier = 0.95f,
+                    expandedMultiplier = 1f
+                ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                maxLines = if (isCompactMode) 2 else 1,
-                overflow = TextOverflow.Ellipsis,
-                lineHeight = if (isCompactMode) 14.sp else 16.sp
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -392,8 +345,7 @@ fun SimpleBodyweightWidgetCard(
     
     Card(
         modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight(),
+            .fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(adaptiveContentPadding())) {
@@ -968,10 +920,12 @@ fun SimpleNextSessionWidgetCard(widget: DashboardWidget.NextSessionWidget, navCo
                 // Session header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text(
                             text = widget.session.name,
                             style = MaterialTheme.typography.titleMedium,
@@ -980,11 +934,18 @@ fun SimpleNextSessionWidgetCard(widget: DashboardWidget.NextSessionWidget, navCo
                         Text(
                             text = widget.session.weekLabel,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     
-                    DifficultyBadge(difficulty = widget.difficulty)
+                    // Give badge sufficient space with minimum width
+                    Box(
+                        modifier = Modifier.widthIn(min = 60.dp)
+                    ) {
+                        DifficultyBadge(difficulty = widget.difficulty)
+                    }
                 }
                 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -1750,12 +1711,11 @@ fun ArrowReorderWidgetCard(
     // Use transparent Card to preserve enhanced styling while maintaining structure  
     Card(
         modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight(),
+            .fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
-        Box(modifier = Modifier.fillMaxHeight()) {
+        Box(modifier = Modifier.fillMaxWidth()) {
             // Render the actual widget content
             when (widget) {
             is DashboardWidget.WelcomeWidget -> SimpleWelcomeWidgetCard(widget)

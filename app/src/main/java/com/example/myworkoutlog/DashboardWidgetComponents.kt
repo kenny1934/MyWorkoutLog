@@ -812,13 +812,40 @@ fun DifficultyBadge(
     modifier: Modifier = Modifier,
     isCompact: Boolean = false
 ) {
-    val shouldUseCompactBadge = isCompact || isCompactBadgeMode()
+    // Calculate compact mode manually for consistency
+    val layoutInfo = rememberAdaptiveLayoutInfo()
+    val columnCount = smartColumnCount()
+    val availableWidthPerWidget = (layoutInfo.screenWidth - (layoutInfo.contentPadding * 2)) / columnCount
+    val compactFromMode = availableWidthPerWidget < 180.dp
+    val shouldUseCompactBadge = isCompact || compactFromMode
+    
     val (color, label, dots) = when (difficulty) {
         SessionDifficulty.LIGHT -> Triple(Color(0xFF4CAF50), if (shouldUseCompactBadge) "L" else "Light", 1)
         SessionDifficulty.MODERATE -> Triple(Color(0xFFFF9800), if (shouldUseCompactBadge) "M" else "Moderate", 2)
         SessionDifficulty.HARD -> Triple(Color(0xFFFF5722), if (shouldUseCompactBadge) "H" else "Hard", 3)
         SessionDifficulty.VERY_HARD -> Triple(Color(0xFFF44336), if (shouldUseCompactBadge) "VH" else "Very Hard", 4)
     }
+    
+    // Force consistent label for testing
+    val finalLabel = if (shouldUseCompactBadge) {
+        when (difficulty) {
+            SessionDifficulty.LIGHT -> "L"
+            SessionDifficulty.MODERATE -> "M" 
+            SessionDifficulty.HARD -> "H"
+            SessionDifficulty.VERY_HARD -> "VH"
+        }
+    } else {
+        when (difficulty) {
+            SessionDifficulty.LIGHT -> "Light"
+            SessionDifficulty.MODERATE -> "Moderate"
+            SessionDifficulty.HARD -> "Hard"
+            SessionDifficulty.VERY_HARD -> "Very Hard"
+        }
+    }
+    
+    // More detailed debug info
+    val compactFromParam = isCompact
+    val finalCompact = shouldUseCompactBadge
     
     Surface(
         modifier = modifier,
@@ -850,7 +877,7 @@ fun DifficultyBadge(
             }
             
             Text(
-                text = label,
+                text = finalLabel,
                 fontSize = if (shouldUseCompactBadge) 10.sp else MaterialTheme.typography.labelSmall.fontSize,
                 color = color,
                 fontWeight = FontWeight.Medium,
