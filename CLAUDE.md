@@ -2,7 +2,7 @@
 
 ## Current Status
 - Branch: `feature/workout-logger-ui-improvements`
-- Last commit: `fix: Complete Galaxy Z Fold 6 adaptive layout optimization`
+- Last commit: `fix: Resolve Galaxy Z Fold 6 unfolded mode dashboard issues`
 - Development Phase: **Galaxy Z Fold 6 Adaptive Layout System COMPLETE** ✅
 
 ## App State Summary
@@ -40,6 +40,8 @@
 - **Widget Height**: Fixed conflicting fillMaxHeight() modifiers causing layout instability
 - **Row Layout**: Improved space allocation to prevent text truncation in badges
 - **Compact Mode**: Adjusted thresholds (200dp/180dp) for better large screen experience
+- **Activity Heatmap**: Fixed timeframe options overflow - all options now accessible via scrolling
+- **Missing Insights**: Resolved insights widgets not appearing in unfolded mode with complete priority filtering
 
 ### **Video Reference Implementation - COMPLETE** ✅
 - **VideoReferenceSelector Component**: Android Photo Picker integration with URI storage
@@ -81,7 +83,7 @@ The user specifically requested optimization for their Galaxy Z Fold 6's 7.6" in
 - `DashboardWidgetComponents.kt` - Enhanced DifficultyBadge with consistent label logic
 - `CLAUDE.md` - Updated development context
 
-**Result**: Galaxy Z Fold 6 now displays a properly optimized 3-column dashboard with all widgets functioning correctly, stable heights, and proper space utilization - successfully transformed from "blown-up phone app" to professional large-screen experience.
+**Result**: Galaxy Z Fold 6 now displays a fully functional 3-column dashboard with complete feature parity between folded and unfolded modes - successfully transformed from "blown-up phone app" to professional large-screen experience with all widgets, insights, and interactive elements working correctly.
 
 ## Development Status
 - **Production-Ready**: Complete fitness app with comprehensive feature set

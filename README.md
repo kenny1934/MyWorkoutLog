@@ -28,11 +28,13 @@ The application is feature-complete with enterprise-level functionality includin
 - **Enhanced Filtering**: Exercise, cycle, and muscle group filters with clear indicators
 
 ### **Professional Dashboard Experience**
+- **Galaxy Z Fold 6 Optimized**: Adaptive layout system for large screens with proper space utilization
 - **Customizable Widgets**: Edit mode with drag-and-drop reordering
 - **Widget Management**: Show/hide toggles with hidden widget recovery
 - **Quick Actions**: Contextual shortcuts with scroll indicators
 - **Enhanced Navigation**: Direct exercise navigation with auto-selection
 - **Persistent Preferences**: SharedPreferences-based customization storage
+- **Responsive Design**: Seamless experience across compact, medium, and expanded screen sizes
 
 ### **Enterprise Data Management**
 - **Import/Export**: Complete backup and restore functionality
@@ -41,6 +43,14 @@ The application is feature-complete with enterprise-level functionality includin
 - **Type Safety**: Comprehensive error handling and validation
 
 ## 🎯 Latest Enhancements
+
+### **Galaxy Z Fold 6 Adaptive Layout System**
+- Complete large-screen optimization for Galaxy Z Fold 6's 7.6" inner display
+- Responsive multi-column widget grids (1/2/3 columns) that scale with screen real estate
+- Adaptive layout detection with Material 3 breakpoints (600dp/840dp)
+- Consistent dashboard experience between folded and unfolded modes
+- Fixed Activity Heatmap timeframe overflow with scrollable selection
+- Complete insights and quick actions support in large screen mode
 
 ### **Video Reference System**
 - VideoReferenceSelector component with Android Photo Picker integration
