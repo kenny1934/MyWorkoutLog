@@ -660,21 +660,21 @@ fun EnhancedActivityHeatmap(
 
     Column(modifier = modifier) {
         // Period selector
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Column {
             Text(
                 text = "Activity Pattern",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Medium
             )
             
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Scrollable timeframe options to prevent overflow
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                listOf("3 Months", "6 Months", "Yearly").forEach { period ->
+                items(listOf("3 Months", "6 Months", "Yearly")) { period ->
                     FilterChip(
                         onClick = { selectedPeriod = period },
                         label = { 

@@ -1838,6 +1838,80 @@ fun AdaptiveWidgetGrid(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(spacing)
     ) {
+        // High priority insights (same as compact mode)
+        val urgentInsights = insights.filter { 
+            it.priority == InsightPriority.URGENT || it.priority == InsightPriority.HIGH 
+        }
+        items(urgentInsights) { insight ->
+            Box(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                EnhancedInsightCard(
+                    insight = insight,
+                    onDismiss = { insightId -> dashboardViewModel.dismissInsight(insightId) },
+                    onAction = { insight -> 
+                        dashboardViewModel.executeInsightAction(insight) { route -> 
+                            navController.navigate(route) 
+                        }
+                    }
+                )
+            }
+        }
+        
+        // Low priority insights (same as compact mode)
+        val lowPriorityInsights = insights.filter { 
+            it.priority == InsightPriority.LOW || it.priority == InsightPriority.MEDIUM 
+        }
+        items(lowPriorityInsights) { insight ->
+            Box(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                EnhancedInsightCard(
+                    insight = insight,
+                    onDismiss = { insightId -> dashboardViewModel.dismissInsight(insightId) },
+                    onAction = { insight -> 
+                        dashboardViewModel.executeInsightAction(insight) { route -> 
+                            navController.navigate(route) 
+                        }
+                    }
+                )
+            }
+        }
+        
+        // Quick actions (if needed for large screens)
+        if (quickActions.isNotEmpty()) {
+            item {
+                EnhancedDashboardWidgetCard(
+                    title = "Quick Actions",
+                    icon = Icons.Default.FlashOn
+                ) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp)
+                    ) {
+                        items(quickActions) { action ->
+                            QuickActionButton(
+                                action = action,
+                                onClick = { clickedAction ->
+                                    when (clickedAction.action) {
+                                        QuickActionType.COMPLETE_CYCLE -> {
+                                            onPendingCompleteCycleAction(clickedAction)
+                                            onShowCompleteCycleConfirmation(true)
+                                        }
+                                        else -> {
+                                            dashboardViewModel.executeQuickAction(clickedAction) { route ->
+                                                navController.navigate(route)
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
         // Widgets Section with Adaptive Grid
         if (layoutInfo.useTwoColumns) {
             // Smart grid layout that prevents widget squishing
