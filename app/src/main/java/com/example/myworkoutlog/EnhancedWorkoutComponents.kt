@@ -738,7 +738,7 @@ fun EnhancedSetRow(
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Text(
-                                    text = formatTime(restTime),
+                                    text = "${restTime / 60}:${String.format("%02d", restTime % 60)}",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.tertiary
@@ -1075,14 +1075,14 @@ fun EnhancedTimerBar(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = formatTime(currentTime),
+                            text = "${currentTime / 60}:${String.format("%02d", currentTime % 60)}",
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         if (targetTime > 0) {
                             Text(
-                                text = "/ ${formatTime(targetTime)}",
+                                text = "/ ${targetTime / 60}:${String.format("%02d", targetTime % 60)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1158,12 +1158,6 @@ fun EnhancedTimerBar(
     }
 }
 
-// Helper function to format seconds into MM:SS format
-private fun formatTime(seconds: Int): String {
-    val minutes = seconds / 60
-    val remainingSeconds = seconds % 60
-    return "%02d:%02d".format(minutes, remainingSeconds)
-}
 
 /**
  * Video selection component for recording form references
