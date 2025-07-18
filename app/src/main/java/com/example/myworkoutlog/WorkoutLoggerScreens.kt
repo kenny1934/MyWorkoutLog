@@ -480,7 +480,8 @@ private fun WorkoutLoggerScreenContent(
                                 modifier = Modifier.padding(vertical = 6.dp)
                             )
                         }
-                        }
+                    }
+                }
                     }
                 }
             }
@@ -1264,7 +1265,7 @@ fun SubstituteExerciseDialog(
                     Spacer(modifier = Modifier.height(16.dp))
                     ExerciseSelectorContent(
                         viewModel = viewModel,
-                        onExerciseSelected = { exercise ->
+                        onExerciseSelected = { exercise: Exercise ->
                             selectedExercise = exercise
                             showExerciseSelector = false
                         }
@@ -1314,132 +1315,6 @@ fun SubstituteExerciseDialog(
                 }
             }
         }
-    )
-}
-
-@Composable
-fun AddExerciseToWorkoutDialog(
-    viewModel: WorkoutLoggerViewModel,
-    onDismiss: () -> Unit,
-    onExerciseAdded: () -> Unit
-) {
-    // State for exercise selection
-    var selectedExercise by remember { mutableStateOf<Exercise?>(null) }
-    var numberOfSets by remember { mutableStateOf("3") }
-    var showExerciseSelector by remember { mutableStateOf(true) }
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { 
-            Text(if (showExerciseSelector) "Select Exercise" else "Configure Sets")
-        },
-        text = {
-            if (showExerciseSelector) {
-                ExerciseSelectorContent(
-                    viewModel = viewModel,
-                    onExerciseSelected = { exercise: Exercise ->
-                        selectedExercise = exercise
-                        showExerciseSelector = false
-                    }
-                )
-            } else {
-                Column {
-                    Text("Exercise: ${selectedExercise?.name}")
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedTextField(
-                        value = numberOfSets,
-                        onValueChange = { newValue ->
-                            if (newValue.all { it.isDigit() } && newValue.isNotEmpty()) {
-                                numberOfSets = newValue
-                            }
-                        },
-                        label = { Text("Number of Sets") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            if (showExerciseSelector) {
-                TextButton(onClick = onDismiss) {
-                    Text("Cancel")
-                }
-            } else {
-                Button(
-                    onClick = {
-                        selectedExercise?.let { exercise ->
-                            val sets = numberOfSets.toIntOrNull() ?: 3
-                            viewModel.addExerciseToWorkout(exercise.id, sets)
-                            onExerciseAdded()
-                        }
-                    },
-                    enabled = selectedExercise != null
-                ) {
-                    Text("Add Exercise")
-                }
-            }
-        },
-        dismissButton = {
-            if (!showExerciseSelector) {
-                TextButton(
-                    onClick = { 
-                        showExerciseSelector = true
-                        selectedExercise = null
-                    }
-                ) {
-                    Text("Back")
-                }
-            }
-        }
-    )
-}
-
-@Composable
-fun ExerciseContextMenuDialog(
-    exercise: LoggedExercise,
-    onDismiss: () -> Unit,
-    onSubstitute: () -> Unit,
-    onRemove: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Exercise Options") },
-        text = { 
-            Column {
-                Text("Choose an action for \"${exercise.exerciseName}\"")
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Button(
-                    onClick = onSubstitute,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Filled.SwapHoriz, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Substitute Exercise")
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Button(
-                    onClick = onRemove,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Icon(Icons.Filled.Delete, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Remove Exercise")
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-        dismissButton = null
     )
 }
 
