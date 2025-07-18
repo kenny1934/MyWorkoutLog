@@ -233,3 +233,70 @@ fun adaptiveContentPadding(
         else -> medium
     }
 }
+
+/**
+ * Workout-specific adaptive layout utilities
+ */
+
+/**
+ * Determine if workout should use master-detail layout
+ */
+@Composable
+fun shouldUseWorkoutMasterDetail(): Boolean {
+    val layoutInfo = rememberAdaptiveLayoutInfo()
+    return layoutInfo.screenSize == ScreenSize.EXPANDED || 
+           (layoutInfo.screenSize == ScreenSize.MEDIUM && layoutInfo.isLandscape)
+}
+
+/**
+ * Get optimal master panel width for workout screens
+ */
+@Composable
+fun workoutMasterPanelWidth(): Dp {
+    val layoutInfo = rememberAdaptiveLayoutInfo()
+    val totalWidth = layoutInfo.screenWidth
+    return when {
+        totalWidth > 1000.dp -> 400.dp
+        totalWidth > 800.dp -> 320.dp
+        else -> totalWidth * 0.4f
+    }
+}
+
+/**
+ * Get workout touch target size optimized for gym usage
+ */
+@Composable
+fun workoutTouchTargetSize(): Dp {
+    val layoutInfo = rememberAdaptiveLayoutInfo()
+    return when (layoutInfo.screenSize) {
+        ScreenSize.COMPACT -> 44.dp
+        ScreenSize.MEDIUM -> 48.dp
+        ScreenSize.EXPANDED -> 56.dp
+    }
+}
+
+/**
+ * Get workout input field height for better gym usability
+ */
+@Composable
+fun workoutInputHeight(): Dp {
+    val layoutInfo = rememberAdaptiveLayoutInfo()
+    return when (layoutInfo.screenSize) {
+        ScreenSize.COMPACT -> 56.dp
+        ScreenSize.MEDIUM -> 60.dp
+        ScreenSize.EXPANDED -> 64.dp
+    }
+}
+
+/**
+ * Determine spacing between workout elements
+ */
+@Composable
+fun workoutElementSpacing(): Dp {
+    val layoutInfo = rememberAdaptiveLayoutInfo()
+    return when (layoutInfo.screenSize) {
+        ScreenSize.COMPACT -> 12.dp
+        ScreenSize.MEDIUM -> 16.dp
+        ScreenSize.EXPANDED -> 20.dp
+    }
+}

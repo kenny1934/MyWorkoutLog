@@ -664,6 +664,7 @@ fun EnhancedSetRow(
     showTimer: Boolean = true,
     showDeleteButton: Boolean = false,
     performanceSuggestion: PerformanceSuggestion? = null,
+    isLargeScreen: Boolean = false,
     onWeightChange: (String) -> Unit = {},
     onRepsChange: (String) -> Unit = {},
     onSecsChange: (String) -> Unit = {},
@@ -819,53 +820,98 @@ fun EnhancedSetRow(
                 )
             }
             
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(if (isLargeScreen) 16.dp else 12.dp))
             
-            // Input fields grid
+            // Input fields grid - adaptive layout for large screens
             if (showWeightReps) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // Weight input
-                    EnhancedWorkoutInputField(
-                        value = weightValue,
-                        onValueChange = onWeightChange,
-                        label = "Weight",
-                        unit = weightUnit,
-                        placeholder = "0",
-                        modifier = Modifier.weight(1f),
-                        colors = colors
-                    )
-                    
-                    // Reps input
-                    EnhancedWorkoutInputField(
-                        value = repsValue,
-                        onValueChange = onRepsChange,
-                        label = "Reps",
-                        placeholder = "0",
-                        modifier = Modifier.weight(1f),
-                        colors = colors
-                    )
+                if (isLargeScreen) {
+                    // Large screen: Horizontal layout with extra spacing
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(20.dp)
+                    ) {
+                        // Weight input
+                        EnhancedWorkoutInputField(
+                            value = weightValue,
+                            onValueChange = onWeightChange,
+                            label = "Weight",
+                            unit = weightUnit,
+                            placeholder = "0",
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(workoutInputHeight()),
+                            colors = colors
+                        )
+                        
+                        // Reps input
+                        EnhancedWorkoutInputField(
+                            value = repsValue,
+                            onValueChange = onRepsChange,
+                            label = "Reps",
+                            placeholder = "0",
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(workoutInputHeight()),
+                            colors = colors
+                        )
+                        
+                        // RIR input inline for large screens
+                        RirInputField(
+                            value = rirValue,
+                            onValueChange = onRirChange,
+                            modifier = Modifier
+                                .weight(0.8f)
+                                .height(workoutInputHeight())
+                        )
+                    }
+                } else {
+                    // Compact screen: Standard layout
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Weight input
+                        EnhancedWorkoutInputField(
+                            value = weightValue,
+                            onValueChange = onWeightChange,
+                            label = "Weight",
+                            unit = weightUnit,
+                            placeholder = "0",
+                            modifier = Modifier.weight(1f),
+                            colors = colors
+                        )
+                        
+                        // Reps input
+                        EnhancedWorkoutInputField(
+                            value = repsValue,
+                            onValueChange = onRepsChange,
+                            label = "Reps",
+                            placeholder = "0",
+                            modifier = Modifier.weight(1f),
+                            colors = colors
+                        )
+                    }
                 }
             }
             
             // Seconds input for time-based exercises
             if (showSecs) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(if (isLargeScreen) 12.dp else 8.dp))
                 EnhancedWorkoutInputField(
                     value = secsValue,
                     onValueChange = onSecsChange,
                     label = "Duration",
                     unit = "sec",
                     placeholder = "0",
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(if (isLargeScreen) Modifier.height(workoutInputHeight()) else Modifier),
                     colors = colors
                 )
             }
             
-            // RIR input (compact version)
-            if (rirValue.isNotEmpty() || true) { // Always show for optional input
+            // RIR input (compact version - only for compact screens when weight/reps are shown)
+            if (!isLargeScreen && showWeightReps && (rirValue.isNotEmpty() || true)) {
                 Spacer(modifier = Modifier.height(12.dp))
                 RirInputField(
                     value = rirValue,

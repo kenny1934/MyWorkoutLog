@@ -1,9 +1,9 @@
 # Claude Development Context
 
 ## Current Status
-- Branch: `feature/workout-logger-ui-improvements`
-- Last commit: `fix: Resolve Galaxy Z Fold 6 unfolded mode dashboard issues`
-- Development Phase: **Galaxy Z Fold 6 Adaptive Layout System COMPLETE** ✅
+- Branch: `feature/dashboard-enhancements`
+- Last commit: `feat: Implement large screen workout logging optimization with master-detail layout`
+- Development Phase: **Large Screen Workout Logging Optimization COMPLETE** ✅
 
 ## App State Summary
 **Production-ready fitness app** with enhanced workout logging, video form references, rest time tracking, and modern UI components.
@@ -15,8 +15,48 @@
 - ✅ **Interactive Dashboard**: Customizable widgets with edit mode, reordering, and visibility controls
 - ✅ **Smart Insights Engine**: Priority-based insight cards with dismissal and action handling
 - ✅ **Enhanced Navigation**: Contextual routing with auto-selection throughout app
+- ✅ **Large Screen Workout Logging**: Master-detail layout with adaptive input components optimized for workout sessions
 
-## 🎯 Latest Enhancement: Galaxy Z Fold 6 Adaptive Layout System - COMPLETE ✅
+## 🎯 Latest Enhancement: Large Screen Workout Logging Optimization - COMPLETE ✅
+
+### **Master-Detail Workout Interface - COMPLETE** ✅
+**Problem Solved**: Optimized workout logging screen for Galaxy Z Fold 6 large screens, providing efficient workout session management where users spend most of their time.
+
+**Key Features Implemented**:
+- **AdaptiveWorkoutLayout**: Intelligent switching between single-column and master-detail layouts
+- **MasterDetailWorkoutView**: Exercise list (master) + active exercise details (detail) side-by-side
+- **WorkoutNavigationRail**: Material 3 navigation rail with quick actions (Add Exercise, Rest Timer, Finish)
+- **CompactSessionInfo**: Optimized session overview with bodyweight and notes in master panel
+- **EnhancedExerciseDetailPanel**: Full-width exercise details with enhanced set management
+
+### **Large Screen Input Optimizations**:
+1. **Adaptive Touch Targets**: Larger input fields (56dp vs 44dp) optimized for gym usage
+2. **Smart Layout Distribution**: 40% master panel, 60% detail panel for optimal workflow
+3. **Inline RIR Input**: RIR field integrated inline with Weight/Reps on large screens
+4. **Enhanced Spacing**: 20dp spacing between elements (vs 12dp) for better touch experience
+5. **Persistent Session Panel**: Always-visible session timer, bodyweight, and notes
+
+### **Navigation Enhancement**:
+- **Exercise Selection**: Click exercise in master list to view/edit in detail panel
+- **Progress Indicators**: Linear progress bars showing set completion in exercise list
+- **Quick Actions Rail**: Add exercise, start rest timer, finish workout in dedicated navigation rail
+- **Auto-Selection**: First exercise automatically selected when entering workout logging
+
+### **Technical Implementation**:
+1. **shouldUseWorkoutMasterDetail()**: Detects large screens (≥600dp) and landscape orientation
+2. **workoutTouchTargetSize()**: Adaptive sizing for touch targets based on screen size
+3. **workoutInputHeight()**: Enhanced input field heights for better gym usability
+4. **isLargeScreen parameter**: EnhancedSetRow optimizations for large screen layouts
+
+### **Files Created/Modified**:
+- **NEW: AdaptiveWorkoutComponents.kt**: Complete master-detail workout interface system
+- **ENHANCED: AdaptiveLayout.kt**: Added workout-specific adaptive utilities
+- **ENHANCED: EnhancedWorkoutComponents.kt**: Added isLargeScreen parameter and optimizations
+- **ENHANCED: WorkoutLoggerScreens.kt**: Integrated adaptive layout with intelligent switching
+
+**Result**: Workout logging now provides a professional tablet-class experience on Galaxy Z Fold 6, with efficient exercise navigation, enhanced input components, and optimal space utilization during workout sessions.
+
+## 🎯 Previous Enhancement: Galaxy Z Fold 6 Adaptive Layout System - COMPLETE ✅
 
 ### **Adaptive Layout Implementation - COMPLETE** ✅
 **Problem Solved**: Transformed app from "blown-up phone app" to proper large-screen experience on Galaxy Z Fold 6's 7.6" inner display.

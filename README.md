@@ -44,6 +44,14 @@ The application is feature-complete with enterprise-level functionality includin
 
 ## 🎯 Latest Enhancements
 
+### **Large Screen Workout Logging Optimization**
+- Master-detail layout for exercise management on large screens (≥600dp)
+- Adaptive touch targets (56dp) optimized for gym usage and large screen interaction
+- WorkoutNavigationRail with quick actions: Add Exercise, Rest Timer, Finish Workout
+- Persistent session panel with bodyweight tracking and notes always visible
+- Enhanced input components with 20dp spacing and larger field heights for better usability
+- Smart layout distribution: 40% exercise list, 60% detailed exercise view for optimal workflow
+
 ### **Galaxy Z Fold 6 Adaptive Layout System**
 - Complete large-screen optimization for Galaxy Z Fold 6's 7.6" inner display
 - Responsive multi-column widget grids (1/2/3 columns) that scale with screen real estate
@@ -104,10 +112,11 @@ The application is feature-complete with enterprise-level functionality includin
 ## 🚀 App Highlights
 
 - **Production-Ready**: Comprehensive feature set with enterprise-level functionality
+- **Large Screen Optimized**: Master-detail workout logging with adaptive touch targets for Galaxy Z Fold 6
 - **Video Form References**: Attach and manage workout videos for technique analysis
 - **Enhanced Workout Logger**: Modern UI with rest time tracking and advanced input components
 - **Offline-First**: Complete functionality without internet dependency
-- **Intelligent UX**: Contextual navigation with smart auto-selection
+- **Intelligent UX**: Contextual navigation with smart auto-selection and master-detail layouts
 - **Precision Tracking**: Accurate decimal bodyweight tracking system
 - **Professional Polish**: Material 3 design with smooth interactions and haptic feedback
 - **Advanced Analytics**: Real-time calculations with thread-safe operations

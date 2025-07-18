@@ -207,7 +207,7 @@ private fun WorkoutLoggerScreenContent(
                 actions = {
                     if (!isEditMode) {
                         Text(
-                            text = formatTime(sessionElapsedTime),
+                            text = "${sessionElapsedTime / 60}:${String.format("%02d", sessionElapsedTime % 60)}",
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.padding(end = 8.dp)
                         )
@@ -254,13 +254,73 @@ private fun WorkoutLoggerScreenContent(
                 CircularProgressIndicator()
             }
         } else {
-            // Once loaded, display the list of exercises.
-            LazyColumn(
-                modifier = Modifier
-                    .padding(paddingValues)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+            // State for master-detail navigation
+            var selectedExerciseId by remember { mutableStateOf<String?>(activeWorkout!!.loggedExercises.firstOrNull()?.id) }
+            
+            // Use adaptive layout
+            AdaptiveWorkoutLayout(
+                modifier = Modifier.padding(paddingValues)
+            ) { useMasterDetail ->
+                if (useMasterDetail) {
+                    // Large screen: Master-detail layout
+                    MasterDetailWorkoutView(
+                        activeWorkout = activeWorkout,
+                        exerciseList = activeWorkout!!.loggedExercises,
+                        selectedExerciseId = selectedExerciseId,
+                        onExerciseSelected = { exerciseId -> selectedExerciseId = exerciseId },
+                        sessionContent = {
+                            CompactSessionInfo(
+                                bodyweightText = bodyweightText,
+                                onBodyweightChange = { newText ->
+                                    if (newText.matches(Regex("^\\d*\\.?\\d*\$"))) {
+                                        bodyweightText = newText
+                                    }
+                                },
+                                sessionNotesText = sessionNotesText,
+                                onSessionNotesChange = { sessionNotesText = it },
+                                weightUnit = weightUnit
+                            )
+                        },
+                        selectedExerciseContent = {
+                            val selectedExercise = activeWorkout!!.loggedExercises.find { it.id == selectedExerciseId }
+                            EnhancedExerciseDetailPanel(
+                                exercise = selectedExercise,
+                                weightUnit = weightUnit,
+                                onSetUpdate = { exerciseId, setId, repsText, weight, secsText, rirText, bands, notes, videoPath ->
+                                    viewModel.updateSet(exerciseId, setId, repsText, weight, secsText, rirText, bands, notes, videoPath)
+                                },
+                                onAddSet = { exerciseId -> viewModel.addSetToExercise(exerciseId) },
+                                onRemoveSet = { exerciseId, setId -> viewModel.removeSetFromExercise(exerciseId, setId) },
+                                onStartRest = { exerciseId, setId -> viewModel.startRestTimerForSet(exerciseId, setId) },
+                                performanceSuggestion = selectedExercise?.let { viewModel.getPerformanceSuggestion(it.exerciseId) }
+                            )
+                        },
+                        navigationRail = {
+                            WorkoutNavigationRail(
+                                onAddExercise = { showAddExerciseDialog = true },
+                                onStartRestTimer = { viewModel.startRestTimerForSet("", "") },
+                                onFinishWorkout = {
+                                    showExitConfirmationDialog({
+                                        coroutineScope.launch {
+                                            saveAllPendingData()
+                                            viewModel.finishWorkout(weightUnit, activeCycle)
+                                            onNavigateUp()
+                                        }
+                                    }, isFinish = true)
+                                },
+                                timerIsRunning = timerIsRunning,
+                                sessionElapsedTime = sessionElapsedTime
+                            )
+                        }
+                    )
+                } else {
+                    // Compact screen: Traditional single-column layout
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
                 // Enhanced bodyweight input section
                 item {
                     Card(
@@ -419,6 +479,7 @@ private fun WorkoutLoggerScreenContent(
                                 },
                                 modifier = Modifier.padding(vertical = 6.dp)
                             )
+                        }
                         }
                     }
                 }
@@ -975,7 +1036,7 @@ fun TimerBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = formatTime(currentTime),
+                    text = "${currentTime / 60}:${String.format("%02d", currentTime % 60)}",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -1023,7 +1084,7 @@ fun AddExerciseToWorkoutDialog(
             if (showExerciseSelector) {
                 ExerciseSelectorContent(
                     viewModel = viewModel,
-                    onExerciseSelected = { exercise ->
+                    onExerciseSelected = { exercise: Exercise ->
                         selectedExercise = exercise
                         showExerciseSelector = false
                     }
@@ -1256,8 +1317,134 @@ fun SubstituteExerciseDialog(
     )
 }
 
+@Composable
+fun AddExerciseToWorkoutDialog(
+    viewModel: WorkoutLoggerViewModel,
+    onDismiss: () -> Unit,
+    onExerciseAdded: () -> Unit
+) {
+    // State for exercise selection
+    var selectedExercise by remember { mutableStateOf<Exercise?>(null) }
+    var numberOfSets by remember { mutableStateOf("3") }
+    var showExerciseSelector by remember { mutableStateOf(true) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Text(if (showExerciseSelector) "Select Exercise" else "Configure Sets")
+        },
+        text = {
+            if (showExerciseSelector) {
+                ExerciseSelectorContent(
+                    viewModel = viewModel,
+                    onExerciseSelected = { exercise: Exercise ->
+                        selectedExercise = exercise
+                        showExerciseSelector = false
+                    }
+                )
+            } else {
+                Column {
+                    Text("Exercise: ${selectedExercise?.name}")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = numberOfSets,
+                        onValueChange = { newValue ->
+                            if (newValue.all { it.isDigit() } && newValue.isNotEmpty()) {
+                                numberOfSets = newValue
+                            }
+                        },
+                        label = { Text("Number of Sets") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (showExerciseSelector) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            } else {
+                Button(
+                    onClick = {
+                        selectedExercise?.let { exercise ->
+                            val sets = numberOfSets.toIntOrNull() ?: 3
+                            viewModel.addExerciseToWorkout(exercise.id, sets)
+                            onExerciseAdded()
+                        }
+                    },
+                    enabled = selectedExercise != null
+                ) {
+                    Text("Add Exercise")
+                }
+            }
+        },
+        dismissButton = {
+            if (!showExerciseSelector) {
+                TextButton(
+                    onClick = { 
+                        showExerciseSelector = true
+                        selectedExercise = null
+                    }
+                ) {
+                    Text("Back")
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun ExerciseContextMenuDialog(
+    exercise: LoggedExercise,
+    onDismiss: () -> Unit,
+    onSubstitute: () -> Unit,
+    onRemove: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Exercise Options") },
+        text = { 
+            Column {
+                Text("Choose an action for \"${exercise.exerciseName}\"")
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Button(
+                    onClick = onSubstitute,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.SwapHoriz, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Substitute Exercise")
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Button(
+                    onClick = onRemove,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(Icons.Filled.Delete, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Remove Exercise")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        dismissButton = null
+    )
+}
+
 // A helper function to format seconds into MM:SS format
-private fun formatTime(seconds: Int): String {
+fun formatTime(seconds: Int): String {
     val minutes = seconds / 60
     val remainingSeconds = seconds % 60
     return "%02d:%02d".format(minutes, remainingSeconds)
