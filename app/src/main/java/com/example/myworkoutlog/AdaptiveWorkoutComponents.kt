@@ -1,5 +1,7 @@
 package com.example.myworkoutlog
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,7 +29,9 @@ fun AdaptiveWorkoutLayout(
     content: @Composable (Boolean) -> Unit
 ) {
     val useMasterDetail = shouldUseWorkoutMasterDetail()
-    content(useMasterDetail)
+    Box(modifier = modifier) {
+        content(useMasterDetail)
+    }
 }
 
 /**
@@ -42,24 +46,38 @@ fun MasterDetailWorkoutView(
     sessionContent: @Composable () -> Unit,
     selectedExerciseContent: @Composable () -> Unit,
     navigationRail: @Composable () -> Unit,
+    paddingValues: PaddingValues,
     modifier: Modifier = Modifier
 ) {
     val masterWidth = workoutMasterPanelWidth()
     val spacing = workoutElementSpacing()
     
-    Row(modifier = modifier.fillMaxSize()) {
-        // Navigation rail for quick actions
-        navigationRail()
-        
-        // Master panel - Exercise list and session overview
-        Card(
-            modifier = Modifier
-                .width(masterWidth)
-                .fillMaxHeight()
-                .padding(end = spacing),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            shape = RoundedCornerShape(16.dp)
+    Row(
+        modifier = modifier.fillMaxSize()
+    ) {
+        // Navigation rail for quick actions - positioned with top padding only
+        Box(
+            modifier = Modifier.padding(top = paddingValues.calculateTopPadding())
         ) {
+            navigationRail()
+        }
+        
+        // Content area with proper padding
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(start = spacing)
+        ) {
+            // Master panel - Exercise list and session overview
+            Card(
+                modifier = Modifier
+                    .width(masterWidth)
+                    .fillMaxHeight()
+                    .padding(end = spacing),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -104,15 +122,16 @@ fun MasterDetailWorkoutView(
             }
         }
         
-        // Detail panel - Selected exercise details
-        Card(
-            modifier = Modifier
-                .fillMaxSize()
-                .weight(1f),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            selectedExerciseContent()
+            // Detail panel - Selected exercise details
+            Card(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                selectedExerciseContent()
+            }
         }
     }
 }
@@ -369,6 +388,20 @@ fun EnhancedExerciseDetailPanel(
             }
         }
     } else {
+        // Calculate completion metrics
+        val setsCompleted = exercise.sets.count { set -> 
+            (set.weight != null && set.reps != null) || set.secs != null 
+        }
+        val totalSets = exercise.sets.size
+        val completionPercentage = if (totalSets > 0) setsCompleted.toFloat() / totalSets else 0f
+        
+        // Animation for completion progress
+        val animatedProgress by animateFloatAsState(
+            targetValue = completionPercentage,
+            animationSpec = spring(dampingRatio = 0.8f),
+            label = "completion_progress"
+        )
+        
         Column(
             modifier = modifier
                 .fillMaxSize()
@@ -396,15 +429,50 @@ fun EnhancedExerciseDetailPanel(
                     }
                 }
                 
-                Button(
+                FilledTonalIconButton(
                     onClick = { onAddSet(exercise.id) },
-                    modifier = Modifier.size(workoutTouchTargetSize())
+                    modifier = Modifier.size(48.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Set")
+                    Icon(
+                        Icons.Default.Add, 
+                        contentDescription = "Add Set",
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
             }
             
-            Spacer(modifier = Modifier.height(20.dp))
+            // Progress bar and completion text
+            if (totalSets > 0) {
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Sets completion text
+                Text(
+                    text = "$setsCompleted/$totalSets sets completed",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Progress bar
+                LinearProgressIndicator(
+                    progress = { animatedProgress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    color = when {
+                        completionPercentage >= 1.0f -> MaterialTheme.colorScheme.tertiary
+                        completionPercentage >= 0.8f -> MaterialTheme.colorScheme.secondary
+                        else -> MaterialTheme.colorScheme.primary
+                    },
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(20.dp))
+            } else {
+                Spacer(modifier = Modifier.height(20.dp))
+            }
             
             // Sets list with enhanced spacing for large screens
             LazyColumn(

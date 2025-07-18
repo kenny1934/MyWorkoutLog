@@ -256,9 +256,9 @@ fun workoutMasterPanelWidth(): Dp {
     val layoutInfo = rememberAdaptiveLayoutInfo()
     val totalWidth = layoutInfo.screenWidth
     return when {
-        totalWidth > 1000.dp -> 400.dp
-        totalWidth > 800.dp -> 320.dp
-        else -> totalWidth * 0.4f
+        totalWidth > 1000.dp -> 480.dp
+        totalWidth > 800.dp -> 400.dp
+        else -> totalWidth * 0.45f
     }
 }
 
@@ -284,7 +284,7 @@ fun workoutInputHeight(): Dp {
     return when (layoutInfo.screenSize) {
         ScreenSize.COMPACT -> 56.dp
         ScreenSize.MEDIUM -> 60.dp
-        ScreenSize.EXPANDED -> 64.dp
+        ScreenSize.EXPANDED -> 76.dp
     }
 }
 

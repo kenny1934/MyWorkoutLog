@@ -130,7 +130,7 @@ fun EnhancedWorkoutInputField(
                         color = animatedBorderColor,
                         shape = RoundedCornerShape(16.dp)
                     )
-                    .padding(16.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -156,7 +156,7 @@ fun EnhancedWorkoutInputField(
                             fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium
                         )
                         
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                         
                         // Input field
                         Row(
@@ -172,7 +172,7 @@ fun EnhancedWorkoutInputField(
                                     }
                                 },
                                 textStyle = TextStyle(
-                                    fontSize = 18.sp,
+                                    fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = colors.inputText,
                                     textAlign = TextAlign.Start
@@ -190,7 +190,7 @@ fun EnhancedWorkoutInputField(
                                         Text(
                                             text = placeholder,
                                             style = TextStyle(
-                                                fontSize = 18.sp,
+                                                fontSize = 16.sp,
                                                 color = colors.placeholder,
                                                 textAlign = TextAlign.Start
                                             )
@@ -340,8 +340,9 @@ fun RirInputField(
         
         // RIR scale buttons
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            contentPadding = PaddingValues(horizontal = 4.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
             items(11) { rir ->
                 val isSelected = currentRir == rir
@@ -358,7 +359,7 @@ fun RirInputField(
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                         )
                     },
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(width = 48.dp, height = 44.dp),
                     leadingIcon = null
                 )
             }
@@ -825,43 +826,47 @@ fun EnhancedSetRow(
             // Input fields grid - adaptive layout for large screens
             if (showWeightReps) {
                 if (isLargeScreen) {
-                    // Large screen: Horizontal layout with extra spacing
-                    Row(
+                    // Large screen: Separate rows for better fit
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(20.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Weight input
-                        EnhancedWorkoutInputField(
-                            value = weightValue,
-                            onValueChange = onWeightChange,
-                            label = "Weight",
-                            unit = weightUnit,
-                            placeholder = "0",
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(workoutInputHeight()),
-                            colors = colors
-                        )
+                        // Weight and Reps row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(20.dp)
+                        ) {
+                            // Weight input
+                            EnhancedWorkoutInputField(
+                                value = weightValue,
+                                onValueChange = onWeightChange,
+                                label = "Weight",
+                                unit = weightUnit,
+                                placeholder = "0",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(workoutInputHeight()),
+                                colors = colors
+                            )
+                            
+                            // Reps input
+                            EnhancedWorkoutInputField(
+                                value = repsValue,
+                                onValueChange = onRepsChange,
+                                label = "Reps",
+                                placeholder = "0",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(workoutInputHeight()),
+                                colors = colors
+                            )
+                        }
                         
-                        // Reps input
-                        EnhancedWorkoutInputField(
-                            value = repsValue,
-                            onValueChange = onRepsChange,
-                            label = "Reps",
-                            placeholder = "0",
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(workoutInputHeight()),
-                            colors = colors
-                        )
-                        
-                        // RIR input inline for large screens
+                        // RIR input on separate row for large screens
                         RirInputField(
                             value = rirValue,
                             onValueChange = onRirChange,
-                            modifier = Modifier
-                                .weight(0.8f)
-                                .height(workoutInputHeight())
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 } else {

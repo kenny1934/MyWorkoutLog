@@ -228,10 +228,16 @@ private fun WorkoutLoggerScreenContent(
         },
         
         floatingActionButton = {
+            val fabSize = if (shouldUseWorkoutMasterDetail()) 72.dp else workoutTouchTargetSize()
             FloatingActionButton(
-                onClick = { showAddExerciseDialog = true }
+                onClick = { showAddExerciseDialog = true },
+                modifier = Modifier.size(fabSize)
             ) {
-                Icon(Icons.Filled.Add, contentDescription = "Add Exercise")
+                Icon(
+                    Icons.Filled.Add, 
+                    contentDescription = "Add Exercise",
+                    modifier = Modifier.size(fabSize * 0.55f)
+                )
             }
         },
 
@@ -259,7 +265,7 @@ private fun WorkoutLoggerScreenContent(
             
             // Use adaptive layout
             AdaptiveWorkoutLayout(
-                modifier = Modifier.padding(paddingValues)
+                modifier = Modifier.fillMaxSize()
             ) { useMasterDetail ->
                 if (useMasterDetail) {
                     // Large screen: Master-detail layout
@@ -311,13 +317,15 @@ private fun WorkoutLoggerScreenContent(
                                 timerIsRunning = timerIsRunning,
                                 sessionElapsedTime = sessionElapsedTime
                             )
-                        }
+                        },
+                        paddingValues = paddingValues
                     )
                 } else {
                     // Compact screen: Traditional single-column layout
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
+                            .padding(paddingValues)
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
