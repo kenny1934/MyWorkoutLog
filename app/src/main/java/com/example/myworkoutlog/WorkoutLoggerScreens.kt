@@ -228,16 +228,18 @@ private fun WorkoutLoggerScreenContent(
         },
         
         floatingActionButton = {
-            val fabSize = if (shouldUseWorkoutMasterDetail()) 72.dp else workoutTouchTargetSize()
-            FloatingActionButton(
-                onClick = { showAddExerciseDialog = true },
-                modifier = Modifier.size(fabSize)
-            ) {
-                Icon(
-                    Icons.Filled.Add, 
-                    contentDescription = "Add Exercise",
-                    modifier = Modifier.size(fabSize * 0.55f)
-                )
+            // Only show FAB for compact screens (large screens use navigation rail)
+            if (!shouldUseWorkoutMasterDetail()) {
+                FloatingActionButton(
+                    onClick = { showAddExerciseDialog = true },
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.Add, 
+                        contentDescription = "Add Exercise",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         },
 
