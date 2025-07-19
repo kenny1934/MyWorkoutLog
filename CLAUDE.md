@@ -1,9 +1,10 @@
 # Claude Development Context
 
 ## Current Status
-- Branch: `feature/workout-logger-ui-improvements`
+- Branch: `feature/workout-logger-ui-improvements` (PRIMARY DEVELOPMENT BRANCH)
 - Last commit: `feat: Implement adaptive FAB visibility for optimal UX`
 - Development Phase: **Large Screen Workout Logging with Adaptive FAB COMPLETE** ✅
+- Status: **Main development branch** (dashboard branch deleted)
 
 ## App State Summary
 **Production-ready fitness app** with enhanced workout logging, video form references, rest time tracking, and modern UI components.
