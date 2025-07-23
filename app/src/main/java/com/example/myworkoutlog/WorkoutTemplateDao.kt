@@ -27,5 +27,5 @@ interface WorkoutTemplateDao {
     
     // Snapshot version for immediate access in suspend functions
     @Query("SELECT * FROM workout_template_table WHERE id = :templateId")
-    suspend fun getTemplateByIdSnapshot(templateId: String): WorkoutTemplate?
+    fun getTemplateByIdSnapshot(templateId: String): WorkoutTemplate?
 }

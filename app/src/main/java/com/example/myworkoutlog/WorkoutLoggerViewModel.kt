@@ -247,7 +247,12 @@ class WorkoutLoggerViewModel(
             workoutStartTimeMillis = System.currentTimeMillis()
             
             // Get template snapshot for immediate access
-            val template = templateDao.getTemplateByIdSnapshot(templateId)
+            val template = try {
+                templateDao.getTemplateByIdSnapshot(templateId)
+            } catch (e: Exception) {
+                null
+            }
+            
             if (template != null) {
                 val loggedExercises = template.templateExercises.map { templateExercise ->
                     LoggedExercise(
