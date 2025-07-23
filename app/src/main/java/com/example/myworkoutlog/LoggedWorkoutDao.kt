@@ -188,7 +188,7 @@ interface LoggedWorkoutDao {
     
     // Mark workout as completed (no longer in progress)
     @Query("UPDATE logged_workout_table SET isInProgress = 0 WHERE id = :workoutId")
-    suspend fun markWorkoutAsCompleted(workoutId: String)
+    suspend fun markWorkoutAsCompleted(workoutId: String): Int
     
     // Clean up old abandoned in-progress workouts (older than 24 hours)
     @Query("""
@@ -197,5 +197,5 @@ interface LoggedWorkoutDao {
         WHERE isInProgress = 1 
         AND startTimestamp < :cutoffTimestamp
     """)
-    suspend fun cleanupAbandonedInProgressWorkouts(cutoffTimestamp: Long)
+    suspend fun cleanupAbandonedInProgressWorkouts(cutoffTimestamp: Long): Int
 }
