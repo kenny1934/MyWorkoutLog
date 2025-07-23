@@ -24,4 +24,8 @@ interface WorkoutTemplateDao {
 
     @Query("SELECT * FROM workout_template_table WHERE id = :templateId")
     fun getTemplateById(templateId: String): Flow<WorkoutTemplate?>
+    
+    // Snapshot version for immediate access in suspend functions
+    @Query("SELECT * FROM workout_template_table WHERE id = :templateId")
+    suspend fun getTemplateByIdSnapshot(templateId: String): WorkoutTemplate?
 }

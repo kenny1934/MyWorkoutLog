@@ -13,6 +13,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.roundToInt
@@ -44,6 +45,31 @@ class WorkoutLoggerViewModel(
     
     // Public getter for edit mode state
     fun isInEditMode(): Boolean = isEditMode
+    
+    // PHASE 2: Session cleanup functionality
+    init {
+        // Clean up any abandoned in-progress workouts from previous sessions
+        viewModelScope.launch(Dispatchers.IO) {
+            cleanupAbandonedSessions()
+        }
+    }
+    
+    private fun cleanupAbandonedSessions() {
+        // Clean up sessions older than 24 hours
+        val cutoffTime = System.currentTimeMillis() - (24 * 60 * 60 * 1000) // 24 hours ago
+        loggedWorkoutDao.cleanupAbandonedInProgressWorkouts(cutoffTime)
+    }
+    
+    // PHASE 3: Auto-save current workout state to database
+    private fun autoSaveWorkout() {
+        activeWorkoutState.value?.let { workout ->
+            if (workout.isInProgress && !isEditMode) { // Only auto-save new in-progress workouts
+                viewModelScope.launch(Dispatchers.IO) {
+                    loggedWorkoutDao.updateLoggedWorkout(workout)
+                }
+            }
+        }
+    }
 
     // --- REFACTORED TIMER/STOPWATCH LOGIC ---
     private var workoutStartTimeMillis: Long = 0L
@@ -207,54 +233,72 @@ class WorkoutLoggerViewModel(
     ) {
         // When starting a new workout, ensure any old timer is stopped.
         stopRestTimer()
-        workoutStartTimeMillis = System.currentTimeMillis()
-
+        
         viewModelScope.launch(Dispatchers.IO) {
-            templateDao.getTemplateById(templateId).collect { template ->
-                if (template != null) {
-                    val loggedExercises = template.templateExercises.map { templateExercise ->
-                        LoggedExercise(
-                            id = UUID.randomUUID().toString(),
-                            exerciseId = templateExercise.exerciseId,
-                            exerciseName = templateExercise.exerciseName,
-                            targetMuscleGroups = templateExercise.targetMuscleGroups,
-                            equipment = templateExercise.equipment,
-                            sets = templateExercise.sets.map { templateSet ->
-                                // Create empty LoggedSet objects, but pre-fill targets from template
-                                LoggedSet(
-                                    id = UUID.randomUUID().toString(),
-                                    // Actual performance is null initially
-                                    reps = null,
-                                    weight = null,
-                                    secs = null,
-                                    targetReps = templateSet.targetReps,
-                                    targetSecs = templateSet.targetSecs
-                                )
-                            },
-                            isSubstitute = false
-                        )
-                    }
-
-                    val newLoggedWorkout = LoggedWorkout(
+            // PHASE 4: Check for existing in-progress workout first
+            val inProgressWorkout = loggedWorkoutDao.getInProgressWorkoutForTemplate(templateId)
+            if (inProgressWorkout != null) {
+                // Found existing in-progress workout, load it instead of creating new one
+                loadInProgressWorkout(inProgressWorkout)
+                return@launch
+            }
+            
+            // No existing workout found, create new one
+            workoutStartTimeMillis = System.currentTimeMillis()
+            
+            // Get template snapshot for immediate access
+            val template = templateDao.getTemplateByIdSnapshot(templateId)
+            if (template != null) {
+                val loggedExercises = template.templateExercises.map { templateExercise ->
+                    LoggedExercise(
                         id = UUID.randomUUID().toString(),
-                        name = template.name,
-                        date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
-                        startTimestamp = workoutStartTimeMillis, // Save start time
-                        endTimestamp = null, // End time is null for now
-                        performedWeightUnit = null,
-                        bodyweight = null,
-                        activeProgramCycleId = cycleId, // Save the cycle context
-                        programWeekDefinitionId = weekId, // Save the week context
-                        programSessionDefinitionId = sessionId, // Save the session context
-                        userCycleName = null, // Will be set when workout is finished
-                        loggedExercises = loggedExercises,
-                        workoutTemplateId = template.id
+                        exerciseId = templateExercise.exerciseId,
+                        exerciseName = templateExercise.exerciseName,
+                        targetMuscleGroups = templateExercise.targetMuscleGroups,
+                        equipment = templateExercise.equipment,
+                        sets = templateExercise.sets.map { templateSet ->
+                            // Create empty LoggedSet objects, but pre-fill targets from template
+                            LoggedSet(
+                                id = UUID.randomUUID().toString(),
+                                // Actual performance is null initially
+                                reps = null,
+                                weight = null,
+                                secs = null,
+                                targetReps = templateSet.targetReps,
+                                targetSecs = templateSet.targetSecs
+                            )
+                        },
+                        isSubstitute = false
                     )
-                    _activeWorkoutState.value = newLoggedWorkout
-                    
-                    // Initialize performance suggestions after workout is loaded
-                    initializePerformanceSuggestions()
                 }
+
+                val newLoggedWorkout = LoggedWorkout(
+                    id = UUID.randomUUID().toString(),
+                    name = template.name,
+                    date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
+                    startTimestamp = workoutStartTimeMillis, // Save start time
+                    endTimestamp = null, // End time is null for now
+                    performedWeightUnit = null,
+                    bodyweight = null,
+                    activeProgramCycleId = cycleId, // Save the cycle context
+                    programWeekDefinitionId = weekId, // Save the week context
+                    programSessionDefinitionId = sessionId, // Save the session context
+                    userCycleName = null, // Will be set when workout is finished
+                    loggedExercises = loggedExercises,
+                    workoutTemplateId = template.id,
+                    isInProgress = true // Mark as in-progress for session persistence
+                )
+                
+                // PHASE 2: Immediate Persistence - Save as in-progress workout immediately
+                loggedWorkoutDao.insert(newLoggedWorkout)
+                
+                // Update state on Main thread
+                withContext(Dispatchers.Main) {
+                    _activeWorkoutState.value = newLoggedWorkout
+                }
+                
+                // Initialize performance suggestions after workout is loaded
+                initializePerformanceSuggestions()
             }
         }
     }
@@ -298,6 +342,9 @@ class WorkoutLoggerViewModel(
                 }
             )
         }
+        
+        // PHASE 3: Auto-save after set update
+        autoSaveWorkout()
     }
 
     // Overloaded function to maintain backward compatibility
@@ -329,16 +376,18 @@ class WorkoutLoggerViewModel(
                         id = originalWorkoutId!!, // Keep original ID
                         performedWeightUnit = currentUnit,
                         bodyweight = finalBodyweight,
-                        userCycleName = activeCycle?.userCycleName
+                        userCycleName = activeCycle?.userCycleName,
+                        isInProgress = false // Mark as completed
                         // Note: We don't update endTimestamp in edit mode to preserve original workout timing
                     )
                 } else {
-                    // For new workouts, use normal flow
+                    // For new workouts, mark as completed and set end time
                     workoutToSave.copy(
                         endTimestamp = endTimeMillis,
                         performedWeightUnit = currentUnit,
                         bodyweight = finalBodyweight,
-                        userCycleName = activeCycle?.userCycleName
+                        userCycleName = activeCycle?.userCycleName,
+                        isInProgress = false // Mark as completed
                     )
                 }
 
@@ -382,12 +431,18 @@ class WorkoutLoggerViewModel(
         _activeWorkoutState.update { currentWorkout ->
             currentWorkout?.copy(bodyweight = bodyweight.toDoubleOrNull())
         }
+        
+        // PHASE 3: Auto-save after bodyweight update
+        autoSaveWorkout()
     }
     
     fun updateOverallComments(comments: String) {
         _activeWorkoutState.update { currentWorkout ->
             currentWorkout?.copy(overallComments = comments.takeIf { it.isNotBlank() })
         }
+        
+        // PHASE 3: Auto-save after comments update
+        autoSaveWorkout()
     }
     
     // Add exercise to the current workout
@@ -433,6 +488,9 @@ class WorkoutLoggerViewModel(
                 
                 // Recalculate suggestions for the new exercise
                 calculatePerformanceSuggestions()
+                
+                // PHASE 3: Auto-save after adding exercise
+                autoSaveWorkout()
             }
         }
     }
@@ -461,6 +519,9 @@ class WorkoutLoggerViewModel(
                         }
                     )
                 }
+                
+                // PHASE 3: Auto-save after exercise substitution
+                autoSaveWorkout()
             }
         }
     }
@@ -474,6 +535,9 @@ class WorkoutLoggerViewModel(
                 }
             )
         }
+        
+        // PHASE 3: Auto-save after removing exercise
+        autoSaveWorkout()
     }
     
     // Add a set to an existing exercise
@@ -503,6 +567,9 @@ class WorkoutLoggerViewModel(
                 }
             )
         }
+        
+        // PHASE 3: Auto-save after adding set
+        autoSaveWorkout()
     }
     
     // Remove a set from an exercise
@@ -520,6 +587,9 @@ class WorkoutLoggerViewModel(
                 }
             )
         }
+        
+        // PHASE 3: Auto-save after removing set
+        autoSaveWorkout()
     }
     
     // SMART PRE-FILL FUNCTIONALITY
@@ -832,6 +902,63 @@ class WorkoutLoggerViewModel(
     // Call this when starting a workout to pre-calculate suggestions
     private fun initializePerformanceSuggestions() {
         calculatePerformanceSuggestions()
+    }
+    
+    // PHASE 4: Load an existing in-progress workout (must be called from IO context)
+    private suspend fun loadInProgressWorkout(workout: LoggedWorkout) {
+        // Set timing context
+        workoutStartTimeMillis = workout.startTimestamp ?: System.currentTimeMillis()
+        
+        // Load the workout into active state (switch to Main thread for UI update)
+        withContext(Dispatchers.Main) {
+            _activeWorkoutState.value = workout
+        }
+        
+        // Initialize performance suggestions (this handles its own threading)
+        initializePerformanceSuggestions()
+    }
+    
+    // PHASE 4: Get list of all in-progress workouts (for recovery UI)
+    fun getAllInProgressWorkouts(): Flow<List<LoggedWorkout>> {
+        return loggedWorkoutDao.getAllInProgressWorkouts()
+    }
+    
+    // PHASE 2: Cancel workout - clean up in-progress state without saving as completed workout
+    fun cancelWorkout() {
+        activeWorkoutState.value?.let { workout ->
+            if (!isEditMode) { // Only delete if it's a new workout, not an edit
+                viewModelScope.launch(Dispatchers.IO) {
+                    // Mark as completed (which effectively removes it from in-progress)
+                    loggedWorkoutDao.markWorkoutAsCompleted(workout.id)
+                }
+            }
+        }
+        
+        // Reset state
+        stopRestTimer()
+        _activeWorkoutState.value = null
+        isEditMode = false
+        originalWorkoutId = null
+    }
+    
+    // PHASE 5: Lifecycle Management - Clean up when ViewModel is destroyed
+    override fun onCleared() {
+        super.onCleared()
+        
+        // Auto-save any pending changes before ViewModel is destroyed
+        activeWorkoutState.value?.let { workout ->
+            if (workout.isInProgress && !isEditMode) {
+                // Use try-catch since we're in cleanup context
+                try {
+                    loggedWorkoutDao.updateLoggedWorkout(workout)
+                } catch (e: Exception) {
+                    // Log error but don't crash during cleanup
+                }
+            }
+        }
+        
+        // Stop any running timers
+        stopRestTimer()
     }
 }
 
