@@ -61,9 +61,66 @@ fun WorkoutLoggerScreen(
     weightUnit: String,
     onNavigateUp: () -> Unit
 ) {
-    // LaunchedEffect runs a coroutine when the composable first appears.
+    // State for session choice dialog
+    var showSessionDialog by remember { mutableStateOf(false) }
+    var existingSession by remember { mutableStateOf<LoggedWorkout?>(null) }
+    var sessionHoursAgo by remember { mutableStateOf(0) }
+    
+    // Check for existing session when screen opens
     LaunchedEffect(key1 = templateId) {
-        viewModel.startWorkoutFromTemplate(templateId, cycleId, weekId, sessionId)
+        val sessionStatus = viewModel.getSessionStatus(templateId)
+        when (sessionStatus) {
+            is WorkoutSessionStatus.None -> {
+                // No existing session, start new workout
+                viewModel.startWorkoutFromTemplate(templateId, cycleId, weekId, sessionId)
+            }
+            is WorkoutSessionStatus.InProgress -> {
+                // Found existing session, show choice dialog
+                existingSession = sessionStatus.workout
+                sessionHoursAgo = sessionStatus.hoursAgo
+                showSessionDialog = true
+            }
+        }
+    }
+    
+    // Session choice dialog
+    if (showSessionDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showSessionDialog = false
+                onNavigateUp() // Go back if user dismisses
+            },
+            title = { Text("Existing Workout Session") },
+            text = {
+                Text(
+                    if (sessionHoursAgo == 0) {
+                        "You have an in-progress workout session for this template from earlier today. Would you like to resume it or start fresh?"
+                    } else {
+                        "You have an in-progress workout session for this template from $sessionHoursAgo ${if (sessionHoursAgo == 1) "hour" else "hours"} ago. Would you like to resume it or start fresh?"
+                    }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showSessionDialog = false
+                        viewModel.resumeInProgressWorkout(templateId)
+                    }
+                ) {
+                    Text("Resume Session")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showSessionDialog = false
+                        viewModel.startFreshWorkout(templateId, cycleId, weekId, sessionId)
+                    }
+                ) {
+                    Text("Start Fresh")
+                }
+            }
+        )
     }
 
     // Reuse the shared content with normal mode

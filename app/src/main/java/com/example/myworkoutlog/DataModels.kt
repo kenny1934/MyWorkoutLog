@@ -407,3 +407,9 @@ enum class TrendDirection {
     STRONGLY_DECLINING,
     INSUFFICIENT_DATA
 }
+
+// Session management for workout persistence
+sealed class WorkoutSessionStatus {
+    object None : WorkoutSessionStatus()
+    data class InProgress(val workout: LoggedWorkout, val hoursAgo: Int) : WorkoutSessionStatus()
+}

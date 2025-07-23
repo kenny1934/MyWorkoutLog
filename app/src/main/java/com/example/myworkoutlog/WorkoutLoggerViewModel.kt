@@ -229,18 +229,23 @@ class WorkoutLoggerViewModel(
         templateId: String,
         cycleId: String?,
         weekId: String?,
-        sessionId: String?
+        sessionId: String?,
+        forceNew: Boolean = false
     ) {
         // When starting a new workout, ensure any old timer is stopped.
         stopRestTimer()
         
         viewModelScope.launch(Dispatchers.IO) {
-            // PHASE 4: Check for existing in-progress workout first
+            // Check for existing in-progress workout
             val inProgressWorkout = loggedWorkoutDao.getInProgressWorkoutForTemplate(templateId)
-            if (inProgressWorkout != null) {
-                // Found existing in-progress workout, load it instead of creating new one
+            
+            if (inProgressWorkout != null && !forceNew) {
+                // Found existing in-progress workout and not forcing new - load it
                 loadInProgressWorkout(inProgressWorkout)
                 return@launch
+            } else if (inProgressWorkout != null && forceNew) {
+                // Found existing workout but user wants fresh start - clean it up
+                loggedWorkoutDao.markWorkoutAsCompleted(inProgressWorkout.id)
             }
             
             // No existing workout found, create new one
@@ -926,6 +931,46 @@ class WorkoutLoggerViewModel(
     // PHASE 4: Get list of all in-progress workouts (for recovery UI)
     fun getAllInProgressWorkouts(): Flow<List<LoggedWorkout>> {
         return loggedWorkoutDao.getAllInProgressWorkouts()
+    }
+    
+    // NEW: Check for existing in-progress workout without auto-loading
+    fun checkForInProgressWorkout(templateId: String): LoggedWorkout? {
+        return try {
+            loggedWorkoutDao.getInProgressWorkoutForTemplate(templateId)
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    // NEW: Force start a fresh workout, clearing any existing in-progress session
+    fun startFreshWorkout(
+        templateId: String,
+        cycleId: String?,
+        weekId: String?,
+        sessionId: String?
+    ) {
+        startWorkoutFromTemplate(templateId, cycleId, weekId, sessionId, forceNew = true)
+    }
+    
+    // NEW: Resume existing in-progress workout
+    fun resumeInProgressWorkout(templateId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val inProgressWorkout = loggedWorkoutDao.getInProgressWorkoutForTemplate(templateId)
+            if (inProgressWorkout != null) {
+                loadInProgressWorkout(inProgressWorkout)
+            }
+        }
+    }
+    
+    // NEW: Get session status for UI decision making
+    fun getSessionStatus(templateId: String): WorkoutSessionStatus {
+        val inProgressWorkout = checkForInProgressWorkout(templateId)
+        return if (inProgressWorkout != null) {
+            val hoursAgo = (System.currentTimeMillis() - (inProgressWorkout.startTimestamp ?: 0)) / (1000 * 60 * 60)
+            WorkoutSessionStatus.InProgress(inProgressWorkout, hoursAgo.toInt())
+        } else {
+            WorkoutSessionStatus.None
+        }
     }
     
     // PHASE 2: Cancel workout - clean up in-progress state without saving as completed workout
