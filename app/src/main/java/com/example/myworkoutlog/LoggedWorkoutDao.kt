@@ -169,4 +169,33 @@ interface LoggedWorkoutDao {
         WHERE date BETWEEN :startDate AND :endDate
     """)
     fun workoutCountBetweenDates(startDate: String, endDate: String): Int
+    
+    // IN-PROGRESS WORKOUT QUERIES FOR SESSION STATE PERSISTENCE
+    
+    // Get any in-progress workout for a specific template
+    @Query("""
+        SELECT * FROM logged_workout_table 
+        WHERE workoutTemplateId = :templateId 
+        AND isInProgress = 1 
+        ORDER BY startTimestamp DESC 
+        LIMIT 1
+    """)
+    suspend fun getInProgressWorkoutForTemplate(templateId: String): LoggedWorkout?
+    
+    // Get all in-progress workouts (for cleanup/recovery)
+    @Query("SELECT * FROM logged_workout_table WHERE isInProgress = 1 ORDER BY startTimestamp DESC")
+    fun getAllInProgressWorkouts(): Flow<List<LoggedWorkout>>
+    
+    // Mark workout as completed (no longer in progress)
+    @Query("UPDATE logged_workout_table SET isInProgress = 0 WHERE id = :workoutId")
+    suspend fun markWorkoutAsCompleted(workoutId: String)
+    
+    // Clean up old abandoned in-progress workouts (older than 24 hours)
+    @Query("""
+        UPDATE logged_workout_table 
+        SET isInProgress = 0 
+        WHERE isInProgress = 1 
+        AND startTimestamp < :cutoffTimestamp
+    """)
+    suspend fun cleanupAbandonedInProgressWorkouts(cutoffTimestamp: Long)
 }

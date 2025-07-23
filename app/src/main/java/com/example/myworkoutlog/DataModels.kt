@@ -199,7 +199,8 @@ data class LoggedWorkout(
     val userCycleName: String? = null,
 
     val loggedExercises: List<LoggedExercise>,
-    val workoutTemplateId: String? = null
+    val workoutTemplateId: String? = null,
+    val isInProgress: Boolean = false
 )
 
 // Represents a single session within a week, like "Day 1: Push Day"
