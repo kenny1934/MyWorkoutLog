@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push:*)",
+      "Bash(./gradlew:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(find:*)",
+      "Bash(git checkout:*)",
+      "Bash(grep -n \"placeholder\\|TODO\\|ActivityHeatmapWidgetCard\\|CycleProgressWidgetCard\\|BodyweightTrendWidgetCard\\|NextSessionWidgetCard\\|AchievementWidgetCard\" /mnt/c/Users/asus/StudioProjects/MyWorkoutLog/app/src/main/java/com/example/myworkoutlog/DashboardScreen.kt)",
+      "Bash(grep -n \"TODO\\|placeholder\\|getRecentAchievements\\|getNextMilestone\\|getNextSessionInfo\\|getActivityHeatmapData\" /mnt/c/Users/asus/StudioProjects/MyWorkoutLog/app/src/main/java/com/example/myworkoutlog/WidgetRepositorySimplified.kt)",
+      "Bash(ls:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(git cherry-pick:*)"
+    ],
+    "deny": []
+  }
+}
