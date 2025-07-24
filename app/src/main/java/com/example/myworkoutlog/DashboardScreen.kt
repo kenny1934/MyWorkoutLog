@@ -1675,13 +1675,15 @@ fun DashboardScreen(
     activeCycleViewModel: ActiveCycleViewModel,
     programViewModel: ProgramViewModel,
     navController: NavHostController,
-    dashboardViewModel: DashboardViewModel? = null
+    dashboardViewModel: DashboardViewModel? = null,
+    workoutLoggerViewModel: WorkoutLoggerViewModel? = null
 ) {
     // Use enhanced dashboard if available, fallback to legacy
-    if (dashboardViewModel != null) {
+    if (dashboardViewModel != null && workoutLoggerViewModel != null) {
         EnhancedDashboardScreen(
             dashboardViewModel = dashboardViewModel,
-            navController = navController
+            navController = navController,
+            workoutLoggerViewModel = workoutLoggerViewModel
         )
     } else {
         // Legacy dashboard implementation
@@ -2085,7 +2087,8 @@ fun AdaptiveDashboardContent(
 @Composable
 fun EnhancedDashboardScreen(
     dashboardViewModel: DashboardViewModel,
-    navController: NavHostController
+    navController: NavHostController,
+    workoutLoggerViewModel: WorkoutLoggerViewModel
 ) {
     val dashboardState by dashboardViewModel.dashboardState.collectAsStateWithLifecycle()
     val isLoading by dashboardViewModel.isLoading.collectAsStateWithLifecycle()
@@ -2105,6 +2108,14 @@ fun EnhancedDashboardScreen(
     // Confirmation dialog state
     var showCompleteCycleConfirmation by remember { mutableStateOf(false) }
     var pendingCompleteCycleAction by remember { mutableStateOf<QuickAction?>(null) }
+    
+    // Session choice dialog state 
+    var showSessionDialog by remember { mutableStateOf(false) }
+    var sessionTemplateId by remember { mutableStateOf("") }
+    var sessionCycleId by remember { mutableStateOf<String?>(null) }
+    var sessionWeekId by remember { mutableStateOf<String?>(null) }
+    var sessionSessionId by remember { mutableStateOf<String?>(null) }
+    var sessionRoute by remember { mutableStateOf("") }
     
     PullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -2292,8 +2303,20 @@ fun EnhancedDashboardScreen(
                                                     pendingCompleteCycleAction = selectedAction
                                                     showCompleteCycleConfirmation = true
                                                 } else {
-                                                    // Execute other actions directly
-                                                    dashboardViewModel.executeQuickAction(selectedAction) { route -> navController.navigate(route) }
+                                                    // Execute other actions with session handling
+                                                    dashboardViewModel.executeQuickAction(
+                                                        action = selectedAction,
+                                                        onNavigate = { route -> navController.navigate(route) },
+                                                        onShowSessionDialog = { templateId, cycleId, weekId, sessionId, route ->
+                                                            // Store session parameters for dialog
+                                                            sessionTemplateId = templateId
+                                                            sessionCycleId = cycleId
+                                                            sessionWeekId = weekId
+                                                            sessionSessionId = sessionId
+                                                            sessionRoute = route
+                                                            showSessionDialog = true
+                                                        }
+                                                    )
                                                 }
                                             }
                                         )
@@ -2517,6 +2540,58 @@ fun EnhancedDashboardScreen(
                     }
                 ) {
                     Text("Cancel")
+                }
+            }
+        )
+    }
+    
+    // Session choice dialog
+    if (showSessionDialog) {
+        val sessionStatus = workoutLoggerViewModel.getSessionStatus(sessionTemplateId)
+        val hoursAgo = when (sessionStatus) {
+            is WorkoutSessionStatus.InProgress -> sessionStatus.hoursAgo
+            else -> 0
+        }
+        
+        AlertDialog(
+            onDismissRequest = { 
+                showSessionDialog = false
+            },
+            title = { Text("Existing Workout Session") },
+            text = {
+                Text(
+                    if (hoursAgo == 0) {
+                        "You have an in-progress workout session for this template from earlier today. Would you like to resume it or start fresh?"
+                    } else {
+                        "You have an in-progress workout session for this template from $hoursAgo ${if (hoursAgo == 1) "hour" else "hours"} ago. Would you like to resume it or start fresh?"
+                    }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showSessionDialog = false
+                        workoutLoggerViewModel.resumeInProgressWorkout(sessionTemplateId)
+                        navController.navigate(sessionRoute)
+                    }
+                ) {
+                    Text("Resume Session")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showSessionDialog = false
+                        workoutLoggerViewModel.startFreshWorkout(
+                            sessionTemplateId,
+                            sessionCycleId,
+                            sessionWeekId,
+                            sessionSessionId
+                        )
+                        navController.navigate(sessionRoute)
+                    }
+                ) {
+                    Text("Start Fresh")
                 }
             }
         )
