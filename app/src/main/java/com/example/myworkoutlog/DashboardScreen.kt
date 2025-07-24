@@ -2309,13 +2309,20 @@ fun EnhancedDashboardScreen(
                                                         action = selectedAction,
                                                         onNavigate = { route -> navController.navigate(route) },
                                                         onShowSessionDialog = { templateId, cycleId, weekId, sessionId, route ->
-                                                            // Store session parameters for dialog
-                                                            sessionTemplateId = templateId
-                                                            sessionCycleId = cycleId
-                                                            sessionWeekId = weekId
-                                                            sessionSessionId = sessionId
-                                                            sessionRoute = route
-                                                            showSessionDialog = true
+                                                            // Check if there's actually an existing session before showing dialog
+                                                            val sessionStatus = workoutLoggerViewModel.getSessionStatus(templateId)
+                                                            if (sessionStatus is WorkoutSessionStatus.InProgress) {
+                                                                // Store session parameters for dialog
+                                                                sessionTemplateId = templateId
+                                                                sessionCycleId = cycleId
+                                                                sessionWeekId = weekId
+                                                                sessionSessionId = sessionId
+                                                                sessionRoute = route
+                                                                showSessionDialog = true
+                                                            } else {
+                                                                // No existing session, navigate directly
+                                                                navController.navigate(route)
+                                                            }
                                                         }
                                                     )
                                                 }
