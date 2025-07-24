@@ -1901,9 +1901,10 @@ fun AdaptiveWidgetGrid(
                                             onShowCompleteCycleConfirmation(true)
                                         }
                                         else -> {
-                                            dashboardViewModel.executeQuickAction(clickedAction) { route ->
-                                                navController.navigate(route)
-                                            }
+                                            dashboardViewModel.executeQuickAction(
+                                                action = clickedAction,
+                                                onNavigate = { route -> navController.navigate(route) }
+                                            )
                                         }
                                     }
                                 }
@@ -2381,14 +2382,15 @@ fun EnhancedDashboardScreen(
                         onMoveDown = { dashboardViewModel.moveWidgetDown(index) },
                         onEndCycle = {
                             dashboardViewModel.executeQuickAction(
-                                QuickAction(
+                                action = QuickAction(
                                     id = "end_cycle",
                                     title = "End Cycle",
                                     description = "End current cycle",
                                     icon = Icons.Default.Close,
                                     action = QuickActionType.COMPLETE_CYCLE
-                                )
-                            ) { route -> navController.navigate(route) }
+                                ),
+                                onNavigate = { route -> navController.navigate(route) }
+                            )
                         }
                     )
                 }
@@ -2522,9 +2524,10 @@ fun EnhancedDashboardScreen(
                     onClick = {
                         showCompleteCycleConfirmation = false
                         pendingCompleteCycleAction?.let { action ->
-                            dashboardViewModel.executeQuickAction(action) { route -> 
-                                navController.navigate(route) 
-                            }
+                            dashboardViewModel.executeQuickAction(
+                                action = action,
+                                onNavigate = { route -> navController.navigate(route) }
+                            )
                         }
                         pendingCompleteCycleAction = null
                     }
