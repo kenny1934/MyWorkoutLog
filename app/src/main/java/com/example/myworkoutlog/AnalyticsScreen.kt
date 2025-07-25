@@ -93,85 +93,101 @@ fun AnalyticsScreen(
         }
     }
     val tabs = listOf("Overview", "Volume", "Performance", "PRs", "Comparison")
+    val layoutInfo = rememberAdaptiveLayoutInfo()
 
+    if (layoutInfo.useMasterDetail) {
+        // Large screen: Master-detail layout
+        AnalyticsMasterDetailView(
+            layoutInfo = layoutInfo,
+            selectedTab = selectedTab,
+            onTabSelected = { selectedTab = it },
+            tabs = tabs,
+            selectedTimeRange = selectedTimeRange,
+            onTimeRangeSelected = viewModel::selectTimeRange,
+            selectedExerciseId = selectedExerciseId,
+            selectedMuscleGroup = selectedMuscleGroup,
+            availableExercises = availableExercises,
+            isLoading = isLoading,
+            onRefresh = { viewModel.refreshAnalytics() },
+            onClearSelections = { viewModel.clearSelections() },
+            // Tab content
+            volumeData = volumeData,
+            muscleGroupDistribution = muscleGroupDistribution,
+            exercisePerformanceTrend = exercisePerformanceTrend,
+            personalRecordProgress = personalRecordProgress,
+            cycleComparison = cycleComparison,
+            onExerciseSelected = viewModel::selectExercise
+        )
+    } else {
+        // Small screen: Original single-column layout
+        AnalyticsSingleColumnView(
+            selectedTab = selectedTab,
+            onTabSelected = { selectedTab = it },
+            tabs = tabs,
+            selectedTimeRange = selectedTimeRange,
+            onTimeRangeSelected = viewModel::selectTimeRange,
+            selectedExerciseId = selectedExerciseId,
+            selectedMuscleGroup = selectedMuscleGroup,
+            availableExercises = availableExercises,
+            isLoading = isLoading,
+            onRefresh = { viewModel.refreshAnalytics() },
+            onClearSelections = { viewModel.clearSelections() },
+            // Tab content
+            volumeData = volumeData,
+            muscleGroupDistribution = muscleGroupDistribution,
+            exercisePerformanceTrend = exercisePerformanceTrend,
+            personalRecordProgress = personalRecordProgress,
+            cycleComparison = cycleComparison,
+            onExerciseSelected = viewModel::selectExercise
+        )
+    }
+}
+
+@Composable
+private fun AnalyticsSingleColumnView(
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit,
+    tabs: List<String>,
+    selectedTimeRange: TimeRange,
+    onTimeRangeSelected: (TimeRange) -> Unit,
+    selectedExerciseId: String?,
+    selectedMuscleGroup: String?,
+    availableExercises: List<Exercise>,
+    isLoading: Boolean,
+    onRefresh: () -> Unit,
+    onClearSelections: () -> Unit,
+    // Tab content
+    volumeData: List<VolumeDataPoint>,
+    muscleGroupDistribution: List<MuscleGroupVolume>,
+    exercisePerformanceTrend: PerformanceTrend?,
+    personalRecordProgress: PersonalRecordProgress?,
+    cycleComparison: CycleComparison?,
+    onExerciseSelected: (String?) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Analytics Dashboard",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
-            )
-            
-            IconButton(onClick = { viewModel.refreshAnalytics() }) {
-                Icon(
-                    Icons.Default.Refresh,
-                    contentDescription = "Refresh Analytics",
-                    tint = if (isLoading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
+        AnalyticsHeader(
+            isLoading = isLoading,
+            onRefresh = onRefresh
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // Show exercise filter indicator if one is selected
-        selectedExerciseId?.let { exerciseId ->
-            val selectedExercise = availableExercises.find { it.id == exerciseId }
-            selectedExercise?.let { exercise ->
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.FilterList,
-                                contentDescription = "Exercise filter active",
-                                tint = MaterialTheme.colorScheme.secondary
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Filtered by: ${exercise.name}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-                        
-                        TextButton(
-                            onClick = { viewModel.clearSelections() }
-                        ) {
-                            Text("Clear Filter")
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-        }
+        AnalyticsFilterIndicator(
+            selectedExerciseId = selectedExerciseId,
+            selectedMuscleGroup = selectedMuscleGroup,
+            availableExercises = availableExercises,
+            onClearSelections = onClearSelections
+        )
 
         // Time Range Selector
         TimeRangeSelector(
             selectedTimeRange = selectedTimeRange,
-            onTimeRangeSelected = viewModel::selectTimeRange
+            onTimeRangeSelected = onTimeRangeSelected
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -181,7 +197,7 @@ fun AnalyticsScreen(
             tabs.forEachIndexed { index, title ->
                 Tab(
                     selected = selectedTab == index,
-                    onClick = { selectedTab = index },
+                    onClick = { onTabSelected(index) },
                     text = { Text(title) }
                 )
             }
@@ -190,33 +206,426 @@ fun AnalyticsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Tab Content
-        when (selectedTab) {
-            0 -> OverviewTab(
-                volumeData = volumeData,
-                muscleGroupDistribution = muscleGroupDistribution,
-                cycleComparison = cycleComparison
-            )
-            1 -> VolumeTab(
-                volumeData = volumeData,
-                muscleGroupDistribution = muscleGroupDistribution,
-                selectedMuscleGroup = selectedMuscleGroup
-            )
-            2 -> PerformanceTab(
-                availableExercises = availableExercises,
-                selectedExerciseId = selectedExerciseId,
-                exercisePerformanceTrend = exercisePerformanceTrend,
-                onExerciseSelected = viewModel::selectExercise
-            )
-            3 -> PersonalRecordsTab(
-                availableExercises = availableExercises,
-                selectedExerciseId = selectedExerciseId,
-                personalRecordProgress = personalRecordProgress,
-                onExerciseSelected = viewModel::selectExercise
-            )
-            4 -> ComparisonTab(cycleComparison = cycleComparison)
+        AnalyticsTabContent(
+            selectedTab = selectedTab,
+            volumeData = volumeData,
+            muscleGroupDistribution = muscleGroupDistribution,
+            cycleComparison = cycleComparison,
+            selectedMuscleGroup = selectedMuscleGroup,
+            availableExercises = availableExercises,
+            selectedExerciseId = selectedExerciseId,
+            exercisePerformanceTrend = exercisePerformanceTrend,
+            personalRecordProgress = personalRecordProgress,
+            onExerciseSelected = onExerciseSelected
+        )
+    }
+}
+
+@Composable
+private fun AnalyticsMasterDetailView(
+    layoutInfo: AdaptiveLayoutInfo,
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit,
+    tabs: List<String>,
+    selectedTimeRange: TimeRange,
+    onTimeRangeSelected: (TimeRange) -> Unit,
+    selectedExerciseId: String?,
+    selectedMuscleGroup: String?,
+    availableExercises: List<Exercise>,
+    isLoading: Boolean,
+    onRefresh: () -> Unit,
+    onClearSelections: () -> Unit,
+    // Tab content
+    volumeData: List<VolumeDataPoint>,
+    muscleGroupDistribution: List<MuscleGroupVolume>,
+    exercisePerformanceTrend: PerformanceTrend?,
+    personalRecordProgress: PersonalRecordProgress?,
+    cycleComparison: CycleComparison?,
+    onExerciseSelected: (String?) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(layoutInfo.contentPadding)
+    ) {
+        // Master Panel (Left side - 40%)
+        Card(
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(0.4f),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                AnalyticsHeader(
+                    isLoading = isLoading,
+                    onRefresh = onRefresh
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Filter indicators
+                AnalyticsFilterIndicator(
+                    selectedExerciseId = selectedExerciseId,  
+                    selectedMuscleGroup = selectedMuscleGroup,
+                    availableExercises = availableExercises,
+                    onClearSelections = onClearSelections
+                )
+
+                // Time Range Selector - vertical on large screens
+                Text(
+                    text = "Time Range",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(TimeRange.values()) { timeRange ->
+                        FilterChip(
+                            modifier = Modifier.fillMaxWidth(),
+                            selected = timeRange == selectedTimeRange,
+                            onClick = { onTimeRangeSelected(timeRange) },
+                            label = { Text(timeRange.displayName) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Vertical Tab Navigation
+                Text(
+                    text = "Analytics",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(tabs.size) { index ->
+                        FilterChip(
+                            modifier = Modifier.fillMaxWidth(),
+                            selected = selectedTab == index,
+                            onClick = { onTabSelected(index) },
+                            label = { Text(tabs[index]) }
+                        )
+                    }
+                }
+
+                // Tab-specific filters in master panel
+                when (selectedTab) {
+                    2, 3 -> { // Performance & PRs tabs
+                        if (availableExercises.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Exercise",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // Use proper dropdown for consistency with small screens
+                            MasterPanelExerciseSelector(
+                                exercises = availableExercises,
+                                selectedExerciseId = selectedExerciseId,
+                                onExerciseSelected = onExerciseSelected
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // Detail Panel (Right side - 60%)
+        Card(
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(0.6f),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = tabs[selectedTab],
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                LargeScreenTabContent(
+                    selectedTab = selectedTab,
+                    volumeData = volumeData,
+                    muscleGroupDistribution = muscleGroupDistribution,
+                    cycleComparison = cycleComparison,
+                    selectedMuscleGroup = selectedMuscleGroup,
+                    exercisePerformanceTrend = exercisePerformanceTrend,
+                    personalRecordProgress = personalRecordProgress
+                )
+            }
         }
     }
 }
+
+@Composable
+private fun LargeScreenTabContent(
+    selectedTab: Int,
+    volumeData: List<VolumeDataPoint>,
+    muscleGroupDistribution: List<MuscleGroupVolume>,
+    cycleComparison: CycleComparison?,
+    selectedMuscleGroup: String?,
+    exercisePerformanceTrend: PerformanceTrend?,
+    personalRecordProgress: PersonalRecordProgress?
+) {
+    when (selectedTab) {
+        0 -> OverviewTab(
+            volumeData = volumeData,
+            muscleGroupDistribution = muscleGroupDistribution,
+            cycleComparison = cycleComparison
+        )
+        1 -> VolumeTab(
+            volumeData = volumeData,
+            muscleGroupDistribution = muscleGroupDistribution,
+            selectedMuscleGroup = selectedMuscleGroup
+        )
+        2 -> {
+            // Performance tab content without exercise selector (it's in master panel)
+            exercisePerformanceTrend?.let { trend ->
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        PerformanceTrendCard(trend = trend)
+                    }
+                    
+                    if (trend.dataPoints.isNotEmpty()) {
+                        item {
+                            PerformanceChart(dataPoints = trend.dataPoints)
+                        }
+                    }
+                }
+            } ?: run {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Select an exercise to view performance trends",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        3 -> {
+            // Personal records tab content without exercise selector (it's in master panel)
+            personalRecordProgress?.let { progress ->
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        PersonalRecordCard(progress = progress)
+                    }
+                }
+            } ?: run {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Select an exercise to view personal records",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        4 -> ComparisonTab(cycleComparison = cycleComparison)
+    }
+}
+
+@Composable
+private fun MasterPanelExerciseSelector(
+    exercises: List<Exercise>,
+    selectedExerciseId: String?,
+    onExerciseSelected: (String?) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedExercise = exercises.find { it.id == selectedExerciseId }
+    
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        OutlinedTextField(
+            value = selectedExercise?.name ?: "All Exercises",
+            onValueChange = { },
+            readOnly = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(),
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+        )
+        
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text("All Exercises") },
+                onClick = {
+                    onExerciseSelected(null)
+                    expanded = false
+                }
+            )
+            exercises.forEach { exercise ->
+                DropdownMenuItem(
+                    text = { Text(exercise.name) },
+                    onClick = {
+                        onExerciseSelected(exercise.id)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnalyticsHeader(
+    isLoading: Boolean,
+    onRefresh: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            "Analytics Dashboard",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold
+        )
+        
+        IconButton(onClick = onRefresh) {
+            Icon(
+                Icons.Default.Refresh,
+                contentDescription = "Refresh Analytics",
+                tint = if (isLoading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+private fun AnalyticsFilterIndicator(
+    selectedExerciseId: String?,
+    selectedMuscleGroup: String?,
+    availableExercises: List<Exercise>,
+    onClearSelections: () -> Unit
+) {
+    selectedExerciseId?.let { exerciseId ->
+        val selectedExercise = availableExercises.find { it.id == exerciseId }
+        selectedExercise?.let { exercise ->
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FilterList,
+                            contentDescription = "Exercise filter active",
+                            tint = MaterialTheme.colorScheme.secondary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Filtered by: ${exercise.name}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                    
+                    TextButton(
+                        onClick = onClearSelections
+                    ) {
+                        Text("Clear Filter")
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+    }
+}
+
+@Composable
+private fun AnalyticsTabContent(
+    selectedTab: Int,
+    volumeData: List<VolumeDataPoint>,
+    muscleGroupDistribution: List<MuscleGroupVolume>,
+    cycleComparison: CycleComparison?,
+    selectedMuscleGroup: String?,
+    availableExercises: List<Exercise>,
+    selectedExerciseId: String?,
+    exercisePerformanceTrend: PerformanceTrend?,
+    personalRecordProgress: PersonalRecordProgress?,
+    onExerciseSelected: (String?) -> Unit
+) {
+    when (selectedTab) {
+        0 -> OverviewTab(
+            volumeData = volumeData,
+            muscleGroupDistribution = muscleGroupDistribution,
+            cycleComparison = cycleComparison
+        )
+        1 -> VolumeTab(
+            volumeData = volumeData,
+            muscleGroupDistribution = muscleGroupDistribution,
+            selectedMuscleGroup = selectedMuscleGroup
+        )
+        2 -> PerformanceTab(
+            availableExercises = availableExercises,
+            selectedExerciseId = selectedExerciseId,
+            exercisePerformanceTrend = exercisePerformanceTrend,
+            onExerciseSelected = onExerciseSelected
+        )
+        3 -> PersonalRecordsTab(
+            availableExercises = availableExercises,
+            selectedExerciseId = selectedExerciseId,
+            personalRecordProgress = personalRecordProgress,
+            onExerciseSelected = onExerciseSelected
+        )
+        4 -> ComparisonTab(cycleComparison = cycleComparison)
+    }
+}
+
 
 @Composable
 private fun TimeRangeSelector(
