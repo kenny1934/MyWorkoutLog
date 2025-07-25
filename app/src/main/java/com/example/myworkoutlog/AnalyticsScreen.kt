@@ -332,25 +332,6 @@ private fun AnalyticsMasterDetailView(
                     }
                 }
 
-                // Exercise Selection for Performance & PRs tabs
-                if (selectedTab in listOf(2, 3) && availableExercises.isNotEmpty()) {
-                    item {
-                        Column {
-                            Text(
-                                text = "Exercise",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            MasterPanelExerciseSelector(
-                                exercises = availableExercises,
-                                selectedExerciseId = selectedExerciseId,
-                                onExerciseSelected = onExerciseSelected
-                            )
-                        }
-                    }
-                }
             }
         }
 
@@ -383,7 +364,10 @@ private fun AnalyticsMasterDetailView(
                     cycleComparison = cycleComparison,
                     selectedMuscleGroup = selectedMuscleGroup,
                     exercisePerformanceTrend = exercisePerformanceTrend,
-                    personalRecordProgress = personalRecordProgress
+                    personalRecordProgress = personalRecordProgress,
+                    availableExercises = availableExercises,
+                    selectedExerciseId = selectedExerciseId,
+                    onExerciseSelected = onExerciseSelected
                 )
             }
         }
@@ -398,7 +382,10 @@ private fun LargeScreenTabContent(
     cycleComparison: CycleComparison?,
     selectedMuscleGroup: String?,
     exercisePerformanceTrend: PerformanceTrend?,
-    personalRecordProgress: PersonalRecordProgress?
+    personalRecordProgress: PersonalRecordProgress?,
+    availableExercises: List<Exercise>,
+    selectedExerciseId: String?,
+    onExerciseSelected: (String?) -> Unit
 ) {
     when (selectedTab) {
         0 -> OverviewTab(
@@ -412,129 +399,65 @@ private fun LargeScreenTabContent(
             selectedMuscleGroup = selectedMuscleGroup
         )
         2 -> {
-            // Performance tab content without exercise selector (it's in master panel)
-            exercisePerformanceTrend?.let { trend ->
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    item {
-                        PerformanceTrendCard(trend = trend)
-                    }
-                    
-                    if (trend.dataPoints.isNotEmpty()) {
+            // Performance tab with exercise selector at top
+            Column {
+                ExerciseSelector(
+                    exercises = availableExercises,
+                    selectedExerciseId = selectedExerciseId,
+                    onExerciseSelected = onExerciseSelected
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                exercisePerformanceTrend?.let { trend ->
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
                         item {
-                            PerformanceChart(dataPoints = trend.dataPoints)
+                            PerformanceTrendCard(trend = trend)
+                        }
+                        
+                        if (trend.dataPoints.isNotEmpty()) {
+                            item {
+                                PerformanceChart(dataPoints = trend.dataPoints)
+                            }
                         }
                     }
-                }
-            } ?: run {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Select an exercise to view performance trends",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                } ?: Text(
+                    text = "Select an exercise to view performance trends",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
             }
         }
         3 -> {
-            // Personal records tab content without exercise selector (it's in master panel)
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Debug information
-                item {
-                    Column {
-                        Text(
-                            text = "Debug: Exercise ID = ${
-                                if (exercisePerformanceTrend != null) "Found trend data" else "No trend data"
-                            }",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                        Text(
-                            text = "Debug: PR Progress = ${if (personalRecordProgress != null) "Found" else "null"}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                }
+            // Personal records tab with exercise selector at top
+            Column {
+                ExerciseSelector(
+                    exercises = availableExercises,
+                    selectedExerciseId = selectedExerciseId,
+                    onExerciseSelected = onExerciseSelected
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
                 
                 personalRecordProgress?.let { progress ->
-                    item {
-                        PersonalRecordCard(progress = progress)
-                    }
-                } ?: item {
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Select an exercise to view personal records",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                    PersonalRecordCard(progress = progress)
+                } ?: Text(
+                    text = "Select an exercise to view personal records",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
             }
         }
         4 -> ComparisonTab(cycleComparison = cycleComparison)
     }
 }
 
-@Composable
-private fun MasterPanelExerciseSelector(
-    exercises: List<Exercise>,
-    selectedExerciseId: String?,
-    onExerciseSelected: (String?) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val selectedExercise = exercises.find { it.id == selectedExerciseId }
-    
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded },
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        OutlinedTextField(
-            value = selectedExercise?.name ?: "All Exercises",
-            onValueChange = { },
-            readOnly = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(),
-            trailingIcon = {
-                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-            },
-            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
-        )
-        
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            DropdownMenuItem(
-                text = { Text("All Exercises") },
-                onClick = {
-                    onExerciseSelected(null)
-                    expanded = false
-                }
-            )
-            exercises.forEach { exercise ->
-                DropdownMenuItem(
-                    text = { Text(exercise.name) },
-                    onClick = {
-                        onExerciseSelected(exercise.id)
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun AnalyticsHeader(
@@ -932,29 +855,14 @@ private fun PersonalRecordsTab(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Debug information
-        Column {
-            Text(
-                text = "Debug: Exercise ID = ${selectedExerciseId ?: "null"}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline
-            )
-            Text(
-                text = "Debug: PR Progress = ${if (personalRecordProgress != null) "Found" else "null"}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            personalRecordProgress?.let { progress ->
-                PersonalRecordCard(progress = progress)
-            } ?: Text(
-                "Select an exercise to view personal record progress",
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyLarge
-            )
-        }
+        personalRecordProgress?.let { progress ->
+            PersonalRecordCard(progress = progress)
+        } ?: Text(
+            "Select an exercise to view personal record progress",
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyLarge
+        )
     }
 }
 
