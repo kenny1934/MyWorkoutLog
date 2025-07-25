@@ -255,75 +255,86 @@ private fun AnalyticsMasterDetailView(
                 .weight(0.4f),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
-            Column(
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                AnalyticsHeader(
-                    isLoading = isLoading,
-                    onRefresh = onRefresh
-                )
+                // Header
+                item {
+                    AnalyticsHeader(
+                        isLoading = isLoading,
+                        onRefresh = onRefresh
+                    )
+                }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                // Compact filter indicators
+                item {
+                    CompactAnalyticsFilterIndicator(
+                        selectedExerciseId = selectedExerciseId,  
+                        selectedMuscleGroup = selectedMuscleGroup,
+                        availableExercises = availableExercises,
+                        onClearSelections = onClearSelections
+                    )
+                }
 
-                // Filter indicators
-                AnalyticsFilterIndicator(
-                    selectedExerciseId = selectedExerciseId,  
-                    selectedMuscleGroup = selectedMuscleGroup,
-                    availableExercises = availableExercises,
-                    onClearSelections = onClearSelections
-                )
-
-                // Time Range Selector - vertical on large screens
-                Text(
-                    text = "Time Range",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    items(TimeRange.values()) { timeRange ->
-                        FilterChip(
-                            modifier = Modifier.fillMaxWidth(),
-                            selected = timeRange == selectedTimeRange,
-                            onClick = { onTimeRangeSelected(timeRange) },
-                            label = { Text(timeRange.displayName) }
+                // Time Range Section
+                item {
+                    Column {
+                        Text(
+                            text = "Time Range",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Fixed height container for time ranges
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            TimeRange.values().forEach { timeRange ->
+                                FilterChip(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    selected = timeRange == selectedTimeRange,
+                                    onClick = { onTimeRangeSelected(timeRange) },
+                                    label = { Text(timeRange.displayName) }
+                                )
+                            }
+                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Vertical Tab Navigation
-                Text(
-                    text = "Analytics",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    items(tabs.size) { index ->
-                        FilterChip(
-                            modifier = Modifier.fillMaxWidth(),
-                            selected = selectedTab == index,
-                            onClick = { onTabSelected(index) },
-                            label = { Text(tabs[index]) }
+                // Analytics Tabs Section
+                item {
+                    Column {
+                        Text(
+                            text = "Analytics",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Fixed container for tabs
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            tabs.forEachIndexed { index, title ->
+                                FilterChip(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    selected = selectedTab == index,
+                                    onClick = { onTabSelected(index) },
+                                    label = { Text(title) }
+                                )
+                            }
+                        }
                     }
                 }
 
-                // Tab-specific filters in master panel
-                when (selectedTab) {
-                    2, 3 -> { // Performance & PRs tabs
-                        if (availableExercises.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(16.dp))
+                // Exercise Selection for Performance & PRs tabs
+                if (selectedTab in listOf(2, 3) && availableExercises.isNotEmpty()) {
+                    item {
+                        Column {
                             Text(
                                 text = "Exercise",
                                 style = MaterialTheme.typography.titleMedium,
@@ -331,7 +342,6 @@ private fun AnalyticsMasterDetailView(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             
-                            // Use proper dropdown for consistency with small screens
                             MasterPanelExerciseSelector(
                                 exercises = availableExercises,
                                 selectedExerciseId = selectedExerciseId,
@@ -529,6 +539,69 @@ private fun AnalyticsHeader(
                 contentDescription = "Refresh Analytics",
                 tint = if (isLoading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
             )
+        }
+    }
+}
+
+@Composable
+private fun CompactAnalyticsFilterIndicator(
+    selectedExerciseId: String?,
+    selectedMuscleGroup: String?,
+    availableExercises: List<Exercise>,
+    onClearSelections: () -> Unit
+) {
+    if (selectedExerciseId != null || selectedMuscleGroup != null) {
+        val selectedExercise = availableExercises.find { it.id == selectedExerciseId }
+        
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FilterList,
+                        contentDescription = "Filter active",
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = when {
+                            selectedExercise != null -> selectedExercise.name
+                            selectedMuscleGroup != null -> selectedMuscleGroup
+                            else -> "Filtered"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                
+                TextButton(
+                    onClick = onClearSelections,
+                    modifier = Modifier.height(32.dp)
+                ) {
+                    Text(
+                        text = "Clear",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
         }
     }
 }
