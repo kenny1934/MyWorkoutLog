@@ -117,11 +117,7 @@ class DashboardViewModel(
         }
     }
     
-    fun executeQuickAction(
-        action: QuickAction, 
-        onNavigate: (String) -> Unit,
-        onShowSessionDialog: ((templateId: String, cycleId: String?, weekId: String?, sessionId: String?, route: String) -> Unit)? = null
-    ) {
+    fun executeQuickAction(action: QuickAction, onNavigate: (String) -> Unit) {
         when (action.action) {
             QuickActionType.START_NEXT_SESSION -> {
                 // Use the same logic as NextSessionWidget for consistency
@@ -143,21 +139,11 @@ class DashboardViewModel(
                             sessionId = sessionId
                         )
                         
-                        // Check if session dialog should be shown
-                        if (onShowSessionDialog != null) {
-                            onShowSessionDialog(templateId, cycleId, weekId, sessionId, route)
-                        } else {
-                            onNavigate(route)
-                        }
+                        onNavigate(route)
                     } else {
                         // Fallback to simple template route if any parameter is null
                         templateId?.let { id ->
-                            val route = Screen.WorkoutLogger.createRoute(id)
-                            if (onShowSessionDialog != null) {
-                                onShowSessionDialog(id, null, null, null, route)
-                            } else {
-                                onNavigate(route)
-                            }
+                            onNavigate(Screen.WorkoutLogger.createRoute(id))
                         } ?: onNavigate(Screen.WorkoutLogger.route)
                     }
                 } else {

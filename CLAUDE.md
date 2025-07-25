@@ -1,95 +1,60 @@
 # Claude Development Context
 
 ## Current Status
-- Branch: `feature/workout-logger-ui-improvements` (PRIMARY DEVELOPMENT BRANCH)
-- Last commit: `feat: Implement adaptive FAB visibility for optimal UX`
-- Development Phase: **Large Screen Workout Logging with Adaptive FAB COMPLETE** ✅
-- Status: **Main development branch** (dashboard branch deleted)
+- Branch: `feature/dashboard-enhancements`
+- Last commit: `fix: Session choice dialog threading - implement proper coroutine context for database queries`
+- Development Phase: **Session Persistence with User Choice Dialog COMPLETE** ✅
 
 ## App State Summary
-**Production-ready fitness app** with enhanced workout logging, video form references, rest time tracking, and modern UI components.
+**Production-ready fitness app** with enhanced workout logging, session persistence, user choice dialogs, video form references, rest time tracking, and modern UI components.
 
 ## 🏆 Major Completed Features
 - ✅ **Enhanced Workout Logger**: Modern UI with advanced input components, rest time tracking, and video references
 - ✅ **Core Workout System**: Complete logging with timers, detailed set tracking, and session management
+- ✅ **Session Persistence System**: Comprehensive workout session recovery with user choice dialogs
 - ✅ **Enterprise Analytics**: Advanced charts, export/import, cloud backup functionality
 - ✅ **Interactive Dashboard**: Customizable widgets with edit mode, reordering, and visibility controls
 - ✅ **Smart Insights Engine**: Priority-based insight cards with dismissal and action handling
 - ✅ **Enhanced Navigation**: Contextual routing with auto-selection throughout app
 - ✅ **Large Screen Workout Logging**: Master-detail layout with adaptive input components optimized for workout sessions
 
-## 🎯 Latest Enhancement: Large Screen Workout Logging UX Enhancement - COMPLETE ✅
+## 🎯 Latest Enhancement: Session Persistence with User Choice Dialog - COMPLETE ✅
 
-### **Professional Large Screen Workout Experience - COMPLETE** ✅
-**Problem Solved**: Achieved complete UX consistency between compact and large screen layouts with enhanced usability features for Galaxy Z Fold 6 workout logging.
+### **Session Persistence System with User Choice Dialog - COMPLETE** ✅
+**Problem Solved**: Implemented comprehensive workout session persistence to prevent data loss when switching between tabs or folding/unfolding Galaxy Z Fold 6, with user choice dialog for accidentally started sessions.
 
-**🔧 Layout & Navigation Fixes**:
-- **Fixed Navigation Rail Positioning**: Resolved stopwatch overlap with proper padding alignment
-- **Enhanced Master Panel**: Increased width from 400dp to 480dp for better space utilization
-- **Improved Content Alignment**: Fixed scaffold padding issues preventing content from appearing behind system bars
-- **Optimized Space Distribution**: 45% master panel, 55% detail panel for improved workflow
+**🔧 Session Management Implementation**:
+- **Database Integration**: Added `isInProgress` boolean field to LoggedWorkout with comprehensive DAO queries
+- **Auto-persistence**: Workouts automatically saved as in-progress on creation and updated on every change
+- **Session Recovery**: In-progress workouts restored on app restart with proper state management
+- **Cleanup System**: Abandoned sessions automatically cleaned up after 24 hours
 
-**🎨 Input Field Enhancements**:
-- **Increased Input Height**: Enhanced from 64dp to 76dp to prevent text clipping
-- **Optimized Font Sizing**: Reduced from 18sp to 16sp for proper text visibility
-- **Enhanced RIR Layout**: Moved RIR scale to separate row for full accessibility (0-10 values)
-- **Improved Chip Sizing**: RIR chips sized 48x44dp to accommodate double-digit values
-- **Better Spacing**: Enhanced vertical and horizontal spacing for touch-friendly interaction
+**🎨 User Choice Dialog**:
+- **Session Detection**: Automatically detects existing in-progress sessions when accessing templates
+- **Clear Dialog**: "Resume Session" vs "Start Fresh" options with time elapsed display
+- **Universal Coverage**: Works for all workout logger access points (Quick Actions, widgets, direct navigation)
+- **Threading Fix**: Proper coroutine context for database queries to ensure dialog appears reliably
 
-**✨ UX Consistency Improvements**:
-- **Consistent Add Set Button**: Replaced teal Button with grey FilledTonalIconButton (48dp with 24dp icon)
-- **Added Progress Tracking**: Animated progress bar showing completion percentage with spring animations
-- **Added Completion Counter**: "X/Y sets completed" text for visual feedback
-- **Color-Coded Progress**: Progress bar changes color based on completion (primary → secondary → tertiary)
-- **Adaptive FAB**: Context-aware floating action button - enhanced for compact screens, hidden on large screens
+**✨ Enhanced User Experience**:
+- **No Data Loss**: Seamless session continuation across app lifecycle events
+- **User Control**: Freedom to reset accidentally started sessions without waiting 24 hours
+- **Transparent Operation**: Session status clearly communicated with hour-based time display
+- **Fallback Handling**: Graceful error handling with automatic fallback to new workout creation
 
-**🔧 Technical Improvements**:
-- **Animation System**: Added animateFloatAsState and spring animations for smooth progress transitions
-- **Adaptive Sizing**: Enhanced workoutInputHeight() and workoutTouchTargetSize() for large screens
-- **Improved Typography**: Consistent font sizing and spacing throughout large screen interface
-- **Better Touch Targets**: All interactive elements sized appropriately for workout usage
+**🔧 Technical Architecture**:
+- **Suspend Functions**: Proper async/await pattern for database operations with IO dispatcher
+- **WorkoutSessionStatus**: Sealed class system for type-safe session state management
+- **LaunchedEffect**: Coroutine-based session checking in Compose UI with error handling
+- **Thread Safety**: All database operations properly executed on background threads
 
-**📊 Visual Feedback System**:
-- **Real-time Progress**: Live completion percentage calculation and animated progress bars
-- **Set Completion Tracking**: Visual indicators showing completed vs total sets
-- **Enhanced Completion States**: Different styling and colors based on workout progress
-- **Smooth Animations**: Spring-based animations for all progress state changes
-
-### **🎯 Adaptive FAB Enhancement**:
-- **Smart Visibility**: FAB automatically hides on large screens to prevent redundancy with navigation rail
-- **Enhanced Compact Size**: Increased from 44dp to 56dp (Material 3 standard) for better accessibility
-- **Proper Icon Scaling**: 24dp icon provides optimal proportion and touch target
-- **Context-Aware Logic**: Uses `shouldUseWorkoutMasterDetail()` to determine appropriate interaction method
-- **Clean UX**: Each screen size uses the most suitable add exercise control
-
-**Result**: Large screen workout logging now provides superior UX compared to compact layout, with professional visual feedback, consistent styling, adaptive interaction patterns, and context-aware controls specifically optimized for workout session usage on Galaxy Z Fold 6.
+**Result**: Users can now seamlessly continue workouts across app lifecycle events (tab switching, folding/unfolding device) with no data loss, while having full control over accidentally started sessions through intuitive choice dialogs that appear reliably due to proper threading implementation.
 
 ### **Files Enhanced**:
-- **AdaptiveWorkoutComponents.kt**: 
-  - Fixed navigation rail positioning and padding alignment
-  - Enhanced master-detail layout with proper space distribution
-  - Added comprehensive progress tracking with animated progress bars
-  - Implemented FilledTonalIconButton for consistent Add Set styling
-  - Added completion percentage calculation and visual feedback
-
-- **AdaptiveLayout.kt**: 
-  - Increased workoutInputHeight() from 64dp to 76dp for large screens
-  - Enhanced workoutMasterPanelWidth() from 400dp to 480dp
-  - Improved space distribution ratios (45% master, 55% detail)
-
-- **EnhancedWorkoutComponents.kt**: 
-  - Optimized input field font sizing (18sp → 16sp) and padding
-  - Enhanced RIR scale layout with separate row for full accessibility
-  - Improved RIR chip sizing (48x44dp) to accommodate double-digit values
-  - Added fillMaxWidth() to RIR LazyRow for better space utilization
-
-- **WorkoutLoggerScreens.kt**: 
-  - Implemented adaptive FAB visibility (hidden on large screens, enhanced on compact)
-  - Enhanced compact FAB sizing (56dp) with properly proportioned icon (24dp)
-  - Added conditional rendering logic for context-aware interaction patterns
-  - Fixed padding values integration for proper content alignment
-
-**Result**: Production-ready large screen workout logging experience that exceeds compact layout quality with professional visual feedback, consistent styling, and optimal interaction patterns for Galaxy Z Fold 6 workout sessions.
+- **DataModels.kt**: Added WorkoutSessionStatus sealed class and isInProgress field to LoggedWorkout
+- **LoggedWorkoutDao.kt**: Comprehensive session persistence queries with proper threading
+- **WorkoutLoggerViewModel.kt**: Session management functions with suspend/async patterns
+- **WorkoutLoggerScreens.kt**: User choice dialog implementation with LaunchedEffect
+- **MainActivity.kt**: Cleaned up complex callback system for simpler architecture
 
 ## 🎯 Previous Enhancement: Galaxy Z Fold 6 Adaptive Layout System - COMPLETE ✅
 

@@ -267,8 +267,7 @@ fun AppNavHost(
                 activeCycleViewModel = activeCycleViewModel,
                 programViewModel = programViewModel,
                 navController = navController,
-                dashboardViewModel = dashboardViewModel,
-                workoutLoggerViewModel = loggerViewModel
+                dashboardViewModel = dashboardViewModel
             )
         }
         composable(Screen.History.route) {

@@ -1675,15 +1675,13 @@ fun DashboardScreen(
     activeCycleViewModel: ActiveCycleViewModel,
     programViewModel: ProgramViewModel,
     navController: NavHostController,
-    dashboardViewModel: DashboardViewModel? = null,
-    workoutLoggerViewModel: WorkoutLoggerViewModel? = null
+    dashboardViewModel: DashboardViewModel? = null
 ) {
     // Use enhanced dashboard if available, fallback to legacy
-    if (dashboardViewModel != null && workoutLoggerViewModel != null) {
+    if (dashboardViewModel != null) {
         EnhancedDashboardScreen(
             dashboardViewModel = dashboardViewModel,
-            navController = navController,
-            workoutLoggerViewModel = workoutLoggerViewModel
+            navController = navController
         )
     } else {
         // Legacy dashboard implementation
@@ -1901,10 +1899,9 @@ fun AdaptiveWidgetGrid(
                                             onShowCompleteCycleConfirmation(true)
                                         }
                                         else -> {
-                                            dashboardViewModel.executeQuickAction(
-                                                action = clickedAction,
-                                                onNavigate = { route -> navController.navigate(route) }
-                                            )
+                                            dashboardViewModel.executeQuickAction(clickedAction) { route -> 
+                                                navController.navigate(route) 
+                                            }
                                         }
                                     }
                                 }
@@ -2088,8 +2085,7 @@ fun AdaptiveDashboardContent(
 @Composable
 fun EnhancedDashboardScreen(
     dashboardViewModel: DashboardViewModel,
-    navController: NavHostController,
-    workoutLoggerViewModel: WorkoutLoggerViewModel
+    navController: NavHostController
 ) {
     val dashboardState by dashboardViewModel.dashboardState.collectAsStateWithLifecycle()
     val isLoading by dashboardViewModel.isLoading.collectAsStateWithLifecycle()
@@ -2109,14 +2105,6 @@ fun EnhancedDashboardScreen(
     // Confirmation dialog state
     var showCompleteCycleConfirmation by remember { mutableStateOf(false) }
     var pendingCompleteCycleAction by remember { mutableStateOf<QuickAction?>(null) }
-    
-    // Session choice dialog state 
-    var showSessionDialog by remember { mutableStateOf(false) }
-    var sessionTemplateId by remember { mutableStateOf("") }
-    var sessionCycleId by remember { mutableStateOf<String?>(null) }
-    var sessionWeekId by remember { mutableStateOf<String?>(null) }
-    var sessionSessionId by remember { mutableStateOf<String?>(null) }
-    var sessionRoute by remember { mutableStateOf("") }
     
     PullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -2304,27 +2292,10 @@ fun EnhancedDashboardScreen(
                                                     pendingCompleteCycleAction = selectedAction
                                                     showCompleteCycleConfirmation = true
                                                 } else {
-                                                    // Execute other actions with session handling
-                                                    dashboardViewModel.executeQuickAction(
-                                                        action = selectedAction,
-                                                        onNavigate = { route -> navController.navigate(route) },
-                                                        onShowSessionDialog = { templateId, cycleId, weekId, sessionId, route ->
-                                                            // Check if there's actually an existing session before showing dialog
-                                                            val sessionStatus = workoutLoggerViewModel.getSessionStatus(templateId)
-                                                            if (sessionStatus is WorkoutSessionStatus.InProgress) {
-                                                                // Store session parameters for dialog
-                                                                sessionTemplateId = templateId
-                                                                sessionCycleId = cycleId
-                                                                sessionWeekId = weekId
-                                                                sessionSessionId = sessionId
-                                                                sessionRoute = route
-                                                                showSessionDialog = true
-                                                            } else {
-                                                                // No existing session, navigate directly
-                                                                navController.navigate(route)
-                                                            }
-                                                        }
-                                                    )
+                                                    // Execute other actions directly
+                                                    dashboardViewModel.executeQuickAction(selectedAction) { route -> 
+                                                        navController.navigate(route) 
+                                                    }
                                                 }
                                             }
                                         )
@@ -2389,15 +2360,14 @@ fun EnhancedDashboardScreen(
                         onMoveDown = { dashboardViewModel.moveWidgetDown(index) },
                         onEndCycle = {
                             dashboardViewModel.executeQuickAction(
-                                action = QuickAction(
+                                QuickAction(
                                     id = "end_cycle",
                                     title = "End Cycle",
                                     description = "End current cycle",
                                     icon = Icons.Default.Close,
                                     action = QuickActionType.COMPLETE_CYCLE
-                                ),
-                                onNavigate = { route -> navController.navigate(route) }
-                            )
+                                )
+                            ) { route -> navController.navigate(route) }
                         }
                     )
                 }
@@ -2531,10 +2501,9 @@ fun EnhancedDashboardScreen(
                     onClick = {
                         showCompleteCycleConfirmation = false
                         pendingCompleteCycleAction?.let { action ->
-                            dashboardViewModel.executeQuickAction(
-                                action = action,
-                                onNavigate = { route -> navController.navigate(route) }
-                            )
+                            dashboardViewModel.executeQuickAction(action) { route -> 
+                                navController.navigate(route) 
+                            }
                         }
                         pendingCompleteCycleAction = null
                     }
@@ -2550,58 +2519,6 @@ fun EnhancedDashboardScreen(
                     }
                 ) {
                     Text("Cancel")
-                }
-            }
-        )
-    }
-    
-    // Session choice dialog
-    if (showSessionDialog) {
-        val sessionStatus = workoutLoggerViewModel.getSessionStatus(sessionTemplateId)
-        val hoursAgo = when (sessionStatus) {
-            is WorkoutSessionStatus.InProgress -> sessionStatus.hoursAgo
-            else -> 0
-        }
-        
-        AlertDialog(
-            onDismissRequest = { 
-                showSessionDialog = false
-            },
-            title = { Text("Existing Workout Session") },
-            text = {
-                Text(
-                    if (hoursAgo == 0) {
-                        "You have an in-progress workout session for this template from earlier today. Would you like to resume it or start fresh?"
-                    } else {
-                        "You have an in-progress workout session for this template from $hoursAgo ${if (hoursAgo == 1) "hour" else "hours"} ago. Would you like to resume it or start fresh?"
-                    }
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showSessionDialog = false
-                        workoutLoggerViewModel.resumeInProgressWorkout(sessionTemplateId)
-                        navController.navigate(sessionRoute)
-                    }
-                ) {
-                    Text("Resume Session")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showSessionDialog = false
-                        workoutLoggerViewModel.startFreshWorkout(
-                            sessionTemplateId,
-                            sessionCycleId,
-                            sessionWeekId,
-                            sessionSessionId
-                        )
-                        navController.navigate(sessionRoute)
-                    }
-                ) {
-                    Text("Start Fresh")
                 }
             }
         )

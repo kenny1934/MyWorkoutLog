@@ -934,9 +934,11 @@ class WorkoutLoggerViewModel(
     }
     
     // NEW: Check for existing in-progress workout without auto-loading
-    fun checkForInProgressWorkout(templateId: String): LoggedWorkout? {
+    suspend fun checkForInProgressWorkout(templateId: String): LoggedWorkout? {
         return try {
-            loggedWorkoutDao.getInProgressWorkoutForTemplate(templateId)
+            withContext(Dispatchers.IO) {
+                loggedWorkoutDao.getInProgressWorkoutForTemplate(templateId)
+            }
         } catch (e: Exception) {
             null
         }
@@ -963,7 +965,7 @@ class WorkoutLoggerViewModel(
     }
     
     // NEW: Get session status for UI decision making
-    fun getSessionStatus(templateId: String): WorkoutSessionStatus {
+    suspend fun getSessionStatus(templateId: String): WorkoutSessionStatus {
         val inProgressWorkout = checkForInProgressWorkout(templateId)
         return if (inProgressWorkout != null) {
             val hoursAgo = (System.currentTimeMillis() - (inProgressWorkout.startTimestamp ?: 0)) / (1000 * 60 * 60)

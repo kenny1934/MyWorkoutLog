@@ -68,18 +68,23 @@ fun WorkoutLoggerScreen(
     
     // Check for existing session when screen opens
     LaunchedEffect(key1 = templateId) {
-        val sessionStatus = viewModel.getSessionStatus(templateId)
-        when (sessionStatus) {
-            is WorkoutSessionStatus.None -> {
-                // No existing session, start new workout
-                viewModel.startWorkoutFromTemplate(templateId, cycleId, weekId, sessionId)
+        try {
+            val sessionStatus = viewModel.getSessionStatus(templateId)
+            when (sessionStatus) {
+                is WorkoutSessionStatus.None -> {
+                    // No existing session, start new workout
+                    viewModel.startWorkoutFromTemplate(templateId, cycleId, weekId, sessionId)
+                }
+                is WorkoutSessionStatus.InProgress -> {
+                    // Found existing session, show choice dialog
+                    existingSession = sessionStatus.workout
+                    sessionHoursAgo = sessionStatus.hoursAgo
+                    showSessionDialog = true
+                }
             }
-            is WorkoutSessionStatus.InProgress -> {
-                // Found existing session, show choice dialog
-                existingSession = sessionStatus.workout
-                sessionHoursAgo = sessionStatus.hoursAgo
-                showSessionDialog = true
-            }
+        } catch (e: Exception) {
+            // If session check fails, fallback to starting new workout
+            viewModel.startWorkoutFromTemplate(templateId, cycleId, weekId, sessionId)
         }
     }
     
