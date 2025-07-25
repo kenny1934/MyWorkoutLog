@@ -442,24 +442,42 @@ private fun LargeScreenTabContent(
         }
         3 -> {
             // Personal records tab content without exercise selector (it's in master panel)
-            personalRecordProgress?.let { progress ->
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Debug information
+                item {
+                    Column {
+                        Text(
+                            text = "Debug: Exercise ID = ${
+                                if (exercisePerformanceTrend != null) "Found trend data" else "No trend data"
+                            }",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                        Text(
+                            text = "Debug: PR Progress = ${if (personalRecordProgress != null) "Found" else "null"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
+                }
+                
+                personalRecordProgress?.let { progress ->
                     item {
                         PersonalRecordCard(progress = progress)
                     }
-                }
-            } ?: run {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Select an exercise to view personal records",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                } ?: item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Select an exercise to view personal records",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
@@ -914,14 +932,29 @@ private fun PersonalRecordsTab(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        personalRecordProgress?.let { progress ->
-            PersonalRecordCard(progress = progress)
-        } ?: Text(
-            "Select an exercise to view personal record progress",
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodyLarge
-        )
+        // Debug information
+        Column {
+            Text(
+                text = "Debug: Exercise ID = ${selectedExerciseId ?: "null"}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline
+            )
+            Text(
+                text = "Debug: PR Progress = ${if (personalRecordProgress != null) "Found" else "null"}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            personalRecordProgress?.let { progress ->
+                PersonalRecordCard(progress = progress)
+            } ?: Text(
+                "Select an exercise to view personal record progress",
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
     }
 }
 
