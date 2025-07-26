@@ -573,7 +573,7 @@ private fun VolumeAnalysisDetailPanel(
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         VolumeComparisonChart(
-                            sortedVolumeList = sortedVolumeList.map { entry -> entry.key to entry.value },
+                            sortedVolumeList = sortedVolumeList,
                             selectedMuscleGroup = selectedMuscleGroup
                         )
                     }

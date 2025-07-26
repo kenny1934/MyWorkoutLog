@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 
 package com.example.myworkoutlog
 
@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -13,7 +14,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -21,6 +24,32 @@ import java.util.*
 
 @Composable
 fun ManageTemplatesScreen(
+    viewModel: WorkoutTemplateViewModel,
+    onNavigateToTemplate: (String) -> Unit,
+    onStartWorkout: (String) -> Unit
+) {
+    val layoutInfo = rememberAdaptiveLayoutInfo()
+    
+    if (layoutInfo.useMasterDetail) {
+        // Large screen: Master-detail layout
+        TemplateManagementMasterDetailView(
+            viewModel = viewModel,
+            layoutInfo = layoutInfo,
+            onNavigateToTemplate = onNavigateToTemplate,
+            onStartWorkout = onStartWorkout
+        )
+    } else {
+        // Small screen: Original single-column layout
+        TemplateManagementSingleColumnView(
+            viewModel = viewModel,
+            onNavigateToTemplate = onNavigateToTemplate,
+            onStartWorkout = onStartWorkout
+        )
+    }
+}
+
+@Composable
+private fun TemplateManagementSingleColumnView(
     viewModel: WorkoutTemplateViewModel,
     onNavigateToTemplate: (String) -> Unit,
     onStartWorkout: (String) -> Unit
@@ -81,36 +110,537 @@ fun ManageTemplatesScreen(
             }
 
             if (showDialog) {
-                AlertDialog(
-                    onDismissRequest = { showDialog = false },
-                    title = { Text("New Workout Template") },
-                    text = {
-                        OutlinedTextField(
-                            value = templateName,
-                            onValueChange = { templateName = it },
-                            label = { Text("Template Name") },
-                            singleLine = true
-                        )
+                TemplateCreateDialog(
+                    templateName = templateName,
+                    onTemplateNameChange = { templateName = it },
+                    onDismiss = { 
+                        showDialog = false
+                        templateName = ""
                     },
-                    confirmButton = {
-                        Button(
-                            onClick = {
-                                if (templateName.isNotBlank()) {
-                                    viewModel.insert(templateName, null)
-                                    templateName = ""
-                                    showDialog = false
-                                }
-                            }
-                        ) { Text("Create") }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showDialog = false }) {
-                            Text("Cancel")
-                        }
+                    onConfirm = {
+                        viewModel.insert(templateName, null)
+                        templateName = ""
+                        showDialog = false
                     }
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun TemplateManagementMasterDetailView(
+    viewModel: WorkoutTemplateViewModel,
+    layoutInfo: AdaptiveLayoutInfo,
+    onNavigateToTemplate: (String) -> Unit,
+    onStartWorkout: (String) -> Unit
+) {
+    val templates by viewModel.allTemplates.collectAsStateWithLifecycle()
+    val allExercises by viewModel.allMasterExercises.collectAsStateWithLifecycle()
+    
+    var selectedTemplate by remember { mutableStateOf<WorkoutTemplate?>(null) }
+    var showCreateDialog by remember { mutableStateOf(false) }
+    var templateName by remember { mutableStateOf("") }
+    
+    // Auto-select first template when data loads
+    LaunchedEffect(templates) {
+        if (selectedTemplate == null && templates.isNotEmpty()) {
+            selectedTemplate = templates.first()
+        }
+    }
+    
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(layoutInfo.contentPadding)
+    ) {
+        // Master Panel (Left side - 40%)
+        Card(
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(0.4f),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Workout Templates",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    IconButton(onClick = { showCreateDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Create Template",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Templates list
+                if (templates.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FitnessCenter,
+                                contentDescription = "No Templates",
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "No templates yet",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "Create your first template",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(templates) { template ->
+                            TemplateListItem(
+                                template = template,
+                                isSelected = selectedTemplate?.id == template.id,
+                                onTemplateSelected = { selectedTemplate = template },
+                                onStartWorkout = { onStartWorkout(template.id) },
+                                onEditTemplate = { onNavigateToTemplate(template.id) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // Detail Panel (Right side - 60%)
+        Card(
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(0.6f),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            TemplateDetailPanel(
+                selectedTemplate = selectedTemplate,
+                allExercises = allExercises,
+                onStartWorkout = onStartWorkout,
+                onEditTemplate = onNavigateToTemplate
+            )
+        }
+    }
+    
+    // Create template dialog
+    if (showCreateDialog) {
+        TemplateCreateDialog(
+            templateName = templateName,
+            onTemplateNameChange = { templateName = it },
+            onDismiss = { 
+                showCreateDialog = false
+                templateName = ""
+            },
+            onConfirm = {
+                viewModel.insert(templateName, null)
+                templateName = ""
+                showCreateDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun TemplateListItem(
+    template: WorkoutTemplate,
+    isSelected: Boolean,
+    onTemplateSelected: () -> Unit,
+    onStartWorkout: () -> Unit,
+    onEditTemplate: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onTemplateSelected() },
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 6.dp else 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) 
+                MaterialTheme.colorScheme.primaryContainer 
+            else 
+                MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = template.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isSelected) 
+                            MaterialTheme.colorScheme.onPrimaryContainer 
+                        else 
+                            MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    
+                    Text(
+                        text = "${template.templateExercises.size} exercises",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isSelected) 
+                            MaterialTheme.colorScheme.onPrimaryContainer 
+                        else 
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Action buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onEditTemplate,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Edit")
+                }
+                
+                Button(
+                    onClick = onStartWorkout,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "Start",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Start")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TemplateDetailPanel(
+    selectedTemplate: WorkoutTemplate?,
+    allExercises: List<Exercise>,
+    onStartWorkout: (String) -> Unit,
+    onEditTemplate: (String) -> Unit
+) {
+    if (selectedTemplate == null) {
+        // No template selected - show placeholder
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FitnessCenter,
+                    contentDescription = "Select Template",
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Select a template to view details",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    } else {
+        // Template selected - show detailed view
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                // Header with template name and actions
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = selectedTemplate.name,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "${selectedTemplate.templateExercises.size} exercises • ${selectedTemplate.templateExercises.sumOf { it.sets.size }} sets",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            
+            item {
+                // Action buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { onEditTemplate(selectedTemplate.id) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit Template",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Edit Template")
+                    }
+                    
+                    Button(
+                        onClick = { onStartWorkout(selectedTemplate.id) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = "Start Workout",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Start Workout")
+                    }
+                }
+            }
+            
+            // Exercise breakdown
+            if (selectedTemplate.templateExercises.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Exercise Breakdown",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                
+                items(selectedTemplate.templateExercises) { exercise ->
+                    TemplateExerciseCard(
+                        exercise = exercise,
+                        allExercises = allExercises
+                    )
+                }
+            } else {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FitnessCenter,
+                                contentDescription = "No Exercises",
+                                modifier = Modifier.size(32.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "No exercises added yet",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "Edit template to add exercises",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TemplateExerciseCard(
+    exercise: TemplateExercise,
+    allExercises: List<Exercise>
+) {
+    val masterExercise = allExercises.find { it.id == exercise.exerciseId }
+    
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = exercise.exerciseName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    
+                    // Exercise metadata
+                    masterExercise?.let { master ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (master.usesBodyweight) {
+                                Card(
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                                    )
+                                ) {
+                                    Text(
+                                        text = "Bodyweight",
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            }
+                            
+                            val primaryEquipment = master.equipment.firstOrNull()
+                            if (primaryEquipment != null && primaryEquipment != Equipment.OTHER) {
+                                Text(
+                                    text = primaryEquipment.name.replace("_", " ").lowercase()
+                                        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                Text(
+                    text = "${exercise.sets.size} sets",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            // Sets breakdown
+            if (exercise.sets.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    exercise.sets.forEachIndexed { index, set ->
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Text(
+                                text = "Set ${index + 1}: ${formatSetTarget(set)}",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TemplateCreateDialog(
+    templateName: String,
+    onTemplateNameChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("New Workout Template") },
+        text = {
+            OutlinedTextField(
+                value = templateName,
+                onValueChange = onTemplateNameChange,
+                label = { Text("Template Name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = templateName.isNotBlank()
+            ) {
+                Text("Create")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+private fun formatSetTarget(set: TemplateExerciseSet): String {
+    return when {
+        !set.targetReps.isNullOrBlank() -> "${set.targetReps} reps"
+        !set.targetSecs.isNullOrBlank() -> "${set.targetSecs}s"
+        else -> "Open set"
     }
 }
 
