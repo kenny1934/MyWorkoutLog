@@ -345,9 +345,10 @@ fun AppNavHost(
             )
         }
         composable(Screen.Programs.route) {
-            ManageProgramsScreen(
+            AdaptiveProgramManagementScreen(
                 programViewModel = programViewModel,
                 activeCycleViewModel = activeCycleViewModel,
+                templateViewModel = templateViewModel,
                 onNavigateToProgram = { programId ->
                     navController.navigate(Screen.ProgramEditor.createRoute(programId))
                 },
