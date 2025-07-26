@@ -334,7 +334,7 @@ private fun VolumeAnalysisMasterDetailView(
             VolumeAnalysisDetailPanel(
                 selectedMuscleGroup = selectedMuscleGroup,
                 volumeData = volumeData,
-                sortedVolumeList = sortedVolumeList.map { it.key to it.value },
+                sortedVolumeList = sortedVolumeList.map { entry -> entry.key to entry.value },
                 selectedWeek = selectedWeek,
                 onNavigateToMuscleGroupAnalytics = onNavigateToMuscleGroupAnalytics
             )
@@ -573,7 +573,7 @@ private fun VolumeAnalysisDetailPanel(
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         VolumeComparisonChart(
-                            sortedVolumeList = sortedVolumeList.map { it.key to it.value },
+                            sortedVolumeList = sortedVolumeList.map { entry -> entry.key to entry.value },
                             selectedMuscleGroup = selectedMuscleGroup
                         )
                     }
