@@ -22,6 +22,32 @@ fun PersonalRecordsScreen(
     onNavigateToWorkout: (String) -> Unit,
     onNavigateToExerciseAnalytics: (String) -> Unit = {}
 ) {
+    val layoutInfo = rememberAdaptiveLayoutInfo()
+    
+    if (layoutInfo.useMasterDetail) {
+        // Large screen: Master-detail layout
+        PersonalRecordsMasterDetailView(
+            viewModel = viewModel,
+            layoutInfo = layoutInfo,
+            onNavigateToWorkout = onNavigateToWorkout,
+            onNavigateToExerciseAnalytics = onNavigateToExerciseAnalytics
+        )
+    } else {
+        // Small screen: Original single-column layout
+        PersonalRecordsSingleColumnView(
+            viewModel = viewModel,
+            onNavigateToWorkout = onNavigateToWorkout,
+            onNavigateToExerciseAnalytics = onNavigateToExerciseAnalytics
+        )
+    }
+}
+
+@Composable
+private fun PersonalRecordsSingleColumnView(
+    viewModel: PrViewModel,
+    onNavigateToWorkout: (String) -> Unit,
+    onNavigateToExerciseAnalytics: (String) -> Unit
+) {
     val searchText by viewModel.searchText.collectAsStateWithLifecycle()
     val filteredPRs by viewModel.filteredPRs.collectAsStateWithLifecycle()
     val prsByExercise = filteredPRs.groupBy { it.exerciseName }
@@ -108,6 +134,310 @@ fun PersonalRecordsScreen(
                                         PRDetailRow(pr = pr, onNavigateToWorkout = onNavigateToWorkout)
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PersonalRecordsMasterDetailView(
+    viewModel: PrViewModel,
+    layoutInfo: AdaptiveLayoutInfo,
+    onNavigateToWorkout: (String) -> Unit,
+    onNavigateToExerciseAnalytics: (String) -> Unit
+) {
+    val exerciseGroups by viewModel.exerciseGroups.collectAsStateWithLifecycle()
+    val selectedExerciseId by viewModel.selectedExerciseId.collectAsStateWithLifecycle()
+    val selectedExercisePRs by viewModel.selectedExercisePRs.collectAsStateWithLifecycle()
+    
+    // Auto-select first exercise when data loads
+    LaunchedEffect(exerciseGroups) {
+        if (exerciseGroups.isNotEmpty() && selectedExerciseId == null) {
+            viewModel.autoSelectFirstExercise()
+        }
+    }
+    
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(layoutInfo.contentPadding)
+    ) {
+        // Master Panel (Left side - 40%)
+        Card(
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(0.4f),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "Personal Records",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Search bar
+                val searchText by viewModel.searchText.collectAsStateWithLifecycle()
+                OutlinedTextField(
+                    value = searchText,
+                    onValueChange = viewModel::onSearchTextChanged,
+                    label = { Text("Search Exercise...") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") }
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Exercise list
+                if (exerciseGroups.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No exercises found.", style = MaterialTheme.typography.bodyLarge)
+                    }
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        exerciseGroups.forEach { exerciseGroup ->
+                            item {
+                                ExerciseListItem(
+                                    exerciseGroup = exerciseGroup,
+                                    isSelected = selectedExerciseId == exerciseGroup.exerciseId,
+                                    onExerciseSelected = { viewModel.selectExercise(exerciseGroup.exerciseId) },
+                                    onAnalyticsClick = { onNavigateToExerciseAnalytics(exerciseGroup.exerciseId) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // Detail Panel (Right side - 60%)
+        Card(
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(0.6f),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            PersonalRecordsDetailPanel(
+                selectedExerciseId = selectedExerciseId,
+                selectedExercisePRs = selectedExercisePRs,
+                exerciseGroups = exerciseGroups,
+                onNavigateToWorkout = onNavigateToWorkout,
+                onNavigateToExerciseAnalytics = onNavigateToExerciseAnalytics
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExerciseListItem(
+    exerciseGroup: ExerciseGroup,
+    isSelected: Boolean,
+    onExerciseSelected: () -> Unit,
+    onAnalyticsClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onExerciseSelected() },
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 6.dp else 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) 
+                MaterialTheme.colorScheme.primaryContainer 
+            else 
+                MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = exerciseGroup.exerciseName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    color = if (isSelected) 
+                        MaterialTheme.colorScheme.onPrimaryContainer 
+                    else 
+                        MaterialTheme.colorScheme.onSurface
+                )
+                
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${exerciseGroup.prCount} PRs",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isSelected) 
+                            MaterialTheme.colorScheme.onPrimaryContainer 
+                        else 
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    if (exerciseGroup.latestDate != null) {
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (isSelected) 
+                                MaterialTheme.colorScheme.onPrimaryContainer 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Latest: ${exerciseGroup.latestDate}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (isSelected) 
+                                MaterialTheme.colorScheme.onPrimaryContainer 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            
+            IconButton(onClick = onAnalyticsClick) {
+                Icon(
+                    imageVector = Icons.Filled.Analytics,
+                    contentDescription = "View ${exerciseGroup.exerciseName} analytics",
+                    tint = if (isSelected) 
+                        MaterialTheme.colorScheme.primary 
+                    else 
+                        MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PersonalRecordsDetailPanel(
+    selectedExerciseId: String?,
+    selectedExercisePRs: List<PersonalRecord>,
+    exerciseGroups: List<ExerciseGroup>,
+    onNavigateToWorkout: (String) -> Unit,
+    onNavigateToExerciseAnalytics: (String) -> Unit
+) {
+    if (selectedExerciseId == null) {
+        // No exercise selected - show placeholder
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.EmojiEvents,
+                    contentDescription = "Select Exercise",
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Select an exercise to view personal records",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    } else {
+        // Exercise selected - show PR details
+        val selectedExercise = exerciseGroups.find { it.exerciseId == selectedExerciseId }
+        
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                // Header with exercise name and analytics button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = selectedExercise?.exerciseName ?: "Exercise",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    IconButton(onClick = { onNavigateToExerciseAnalytics(selectedExerciseId) }) {
+                        Icon(
+                            imageVector = Icons.Filled.Analytics,
+                            contentDescription = "View analytics",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                
+                // PR summary
+                Text(
+                    text = "${selectedExercisePRs.size} personal records",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            item {
+                // Display PRs by categories (same as original implementation)
+                val weightPRs = selectedExercisePRs.filter { it.type == PRType.MAX_WEIGHT_FOR_REPS }.sortedBy { it.reps }
+                val repsPRs = selectedExercisePRs.filter { it.type == PRType.MAX_REPS_AT_WEIGHT }.sortedByDescending { it.weight }
+                val durationPRs = selectedExercisePRs.filter { it.type == PRType.DURATION }
+
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    // Display each PR type in its own section
+                    if (weightPRs.isNotEmpty()) {
+                        PRCategoryRow(icon = Icons.Filled.FitnessCenter, title = "Best Weight for Reps")
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            weightPRs.forEach { pr ->
+                                PRDetailRow(pr = pr, onNavigateToWorkout = onNavigateToWorkout)
+                            }
+                        }
+                    }
+                    
+                    if (repsPRs.isNotEmpty()) {
+                        if (weightPRs.isNotEmpty()) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        }
+                        PRCategoryRow(icon = Icons.Filled.Repeat, title = "Best Reps at Weight")
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            repsPRs.forEach { pr ->
+                                PRDetailRow(pr = pr, onNavigateToWorkout = onNavigateToWorkout)
+                            }
+                        }
+                    }
+                    
+                    if (durationPRs.isNotEmpty()) {
+                        if (weightPRs.isNotEmpty() || repsPRs.isNotEmpty()) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        }
+                        PRCategoryRow(icon = Icons.Filled.Timer, title = "Best Duration")
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            durationPRs.forEach { pr ->
+                                PRDetailRow(pr = pr, onNavigateToWorkout = onNavigateToWorkout)
                             }
                         }
                     }
