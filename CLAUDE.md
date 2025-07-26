@@ -1,9 +1,9 @@
 # Claude Development Context
 
 ## Current Status
-- Branch: `feature/dashboard-enhancements`
-- Last commit: `fix: Move exercise selection to main content area for better UX`
-- Development Phase: **Analytics Large Screen Optimization COMPLETE** ✅
+- Branch: `feature/workout-logger-ui-improvements`
+- Last commit: `fix: History screen master-detail layout with direct edit navigation`
+- Development Phase: **History Screen Large Screen Optimization COMPLETE** ✅
 
 ## App State Summary
 **Production-ready fitness app** with enhanced workout logging, session persistence, user choice dialogs, video form references, rest time tracking, and modern UI components.
@@ -14,49 +14,52 @@
 - ✅ **Session Persistence System**: Comprehensive workout session recovery with user choice dialogs
 - ✅ **Enterprise Analytics**: Advanced charts, export/import, cloud backup functionality
 - ✅ **Analytics Large Screen Optimization**: Professional master-detail layout with optimal exercise selection UX
+- ✅ **History Screen Large Screen Optimization**: Master-detail layout with comprehensive workout viewing and direct edit navigation
 - ✅ **Interactive Dashboard**: Customizable widgets with edit mode, reordering, and visibility controls
 - ✅ **Smart Insights Engine**: Priority-based insight cards with dismissal and action handling
 - ✅ **Enhanced Navigation**: Contextual routing with auto-selection throughout app
 - ✅ **Large Screen Workout Logging**: Master-detail layout with adaptive input components optimized for workout sessions
 
-## 🎯 Latest Enhancement: Analytics Large Screen Optimization - COMPLETE ✅
+## 🎯 Latest Enhancement: History Screen Large Screen Optimization - COMPLETE ✅
 
-### **Analytics Large Screen Optimization - COMPLETE** ✅
-**Problem Solved**: Transformed Analytics screen from single-column layout to professional master-detail experience optimized for Galaxy Z Fold 6's 7.6" display, with superior exercise selection UX.
+### **History Screen Large Screen Optimization - COMPLETE** ✅
+**Problem Solved**: Transformed History screen from single-column layout to professional master-detail experience optimized for Galaxy Z Fold 6's 7.6" display, with comprehensive workout viewing and streamlined navigation.
 
 **🔧 Master-Detail Architecture**:
-- **Master Panel (40%)**: Compact navigation with header, filter indicators, time ranges, and analytics tabs
-- **Detail Panel (60%)**: Full-width space for charts and data visualization
+- **Master Panel (40%)**: Workout selection with mesocycle/chronological views and adaptive header layout
+- **Detail Panel (60%)**: Comprehensive workout details with summary stats, exercise breakdowns, and direct edit access
 - **Adaptive Layout**: Automatically switches between single-column (small screens) and master-detail (large screens)
-- **Professional Design**: Material 3 compliant with proper spacing and elevation
+- **Professional Design**: Material 3 compliant with proper card elevation and spacing
 
-**🎨 Exercise Selection UX Revolution**:
-- **Critical Fix**: Moved exercise dropdown from hidden sidebar bottom to prominent main content top
-- **Immediate Discoverability**: Exercise selection visible when opening Performance/PRs tabs
-- **No Scrolling Required**: Eliminated need to hunt through long sidebar sections
-- **Logical Flow**: Tab selection → Exercise dropdown → Data content (top-to-bottom)
+**🎨 Enhanced Navigation Experience**:
+- **Direct Edit Navigation**: Master-detail edit button goes directly to edit screen (no intermediate detail screen)
+- **Responsive Header**: Vertical button stacking in constrained master panel for better visibility
+- **Selection Highlighting**: Proper contrast colors for selected workouts in active cycle sections
+- **Optimal Spacing**: Consistent 16dp margins between content sections for better visual hierarchy
 
-**✨ Layout Problem Resolution**:
-- **Master Panel Overhaul**: Replaced multiple competing LazyColumns with single scrollable container
-- **Compact Filter Indicators**: Reduced from 60dp+ cards to 32dp single-line indicators
-- **Guaranteed Tab Access**: Analytics tabs always visible and clickable (no more push-off-screen)
-- **Space Optimization**: 4dp/8dp/16dp consistent spacing hierarchy
+**✨ UI Fixes Applied**:
+- **Filter Button Visibility**: Fixed "All" button clipping by using vertical layout in master panel
+- **Selection Contrast**: Changed from poor black-on-purple to readable primary color highlighting
+- **Content Spacing**: Added proper margin between Program Context card and workout stats row
+- **Touch Targets**: Full-width filter buttons for better accessibility in constrained spaces
 
 **🔧 Technical Implementation**:
-- **Adaptive Detection**: Uses `rememberAdaptiveLayoutInfo()` to detect large screens
-- **Component Reuse**: Maintains existing tab components for backward compatibility
-- **LargeScreenTabContent**: Specialized content rendering for detail panel
-- **ExerciseSelector Integration**: Proper dropdown placement in Performance/PRs tabs
+- **Adaptive Detection**: Uses `rememberAdaptiveLayoutInfo().useMasterDetail` for responsive behavior
+- **Component Separation**: Distinct MasterView and DetailPanel components with selection state management
+- **Navigation Callbacks**: Separate `onNavigateToWorkout` and `onNavigateToEdit` for proper routing
+- **Backward Compatibility**: Single-column mode preserves original navigation flow
 
-**Result**: Analytics screen now provides optimal Galaxy Z Fold 6 experience with immediate exercise selection access, professional master-detail layout, and enhanced data visualization space utilization - transforming from basic blown-up phone app to sophisticated large-screen experience.
+**Result**: History screen now provides optimal Galaxy Z Fold 6 experience with intuitive workout browsing, detailed workout analysis, and streamlined edit navigation - transforming from basic blown-up phone app to sophisticated large-screen workout history management.
 
 ### **Files Enhanced**:
-- **AnalyticsScreen.kt**: Complete master-detail layout implementation with adaptive design
-  - Added AnalyticsMasterDetailView for large screen optimization
-  - Implemented LargeScreenTabContent with proper exercise selection
-  - Created CompactAnalyticsFilterIndicator for space-efficient filtering
-  - Fixed multiple LazyColumn conflicts causing layout chaos
-  - Moved exercise selection from sidebar to main content for optimal UX
+- **HistoryScreens.kt**: Complete master-detail layout implementation with adaptive design
+  - Added HistoryMasterDetailView for large screen optimization  
+  - Implemented HistoryDetailPanel with comprehensive workout display
+  - Created responsive HistoryHeader with vertical button stacking
+  - Fixed selection highlighting with proper Material 3 color contrast
+  - Added direct edit navigation bypassing intermediate detail screen
+  - Enhanced component separation for MasterView and DetailPanel
+- **MainActivity.kt**: Enhanced navigation routing with separate edit callback for optimal master-detail flow
 
 ## 🎯 Previous Enhancement: Galaxy Z Fold 6 Adaptive Layout System - COMPLETE ✅
 
@@ -131,4 +134,4 @@ The user specifically requested optimization for their Galaxy Z Fold 6's 7.6" in
 - **Production-Ready**: Complete fitness app with comprehensive feature set
 - **Testing Environment**: Android Studio build and testing by user
 - **Galaxy Z Fold 6 Optimized**: Fully adaptive layout system with proper large screen utilization
-- **Current Focus**: Maintaining production stability and potential future enhancements
+- **Current Focus**: History screen large screen optimization complete, ready for additional screen optimizations or new features

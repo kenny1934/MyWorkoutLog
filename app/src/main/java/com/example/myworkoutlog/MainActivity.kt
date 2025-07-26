@@ -275,6 +275,9 @@ fun AppNavHost(
                 viewModel = historyViewModel,
                 onNavigateToWorkout = { workoutId ->
                     navController.navigate(Screen.HistoryDetail.createRoute(workoutId))
+                },
+                onNavigateToEdit = { workoutId ->
+                    navController.navigate(Screen.EditWorkout.createRoute(workoutId))
                 }
             )
         }
