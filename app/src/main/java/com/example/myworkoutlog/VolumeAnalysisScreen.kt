@@ -246,11 +246,17 @@ private fun VolumeAnalysisMasterDetailView(
         }
     }
     
-    // Auto-select first muscle group when data loads
+    // Auto-select first muscle group when data loads or when selected group is no longer available
     val sortedVolumeList = volumeData.entries.toList().sortedByDescending { it.value }
     LaunchedEffect(sortedVolumeList) {
-        if (selectedMuscleGroup == null && sortedVolumeList.isNotEmpty()) {
-            selectedMuscleGroup = sortedVolumeList.first().key
+        when {
+            selectedMuscleGroup == null && sortedVolumeList.isNotEmpty() -> {
+                selectedMuscleGroup = sortedVolumeList.first().key
+            }
+            selectedMuscleGroup != null && sortedVolumeList.none { it.key == selectedMuscleGroup } -> {
+                // Selected muscle group no longer has data, select first available or clear selection
+                selectedMuscleGroup = sortedVolumeList.firstOrNull()?.key
+            }
         }
     }
     
@@ -263,7 +269,8 @@ private fun VolumeAnalysisMasterDetailView(
         Card(
             modifier = Modifier
                 .fillMaxHeight()
-                .weight(0.4f),
+                .weight(0.4f)
+                .heightIn(min = 400.dp), // Ensure consistent minimum height
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
             Column(
@@ -328,7 +335,8 @@ private fun VolumeAnalysisMasterDetailView(
         Card(
             modifier = Modifier
                 .fillMaxHeight()
-                .weight(0.6f),
+                .weight(0.6f)
+                .heightIn(min = 400.dp), // Ensure consistent minimum height
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
             VolumeAnalysisDetailPanel(
@@ -537,7 +545,11 @@ private fun VolumeAnalysisDetailPanel(
                             )
                             
                             val totalSets = volumeData.values.sum()
-                            val percentage = if (totalSets > 0) (selectedSetCount * 100.0 / totalSets) else 0.0
+                            val percentage = if (totalSets > 0 && selectedSetCount > 0) {
+                                (selectedSetCount * 100.0 / totalSets).coerceIn(0.0, 100.0)
+                            } else {
+                                0.0
+                            }
                             VolumeStatItem(
                                 label = "% of Total",
                                 value = "${percentage.toInt()}%",

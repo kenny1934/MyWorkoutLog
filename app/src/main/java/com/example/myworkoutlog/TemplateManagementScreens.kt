@@ -142,10 +142,16 @@ private fun TemplateManagementMasterDetailView(
     var showCreateDialog by remember { mutableStateOf(false) }
     var templateName by remember { mutableStateOf("") }
     
-    // Auto-select first template when data loads
+    // Auto-select first template when data loads or when selected template is no longer available
     LaunchedEffect(templates) {
-        if (selectedTemplate == null && templates.isNotEmpty()) {
-            selectedTemplate = templates.first()
+        when {
+            selectedTemplate == null && templates.isNotEmpty() -> {
+                selectedTemplate = templates.first()
+            }
+            selectedTemplate != null && templates.none { it.id == selectedTemplate?.id } -> {
+                // Selected template was deleted, select first available or clear selection
+                selectedTemplate = templates.firstOrNull()
+            }
         }
     }
     
@@ -158,7 +164,8 @@ private fun TemplateManagementMasterDetailView(
         Card(
             modifier = Modifier
                 .fillMaxHeight()
-                .weight(0.4f),
+                .weight(0.4f)
+                .heightIn(min = 400.dp), // Ensure consistent minimum height
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
             Column(
@@ -240,7 +247,8 @@ private fun TemplateManagementMasterDetailView(
         Card(
             modifier = Modifier
                 .fillMaxHeight()
-                .weight(0.6f),
+                .weight(0.6f)
+                .heightIn(min = 400.dp), // Ensure consistent minimum height
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
             TemplateDetailPanel(
@@ -552,11 +560,15 @@ private fun TemplateExerciseCard(
                                 }
                             }
                             
-                            val primaryEquipment = master.equipment.firstOrNull()
-                            if (primaryEquipment != null && primaryEquipment != Equipment.OTHER) {
+                            val primaryEquipment = master.equipment.firstOrNull { it != Equipment.OTHER } ?: master.equipment.firstOrNull()
+                            if (primaryEquipment != null) {
                                 Text(
-                                    text = primaryEquipment.name.replace("_", " ").lowercase()
-                                        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() },
+                                    text = if (primaryEquipment == Equipment.OTHER) {
+                                        "Other equipment"
+                                    } else {
+                                        primaryEquipment.name.replace("_", " ").lowercase()
+                                            .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+                                    },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

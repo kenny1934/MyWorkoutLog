@@ -144,12 +144,16 @@ private fun ExerciseManagementMasterDetailView(
         }
     }
     
-    // Auto-select first exercise when filtered list changes
+    // Auto-select first exercise when filtered list changes or when selected exercise is no longer available
     LaunchedEffect(filteredExercises) {
-        if (selectedExercise == null && filteredExercises.isNotEmpty()) {
-            selectedExercise = filteredExercises.first()
-        } else if (selectedExercise != null && !filteredExercises.contains(selectedExercise)) {
-            selectedExercise = filteredExercises.firstOrNull()
+        when {
+            selectedExercise == null && filteredExercises.isNotEmpty() -> {
+                selectedExercise = filteredExercises.first()
+            }
+            selectedExercise != null && !filteredExercises.contains(selectedExercise) -> {
+                // Selected exercise no longer matches filters, select first available or clear selection
+                selectedExercise = filteredExercises.firstOrNull()
+            }
         }
     }
     
@@ -162,7 +166,8 @@ private fun ExerciseManagementMasterDetailView(
         Card(
             modifier = Modifier
                 .fillMaxHeight()
-                .weight(0.4f),
+                .weight(0.4f)
+                .heightIn(min = 400.dp), // Ensure consistent minimum height
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
             Column(
@@ -182,16 +187,28 @@ private fun ExerciseManagementMasterDetailView(
                         fontWeight = FontWeight.Bold
                     )
                     
+                    var showAddDialog by remember { mutableStateOf(false) }
+                    
                     IconButton(
                         onClick = { 
-                            // Create new exercise and select it
-                            selectedExercise = null
+                            showAddDialog = true
                         }
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Add Exercise",
                             tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    
+                    // Add Exercise Dialog
+                    if (showAddDialog) {
+                        AddExerciseDialog(
+                            onDismiss = { showAddDialog = false },
+                            onConfirm = { name, equipment, usesBodyweight, muscleGroups ->
+                                viewModel.insert(name, equipment, usesBodyweight, muscleGroups)
+                                showAddDialog = false
+                            }
                         )
                     }
                 }
@@ -283,7 +300,8 @@ private fun ExerciseManagementMasterDetailView(
         Card(
             modifier = Modifier
                 .fillMaxHeight()
-                .weight(0.6f),
+                .weight(0.6f)
+                .heightIn(min = 400.dp), // Ensure consistent minimum height
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
             ExerciseDetailPanel(

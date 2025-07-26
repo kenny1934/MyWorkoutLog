@@ -28,11 +28,45 @@ fun CloudBackupScreen(
     viewModel: CloudBackupViewModel,
     onNavigateUp: () -> Unit
 ) {
+    val layoutInfo = rememberAdaptiveLayoutInfo()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val authStatus by viewModel.authStatus.collectAsStateWithLifecycle()
     val backups by viewModel.backups.collectAsStateWithLifecycle()
     val storageInfo by viewModel.storageInfo.collectAsStateWithLifecycle()
 
+    if (layoutInfo.useMasterDetail && authStatus.isSignedIn) {
+        // Large screen: Master-detail layout for signed-in users
+        CloudBackupMasterDetailView(
+            viewModel = viewModel,
+            layoutInfo = layoutInfo,
+            uiState = uiState,
+            authStatus = authStatus,
+            backups = backups,
+            storageInfo = storageInfo,
+            onNavigateUp = onNavigateUp
+        )
+    } else {
+        // Small screen or not authenticated: Original single-column layout
+        CloudBackupSingleColumnView(
+            viewModel = viewModel,
+            uiState = uiState,
+            authStatus = authStatus,
+            backups = backups,
+            storageInfo = storageInfo,
+            onNavigateUp = onNavigateUp
+        )
+    }
+}
+
+@Composable
+private fun CloudBackupSingleColumnView(
+    viewModel: CloudBackupViewModel,
+    uiState: CloudBackupUiState,
+    authStatus: CloudBackupAuthStatus,
+    backups: List<CloudBackup>,
+    storageInfo: CloudStorageInfo?,
+    onNavigateUp: () -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -857,6 +891,294 @@ private fun ErrorCard(
                     contentDescription = "Dismiss",
                     tint = MaterialTheme.colorScheme.onErrorContainer
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CloudBackupMasterDetailView(
+    viewModel: CloudBackupViewModel,
+    layoutInfo: AdaptiveLayoutInfo,
+    uiState: CloudBackupUiState,
+    authStatus: CloudBackupAuthStatus,
+    backups: List<CloudBackup>,
+    storageInfo: CloudStorageInfo?,
+    onNavigateUp: () -> Unit
+) {
+    var selectedBackup by remember { mutableStateOf<CloudBackup?>(null) }
+    
+    // Auto-select first backup when data loads
+    LaunchedEffect(backups) {
+        if (selectedBackup == null && backups.isNotEmpty()) {
+            selectedBackup = backups.first()
+        } else if (selectedBackup != null && backups.none { it.id == selectedBackup?.id }) {
+            // Selected backup was deleted, select first available or clear selection
+            selectedBackup = backups.firstOrNull()
+        }
+    }
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Cloud Backup & Restore") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateUp) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(layoutInfo.contentPadding)
+        ) {
+            // Master Panel (Left side - 40%)
+            Card(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(0.4f)
+                    .heightIn(min = 400.dp), // Ensure consistent minimum height
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        Text(
+                            text = "Cloud Backups",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    
+                    item {
+                        // User info section
+                        UserInfoCard(
+                            authStatus = authStatus,
+                            storageInfo = storageInfo,
+                            onSignOut = { viewModel.signOut() },
+                            onRefresh = {
+                                viewModel.loadBackups()
+                                viewModel.loadStorageInfo()
+                            }
+                        )
+                    }
+                    
+                    item {
+                        // Backup actions
+                        BackupActionsCard(
+                            onCreateBackup = { viewModel.createBackup() },
+                            isBackupInProgress = uiState.isBackupInProgress,
+                            backupProgress = uiState.backupProgress
+                        )
+                    }
+                    
+                    if (uiState.isLoadingBackups) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                    } else if (backups.isNotEmpty()) {
+                        items(backups) { backup ->
+                            BackupListItem(
+                                backup = backup,
+                                isSelected = selectedBackup?.id == backup.id,
+                                onBackupSelected = { selectedBackup = backup },
+                                onRestoreBackup = { viewModel.restoreBackup(backup.id) },
+                                onDeleteBackup = { viewModel.deleteBackup(backup.id) }
+                            )
+                        }
+                    } else {
+                        item {
+                            EmptyBackupsCard(
+                                onCreateFirstBackup = { viewModel.createBackup() }
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Detail Panel (Right side - 60%)
+            Card(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(0.6f)
+                    .heightIn(min = 400.dp), // Ensure consistent minimum height
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                CloudBackupDetailPanel(
+                    selectedBackup = selectedBackup,
+                    storageInfo = storageInfo,
+                    uiState = uiState,
+                    onRestoreBackup = { backup -> viewModel.restoreBackup(backup.id) },
+                    onDeleteBackup = { backup -> viewModel.deleteBackup(backup.id) },
+                    onClearRestoreResult = { viewModel.clearRestoreResult() }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BackupListItem(
+    backup: CloudBackup,
+    isSelected: Boolean,
+    onBackupSelected: () -> Unit,
+    onRestoreBackup: () -> Unit,
+    onDeleteBackup: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onBackupSelected() },
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 6.dp else 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) 
+                MaterialTheme.colorScheme.primaryContainer 
+            else 
+                MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Text(
+                text = backup.name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isSelected) 
+                    MaterialTheme.colorScheme.onPrimaryContainer 
+                else 
+                    MaterialTheme.colorScheme.onSurface
+            )
+            
+            Text(
+                text = backup.createdAt,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isSelected) 
+                    MaterialTheme.colorScheme.onPrimaryContainer 
+                else 
+                    MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun CloudBackupDetailPanel(
+    selectedBackup: CloudBackup?,
+    storageInfo: CloudStorageInfo?,
+    uiState: CloudBackupUiState,
+    onRestoreBackup: (CloudBackup) -> Unit,
+    onDeleteBackup: (CloudBackup) -> Unit,
+    onClearRestoreResult: () -> Unit
+) {
+    if (selectedBackup == null) {
+        // No backup selected - show placeholder
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CloudUpload,
+                    contentDescription = "Select Backup",
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Select a backup to view details",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    } else {
+        // Backup selected - show detailed view
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                // Header with backup name and actions
+                Text(
+                    text = selectedBackup.name,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Created: ${selectedBackup.createdAt}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            item {
+                // Action buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = { onRestoreBackup(selectedBackup) },
+                        modifier = Modifier.weight(1f),
+                        enabled = !uiState.isRestoreInProgress
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Restore,
+                            contentDescription = "Restore",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Restore Backup")
+                    }
+                    
+                    OutlinedButton(
+                        onClick = { onDeleteBackup(selectedBackup) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Delete")
+                    }
+                }
+            }
+            
+            // Progress and result cards
+            uiState.restoreProgress?.let { progress ->
+                item {
+                    RestoreProgressCard(progress = progress)
+                }
+            }
+            
+            uiState.restoreResult?.let { result ->
+                item {
+                    RestoreResultCard(
+                        result = result,
+                        onDismiss = onClearRestoreResult
+                    )
+                }
             }
         }
     }
