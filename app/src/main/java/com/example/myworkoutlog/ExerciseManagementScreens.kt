@@ -735,7 +735,8 @@ private fun ExerciseFilterChips(
                     contentDescription = "Select muscle group",
                     modifier = Modifier.size(18.dp)
                 )
-            }
+            },
+            modifier = Modifier.weight(1f)
         )
         
         // Equipment Filter
@@ -763,25 +764,34 @@ private fun ExerciseFilterChips(
                     contentDescription = "Select equipment",
                     modifier = Modifier.size(18.dp)
                 )
-            }
+            },
+            modifier = Modifier.weight(1f)
         )
         
-        // Clear filters button
+        // Clear filters button with proper spacing
         if (selectedMuscleGroup != null || selectedEquipment != null) {
+            Spacer(modifier = Modifier.width(4.dp))
             FilterChip(
                 onClick = {
                     onMuscleGroupSelected(null)
                     onEquipmentSelected(null)
                 },
-                label = { Text("Clear", style = MaterialTheme.typography.labelMedium) },
+                label = { 
+                    Text(
+                        text = "Clear", 
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    ) 
+                },
                 selected = false,
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Clear,
                         contentDescription = "Clear filters",
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
-                }
+                },
+                modifier = Modifier.wrapContentWidth()
             )
         }
     }
