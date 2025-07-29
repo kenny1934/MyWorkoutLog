@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -62,8 +63,8 @@ fun CloudBackupScreen(
 private fun CloudBackupSingleColumnView(
     viewModel: CloudBackupViewModel,
     uiState: CloudBackupUiState,
-    authStatus: CloudBackupAuthStatus,
-    backups: List<CloudBackup>,
+    authStatus: CloudAuthStatus,
+    backups: List<CloudBackupItem>,
     storageInfo: CloudStorageInfo?,
     onNavigateUp: () -> Unit
 ) {
@@ -901,12 +902,12 @@ private fun CloudBackupMasterDetailView(
     viewModel: CloudBackupViewModel,
     layoutInfo: AdaptiveLayoutInfo,
     uiState: CloudBackupUiState,
-    authStatus: CloudBackupAuthStatus,
-    backups: List<CloudBackup>,
+    authStatus: CloudAuthStatus,
+    backups: List<CloudBackupItem>,
     storageInfo: CloudStorageInfo?,
     onNavigateUp: () -> Unit
 ) {
-    var selectedBackup by remember { mutableStateOf<CloudBackup?>(null) }
+    var selectedBackup by remember { mutableStateOf<CloudBackupItem?>(null) }
     
     // Auto-select first backup when data loads
     LaunchedEffect(backups) {
@@ -1034,7 +1035,7 @@ private fun CloudBackupMasterDetailView(
 
 @Composable
 private fun BackupListItem(
-    backup: CloudBackup,
+    backup: CloudBackupItem,
     isSelected: Boolean,
     onBackupSelected: () -> Unit,
     onRestoreBackup: () -> Unit,
@@ -1056,7 +1057,7 @@ private fun BackupListItem(
             modifier = Modifier.padding(12.dp)
         ) {
             Text(
-                text = backup.name,
+                text = backup.deviceName,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                 color = if (isSelected) 
@@ -1066,7 +1067,7 @@ private fun BackupListItem(
             )
             
             Text(
-                text = backup.createdAt,
+                text = backup.formattedDate,
                 style = MaterialTheme.typography.bodySmall,
                 color = if (isSelected) 
                     MaterialTheme.colorScheme.onPrimaryContainer 
@@ -1079,11 +1080,11 @@ private fun BackupListItem(
 
 @Composable
 private fun CloudBackupDetailPanel(
-    selectedBackup: CloudBackup?,
+    selectedBackup: CloudBackupItem?,
     storageInfo: CloudStorageInfo?,
     uiState: CloudBackupUiState,
-    onRestoreBackup: (CloudBackup) -> Unit,
-    onDeleteBackup: (CloudBackup) -> Unit,
+    onRestoreBackup: (CloudBackupItem) -> Unit,
+    onDeleteBackup: (CloudBackupItem) -> Unit,
     onClearRestoreResult: () -> Unit
 ) {
     if (selectedBackup == null) {
@@ -1119,15 +1120,60 @@ private fun CloudBackupDetailPanel(
             item {
                 // Header with backup name and actions
                 Text(
-                    text = selectedBackup.name,
+                    text = selectedBackup.deviceName,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Created: ${selectedBackup.createdAt}",
+                    text = "Created: ${selectedBackup.formattedDate}",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Backup metadata
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "Backup Details",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Size: ${selectedBackup.formattedSize}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = "Workouts: ${selectedBackup.metadata.totalWorkouts}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = "Exercises: ${selectedBackup.metadata.totalExercises}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = "Personal Records: ${selectedBackup.metadata.totalPersonalRecords}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        
+                        if (!selectedBackup.isCompatible) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "⚠️ Incompatible version",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
             }
             
             item {
