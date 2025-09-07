@@ -582,21 +582,21 @@ fun HistoryDetailPanel(
                     }
                 }
             }
+            
+            // Delete confirmation dialog
+            DeleteWorkoutConfirmationDialog(
+                isVisible = showDeleteDialog,
+                workout = currentWorkout,
+                onDismiss = { showDeleteDialog = false },
+                onConfirmDelete = {
+                    selectedWorkoutId?.let { id ->
+                        viewModel.deleteWorkout(id)
+                        showDeleteDialog = false
+                        onWorkoutDeleted()
+                    }
+                }
+            )
         }
-    }
-    
-    // Delete confirmation dialog
-    if (currentWorkout != null) {
-        DeleteWorkoutConfirmationDialog(
-            isVisible = showDeleteDialog,
-            workout = currentWorkout,
-            onDismiss = { showDeleteDialog = false },
-            onConfirmDelete = {
-                viewModel.deleteWorkout(selectedWorkoutId)
-                showDeleteDialog = false
-                onWorkoutDeleted()
-            }
-        )
     }
 }
 
@@ -1540,10 +1540,11 @@ fun HistoryDetailScreen(
     }
     
     // Delete confirmation dialog
-    if (workout != null) {
+    val currentWorkout = workout
+    if (currentWorkout != null) {
         DeleteWorkoutConfirmationDialog(
             isVisible = showDeleteDialog,
-            workout = workout,
+            workout = currentWorkout,
             onDismiss = { showDeleteDialog = false },
             onConfirmDelete = {
                 viewModel.deleteWorkout(workoutId)
