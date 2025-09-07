@@ -170,6 +170,9 @@ private fun WorkoutLoggerScreenContent(
     // State for exercise removal confirmation
     var showRemoveExerciseConfirmation by remember { mutableStateOf(false) }
     
+    // State for duration edit dialog
+    var showDurationEditDialog by remember { mutableStateOf(false) }
+    
     // State for set removal confirmation
     var showRemoveSetConfirmation by remember { mutableStateOf(false) }
     var selectedSetForRemoval by remember { mutableStateOf<Pair<String, String>?>(null) } // exerciseId, setId
@@ -267,12 +270,33 @@ private fun WorkoutLoggerScreenContent(
                     }
                 },
                 actions = {
+                    // Show timer in regular mode, show clickable duration in edit mode
                     if (!isEditMode) {
                         Text(
                             text = "${sessionElapsedTime / 60}:${String.format("%02d", sessionElapsedTime % 60)}",
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.padding(end = 8.dp)
                         )
+                    } else if (sessionElapsedTime >= 0) {
+                        // In edit mode, show original duration and make it clickable
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clickable { showDurationEditDialog = true }
+                                .padding(horizontal = 8.dp)
+                        ) {
+                            Text(
+                                text = "${sessionElapsedTime / 60}:${String.format("%02d", sessionElapsedTime % 60)}",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit Duration",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                     Button(onClick = {
                         showExitConfirmationDialog({
@@ -725,6 +749,17 @@ private fun WorkoutLoggerScreenContent(
             }
         )
     }
+    
+    // Duration Edit Dialog
+    DurationEditDialog(
+        isVisible = showDurationEditDialog,
+        currentDurationMinutes = if (sessionElapsedTime >= 0) sessionElapsedTime / 60 else 0,
+        onDismiss = { showDurationEditDialog = false },
+        onConfirm = { newDurationMinutes ->
+            viewModel.updateWorkoutDuration(newDurationMinutes)
+            showDurationEditDialog = false
+        }
+    )
 }
 
 @Composable
@@ -1395,4 +1430,103 @@ fun formatTime(seconds: Int): String {
     val minutes = seconds / 60
     val remainingSeconds = seconds % 60
     return "%02d:%02d".format(minutes, remainingSeconds)
+}
+
+@Composable
+fun DurationEditDialog(
+    isVisible: Boolean,
+    currentDurationMinutes: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    if (!isVisible) return
+    
+    var hoursText by remember { mutableStateOf((currentDurationMinutes / 60).toString()) }
+    var minutesText by remember { mutableStateOf((currentDurationMinutes % 60).toString()) }
+    
+    LaunchedEffect(currentDurationMinutes) {
+        hoursText = (currentDurationMinutes / 60).toString()
+        minutesText = (currentDurationMinutes % 60).toString()
+    }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Edit Workout Duration")
+        },
+        text = {
+            Column {
+                Text(
+                    text = "Adjust the workout duration to correct faulty time records:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Hours input
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Hours",
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        OutlinedTextField(
+                            value = hoursText,
+                            onValueChange = { value ->
+                                if (value.all { it.isDigit() } && value.length <= 2) {
+                                    hoursText = value
+                                }
+                            },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            placeholder = { Text("0") }
+                        )
+                    }
+                    
+                    // Minutes input
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Minutes",
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        OutlinedTextField(
+                            value = minutesText,
+                            onValueChange = { value ->
+                                if (value.all { it.isDigit() } && value.length <= 2) {
+                                    val minutes = value.toIntOrNull() ?: 0
+                                    if (minutes < 60) {
+                                        minutesText = value
+                                    }
+                                }
+                            },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            placeholder = { Text("0") }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val hours = hoursText.toIntOrNull() ?: 0
+                    val minutes = minutesText.toIntOrNull() ?: 0
+                    val totalMinutes = hours * 60 + minutes
+                    onConfirm(totalMinutes)
+                }
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

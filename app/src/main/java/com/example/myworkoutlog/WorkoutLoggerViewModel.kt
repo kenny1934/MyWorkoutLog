@@ -73,11 +73,19 @@ class WorkoutLoggerViewModel(
 
     // --- REFACTORED TIMER/STOPWATCH LOGIC ---
     private var workoutStartTimeMillis: Long = 0L
+    
+    // Store original workout duration for edit mode
+    private val _originalWorkoutDurationSeconds = MutableStateFlow<Int?>(null)
 
     // This flow now calculates the elapsed time based on the start time
+    // In edit mode, shows original workout duration instead of disabled timer
     val sessionElapsedTime: StateFlow<Int> = flow {
         while (true) {
-            if (workoutStartTimeMillis > 0) {
+            if (isEditMode) {
+                _originalWorkoutDurationSeconds.value?.let { duration ->
+                    emit(duration)  // Show original workout duration in edit mode
+                } ?: emit(-1)  // Fallback to disabled if no duration available
+            } else if (workoutStartTimeMillis > 0) {
                 val elapsed = (System.currentTimeMillis() - workoutStartTimeMillis) / 1000
                 emit(elapsed.toInt())
             } else {
@@ -211,8 +219,12 @@ class WorkoutLoggerViewModel(
             // Get the existing workout from database
             loggedWorkoutDao.getLoggedWorkoutById(workoutId).collect { existingWorkout ->
                 if (existingWorkout != null) {
-                    // Set the workout start time to preserve timing context
-                    workoutStartTimeMillis = existingWorkout.startTimestamp ?: System.currentTimeMillis()
+                    // Don't set workoutStartTimeMillis in edit mode to prevent timer from running
+                    // Calculate and store original workout duration for display
+                    val originalDurationSeconds = if (existingWorkout.startTimestamp != null && existingWorkout.endTimestamp != null) {
+                        ((existingWorkout.endTimestamp - existingWorkout.startTimestamp) / 1000).toInt()
+                    } else null
+                    _originalWorkoutDurationSeconds.value = originalDurationSeconds
                     
                     // Load the workout into active state for editing
                     _activeWorkoutState.value = existingWorkout
@@ -220,6 +232,22 @@ class WorkoutLoggerViewModel(
                     // Initialize performance suggestions for editing context
                     initializePerformanceSuggestions()
                 }
+            }
+        }
+    }
+    
+    // Update workout duration manually in edit mode
+    fun updateWorkoutDuration(durationMinutes: Int) {
+        if (!isEditMode) return
+        
+        val durationSeconds = durationMinutes * 60
+        _originalWorkoutDurationSeconds.value = durationSeconds
+        
+        // Update the endTimestamp in the active workout state
+        _activeWorkoutState.value?.let { workout ->
+            if (workout.startTimestamp != null) {
+                val newEndTimestamp = workout.startTimestamp + (durationSeconds * 1000L)
+                _activeWorkoutState.value = workout.copy(endTimestamp = newEndTimestamp)
             }
         }
     }

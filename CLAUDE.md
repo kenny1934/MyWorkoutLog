@@ -48,6 +48,32 @@
 
 **Result**: Program Management now provides optimal Galaxy Z Fold 6 experience with efficient space utilization, professional layout design, and enhanced content readability that fully leverages the 60% detail panel width.
 
+### **Workout Timer Enhancement in Edit Mode - COMPLETE** ✅
+**Problem Solved**: When editing completed workouts, the timer previously showed confusing elapsed time from original workout start or "--:--" placeholder. Now displays the original workout duration and allows manual correction of faulty time records.
+
+**🔧 Enhanced Timer System**:
+- **Original Duration Display**: Shows actual recorded workout duration (e.g., "45:30") instead of "--:--" in edit mode
+- **Clickable Duration**: Timer display becomes interactive with edit icon when editing workouts
+- **Duration Edit Dialog**: Professional hours/minutes input dialog for correcting faulty time records
+- **Timestamp Management**: Automatically recalculates endTimestamp when duration is manually edited
+- **State Synchronization**: Real-time duration updates reflected across UI components
+
+**🎨 User Experience Improvements**:
+- **Clear Visual Feedback**: Edit icon indicates the duration can be modified
+- **Intuitive Interaction**: Click duration to open edit dialog with current values pre-filled
+- **Validation**: Input validation prevents invalid durations (minutes < 60)
+- **Immediate Updates**: Duration changes visible instantly in timer display
+- **Data Integrity**: Manual edits properly saved with workout without affecting other data
+
+**✨ Technical Implementation**:
+- **StateFlow Enhancement**: Added `_originalWorkoutDurationSeconds` for edit mode duration tracking
+- **Smart Timer Logic**: `sessionElapsedTime` shows original duration in edit mode, live timer otherwise  
+- **Duration Update Function**: `updateWorkoutDuration()` handles manual duration changes
+- **UI Component Updates**: Both top bar timer and navigation rail properly display duration
+- **Proper Save Logic**: Updated endTimestamp preserved when workout is saved
+
+**Result**: Workout editing now provides clear, accurate duration information with the ability to correct time tracking issues, enhancing data accuracy and user control over workout records.
+
 ### **Previous Enhancement: Exercise Management Master-Detail Optimization - COMPLETE** ✅
 
 ### **Exercise Management Master-Detail Layout Implementation - COMPLETE** ✅
