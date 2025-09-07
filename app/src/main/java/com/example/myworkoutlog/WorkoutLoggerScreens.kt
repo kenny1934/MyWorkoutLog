@@ -753,10 +753,10 @@ private fun WorkoutLoggerScreenContent(
     // Duration Edit Dialog
     DurationEditDialog(
         isVisible = showDurationEditDialog,
-        currentDurationMinutes = if (sessionElapsedTime >= 0) sessionElapsedTime / 60 else 0,
+        currentDurationSeconds = if (sessionElapsedTime >= 0) sessionElapsedTime else 0,
         onDismiss = { showDurationEditDialog = false },
-        onConfirm = { newDurationMinutes ->
-            viewModel.updateWorkoutDuration(newDurationMinutes)
+        onConfirm = { newDurationSeconds ->
+            viewModel.updateWorkoutDuration(newDurationSeconds)
             showDurationEditDialog = false
         }
     )
@@ -1432,21 +1432,116 @@ fun formatTime(seconds: Int): String {
     return "%02d:%02d".format(minutes, remainingSeconds)
 }
 
+// Format seconds to display format (supports MM:SS and H:MM:SS)
+fun formatSecondsToDisplay(seconds: Int): String {
+    val hours = seconds / 3600
+    val minutes = (seconds % 3600) / 60
+    val remainingSeconds = seconds % 60
+    
+    return if (hours > 0) {
+        "%d:%02d:%02d".format(hours, minutes, remainingSeconds)
+    } else {
+        "%02d:%02d".format(minutes, remainingSeconds)
+    }
+}
+
+// Parse various duration formats to seconds
+fun parseDurationToSeconds(input: String): Int? {
+    if (input.isBlank()) return null
+    
+    val trimmed = input.trim().lowercase()
+    
+    try {
+        // Handle seconds format: "2730s"
+        if (trimmed.endsWith("s") && !trimmed.contains(":") && !trimmed.contains("m") && !trimmed.contains("h")) {
+            val secondsStr = trimmed.dropLast(1)
+            return secondsStr.toIntOrNull()
+        }
+        
+        // Handle time format: "45:30" or "1:15:30"
+        if (trimmed.contains(":")) {
+            val parts = trimmed.split(":")
+            return when (parts.size) {
+                2 -> { // MM:SS
+                    val minutes = parts[0].toIntOrNull() ?: return null
+                    val seconds = parts[1].toIntOrNull() ?: return null
+                    if (seconds >= 60) return null
+                    minutes * 60 + seconds
+                }
+                3 -> { // H:MM:SS
+                    val hours = parts[0].toIntOrNull() ?: return null
+                    val minutes = parts[1].toIntOrNull() ?: return null
+                    val seconds = parts[2].toIntOrNull() ?: return null
+                    if (minutes >= 60 || seconds >= 60) return null
+                    hours * 3600 + minutes * 60 + seconds
+                }
+                else -> null
+            }
+        }
+        
+        // Handle mixed format: "1h 15m 30s", "45m 30s", "1h 15m"
+        var totalSeconds = 0
+        var remaining = trimmed
+        
+        // Extract hours
+        if (remaining.contains("h")) {
+            val hoursMatch = Regex("(\\d+)h").find(remaining)
+            if (hoursMatch != null) {
+                val hours = hoursMatch.groupValues[1].toIntOrNull() ?: return null
+                totalSeconds += hours * 3600
+                remaining = remaining.replace(hoursMatch.value, "").trim()
+            }
+        }
+        
+        // Extract minutes
+        if (remaining.contains("m")) {
+            val minutesMatch = Regex("(\\d+)m").find(remaining)
+            if (minutesMatch != null) {
+                val minutes = minutesMatch.groupValues[1].toIntOrNull() ?: return null
+                totalSeconds += minutes * 60
+                remaining = remaining.replace(minutesMatch.value, "").trim()
+            }
+        }
+        
+        // Extract seconds
+        if (remaining.contains("s")) {
+            val secondsMatch = Regex("(\\d+)s").find(remaining)
+            if (secondsMatch != null) {
+                val seconds = secondsMatch.groupValues[1].toIntOrNull() ?: return null
+                totalSeconds += seconds
+                remaining = remaining.replace(secondsMatch.value, "").trim()
+            }
+        }
+        
+        // If there's still content, parsing failed
+        if (remaining.isNotEmpty() && totalSeconds == 0) return null
+        
+        return if (totalSeconds > 0) totalSeconds else null
+        
+    } catch (e: Exception) {
+        return null
+    }
+}
+
+// Validate duration input format
+fun validateDurationInput(input: String): Boolean {
+    return parseDurationToSeconds(input) != null
+}
+
 @Composable
 fun DurationEditDialog(
     isVisible: Boolean,
-    currentDurationMinutes: Int,
+    currentDurationSeconds: Int,
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit
 ) {
     if (!isVisible) return
     
-    var hoursText by remember { mutableStateOf((currentDurationMinutes / 60).toString()) }
-    var minutesText by remember { mutableStateOf((currentDurationMinutes % 60).toString()) }
+    var durationInput by remember { mutableStateOf("") }
+    var isValid by remember { mutableStateOf(true) }
     
-    LaunchedEffect(currentDurationMinutes) {
-        hoursText = (currentDurationMinutes / 60).toString()
-        minutesText = (currentDurationMinutes % 60).toString()
+    LaunchedEffect(currentDurationSeconds) {
+        durationInput = formatSecondsToDisplay(currentDurationSeconds)
     }
     
     AlertDialog(
@@ -1457,68 +1552,60 @@ fun DurationEditDialog(
         text = {
             Column {
                 Text(
-                    text = "Adjust the workout duration to correct faulty time records:",
+                    text = "Original: ${formatSecondsToDisplay(currentDurationSeconds)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                Text(
+                    text = "Enter duration to correct faulty time records:",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
                 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Hours input
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Hours",
-                            style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        )
-                        OutlinedTextField(
-                            value = hoursText,
-                            onValueChange = { value ->
-                                if (value.all { it.isDigit() } && value.length <= 2) {
-                                    hoursText = value
-                                }
-                            },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true,
-                            placeholder = { Text("0") }
-                        )
-                    }
-                    
-                    // Minutes input
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Minutes",
-                            style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        )
-                        OutlinedTextField(
-                            value = minutesText,
-                            onValueChange = { value ->
-                                if (value.all { it.isDigit() } && value.length <= 2) {
-                                    val minutes = value.toIntOrNull() ?: 0
-                                    if (minutes < 60) {
-                                        minutesText = value
-                                    }
-                                }
-                            },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true,
-                            placeholder = { Text("0") }
-                        )
-                    }
-                }
+                OutlinedTextField(
+                    value = durationInput,
+                    onValueChange = { input ->
+                        durationInput = input
+                        isValid = validateDurationInput(input)
+                    },
+                    label = { Text("Duration") },
+                    placeholder = { Text("45:30 or 1:15:30") },
+                    supportingText = {
+                        if (!isValid && durationInput.isNotEmpty()) {
+                            Text(
+                                "Try: 45:30, 1:15:30, 45m 30s, or 2730s",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        } else if (isValid && durationInput.isNotEmpty()) {
+                            val parsedSeconds = parseDurationToSeconds(durationInput)
+                            if (parsedSeconds != null) {
+                                Text(
+                                    "= ${parsedSeconds}s (${formatSecondsToDisplay(parsedSeconds)})",
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        } else {
+                            Text("Formats: MM:SS, H:MM:SS, 45m 30s, 2730s")
+                        }
+                    },
+                    isError = !isValid && durationInput.isNotEmpty(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
-                    val hours = hoursText.toIntOrNull() ?: 0
-                    val minutes = minutesText.toIntOrNull() ?: 0
-                    val totalMinutes = hours * 60 + minutes
-                    onConfirm(totalMinutes)
-                }
+                    val parsedSeconds = parseDurationToSeconds(durationInput)
+                    if (parsedSeconds != null) {
+                        onConfirm(parsedSeconds)
+                    }
+                },
+                enabled = isValid && durationInput.isNotEmpty()
             ) {
                 Text("Save")
             }

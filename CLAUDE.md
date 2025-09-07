@@ -74,6 +74,32 @@
 
 **Result**: Workout editing now provides clear, accurate duration information with the ability to correct time tracking issues, enhancing data accuracy and user control over workout records.
 
+### **Enhanced Duration Edit Dialog - COMPLETE** ✅
+**Problem Solved**: The original duration edit dialog used impractical separate hours/minutes fields that lost seconds precision and provided counterintuitive UX. Replaced with intelligent single-field input supporting multiple duration formats with full seconds precision.
+
+**🔧 Smart Duration Input System**:
+- **Single Field Interface**: Replaced two separate text fields with one intelligent duration input
+- **Multiple Format Support**: Accepts "45:30", "1:15:30", "45m 30s", "2730s", "1h 15m" formats
+- **Seconds Precision**: Maintains full seconds precision from original workout data
+- **Smart Parsing**: Robust parsing engine handles various user input preferences
+- **Real-time Validation**: Live format validation with helpful error messages
+
+**🎨 Enhanced User Experience**:
+- **Intuitive Input**: Single field matches familiar time display formats users see elsewhere
+- **Flexible Formats**: Users can input duration in their preferred format
+- **Clear Feedback**: Shows original duration and parsed result with confirmation
+- **Error Guidance**: Helpful examples when input format is invalid
+- **Pre-filled Values**: Dialog opens with current duration in familiar format
+
+**✨ Technical Improvements**:
+- **Advanced Parsing Functions**: `parseDurationToSeconds()` handles regex-based format detection
+- **Display Formatting**: `formatSecondsToDisplay()` shows H:MM:SS or MM:SS as appropriate  
+- **Input Validation**: `validateDurationInput()` provides real-time format checking
+- **ViewModel Integration**: Updated to handle seconds instead of minutes throughout
+- **Material Design 3**: Proper error states, supporting text, and validation feedback
+
+**Result**: Duration editing is now intuitive, flexible, and preserves data precision while supporting natural user input patterns. The single-field approach reduces cognitive load and maintains consistency with duration displays throughout the app.
+
 ### **Previous Enhancement: Exercise Management Master-Detail Optimization - COMPLETE** ✅
 
 ### **Exercise Management Master-Detail Layout Implementation - COMPLETE** ✅

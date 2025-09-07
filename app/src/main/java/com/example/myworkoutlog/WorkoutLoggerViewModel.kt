@@ -237,10 +237,9 @@ class WorkoutLoggerViewModel(
     }
     
     // Update workout duration manually in edit mode
-    fun updateWorkoutDuration(durationMinutes: Int) {
+    fun updateWorkoutDuration(durationSeconds: Int) {
         if (!isEditMode) return
         
-        val durationSeconds = durationMinutes * 60
         _originalWorkoutDurationSeconds.value = durationSeconds
         
         // Update the endTimestamp in the active workout state
