@@ -82,7 +82,6 @@ private fun ProgramMasterDetailLayout(
     onNavigateToDashboard: () -> Unit
 ) {
     val layoutInfo = rememberAdaptiveLayoutInfo()
-    val masterPanelWidth = workoutMasterPanelWidth()
     
     var selectedProgramId by remember { mutableStateOf<String?>(null) }
     var isEditing by remember { mutableStateOf(false) }
@@ -92,10 +91,10 @@ private fun ProgramMasterDetailLayout(
             .fillMaxSize()
             .padding(layoutInfo.contentPadding)
     ) {
-        // Master Panel - Program List
+        // Master Panel - Program List (40% of width)
         Surface(
             modifier = Modifier
-                .width(masterPanelWidth)
+                .weight(0.4f)
                 .fillMaxHeight(),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 1.dp,
@@ -116,10 +115,10 @@ private fun ProgramMasterDetailLayout(
         
         Spacer(modifier = Modifier.width(16.dp))
         
-        // Detail Panel - Program Details/Editor
+        // Detail Panel - Program Details/Editor (60% of width)
         Surface(
             modifier = Modifier
-                .fillMaxWidth()
+                .weight(0.6f)
                 .fillMaxHeight(),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 1.dp,
@@ -1281,50 +1280,63 @@ private fun ProgramDetailViewer(
     var cycleName by remember { mutableStateOf("") }
     
     Column(modifier = modifier) {
-        // Header
+        // Title row with compact actions
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = program.name,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                if (program.description?.isNotEmpty() == true) {
-                    Text(
-                        text = program.description,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp)
+            Text(
+                text = program.name,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Icon-only Edit button for maximum space efficiency
+                IconButton(onClick = onStartEdit) {
+                    Icon(
+                        Icons.Outlined.Edit,
+                        contentDescription = "Edit Program",
+                        modifier = Modifier.size(20.dp)
                     )
                 }
-            }
-            
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onStartEdit) {
-                    Icon(Icons.Outlined.Edit, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Edit")
-                }
                 
-                Button(onClick = { showStartCycleDialog = true }) {
-                    Icon(Icons.Outlined.PlayArrow, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Start Cycle")
+                // Compact Start button with shorter text
+                FilledTonalButton(
+                    onClick = { showStartCycleDialog = true },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Start", maxLines = 1)
                 }
             }
         }
         
-        Spacer(modifier = Modifier.height(24.dp))
+        // Description now spans full width below title row
+        if (program.description?.isNotEmpty() == true) {
+            Text(
+                text = program.description,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+            )
+        }
         
-        // Program Overview Stats
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Program Overview Stats - horizontal distribution
         ProgramOverviewStats(program = program)
         
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         
         // Weeks Overview
         if (program.weeks.isNotEmpty()) {
@@ -1332,7 +1344,7 @@ private fun ProgramDetailViewer(
                 text = "Program Structure",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 8.dp)
             )
             
             LazyColumn(
@@ -1398,6 +1410,7 @@ private fun ProgramOverviewStats(program: ProgramTemplate) {
         )
     }
 }
+
 
 @Composable
 private fun OverviewStatCard(
@@ -1566,9 +1579,19 @@ private fun EnhancedProgramEditor(
                 fontWeight = FontWeight.Bold
             )
             
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onCancel) {
-                    Text("Cancel")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.wrapContentWidth()
+            ) {
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier.requiredWidthIn(min = 64.dp)
+                ) {
+                    Text(
+                        "Cancel", 
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip
+                    )
                 }
                 
                 Button(
@@ -1578,9 +1601,14 @@ private fun EnhancedProgramEditor(
                             weeks = editedWeeks
                         )
                         onSave(updatedProgram)
-                    }
+                    },
+                    modifier = Modifier.requiredWidthIn(min = 64.dp)
                 ) {
-                    Text("Save")
+                    Text(
+                        "Save", 
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip
+                    )
                 }
             }
         }
