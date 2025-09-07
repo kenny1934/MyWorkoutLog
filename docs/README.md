@@ -1,17 +1,20 @@
 # MyWorkoutLog Documentation
 
-This directory contains comprehensive documentation for the MyWorkoutLog Android application - an enterprise-grade fitness tracking platform with intelligent dashboard, professional analytics, and military-grade cloud backup.
+This directory contains comprehensive documentation for the MyWorkoutLog Android application - a **production-ready enterprise-grade fitness tracking platform** with Galaxy Z Fold 6 optimization, professional analytics, and military-grade cloud backup.
 
 ## 🏆 Development Status
 
-**Current Phase**: Tier 3 Phase 2.4 - Widget Content Implementation  
-**Branch**: `feature/dashboard-enhancements`  
-**Completion**: ~85% complete with enterprise-grade capabilities
+> **📍 For current development status, see: [NEXT_TASK.md](./NEXT_TASK.md)**
+
+**Current Phase**: Critical Bug Fixes  
+**Branch**: `feature/workout-logger-ui-improvements`  
+**Status**: Production-ready app with complete Galaxy Z Fold 6 optimization (9/9 screens) - addressing critical UX issues
 
 ### **Major Milestones Achieved ✅**
-- **Tier 1 Complete**: Core workout logging with advanced timers and smart pre-fill
-- **Tier 2 Complete**: Enterprise analytics, export/import, and cloud backup
-- **Tier 3 Phase 1-2**: Enhanced dashboard with professional UI and interactive experience
+- **Tier 1 Complete**: Enhanced workout logging with video references, session persistence, and deletion
+- **Tier 2 Complete**: Enterprise analytics, export/import, and military-grade cloud backup
+- **Tier 3 Complete**: Enhanced dashboard with real data visualization and smart insights
+- **Galaxy Z Fold 6 Complete**: 9/9 major screens optimized with master-detail layouts ✅
 
 ## 📁 Documentation Structure
 
@@ -29,9 +32,29 @@ This directory contains comprehensive documentation for the MyWorkoutLog Android
 ### **`/architecture`** - Technical Architecture
 - **[Architecture Overview](./architecture/overview.md)** - System architecture and design patterns
 
+### **`/contributing`** - Development Process & Standards
+- **[Contributing Guidelines](./contributing/CONTRIBUTING.md)** - Complete guide to contributing
+- **[Code Style Guide](./contributing/code-style-guide.md)** - Kotlin and Compose coding standards  
+- **[Testing Standards](./contributing/testing-standards.md)** - Testing strategy and requirements
+- **[Development Workflow](./contributing/development-workflow.md)** - Git workflow and collaboration
+- **[Release Management](./contributing/release-management.md)** - Version control and deployment
+
+### **`/technical`** - Technical Documentation
+- **[API Documentation](./technical/api-documentation.md)** - REST API endpoints and schemas
+- **[Database Schema](./technical/database-schema.md)** - Data models and relationships
+- **[Security Architecture](./technical/security-architecture.md)** - Security implementation details
+
+### **`/product`** - Product Documentation  
+- **[Product Requirements](./product/prd.md)** - Feature specifications and requirements
+- **[User Personas](./product/user-personas.md)** - Target user profiles and scenarios
+- **[Competitive Analysis](./product/competitive-analysis.md)** - Market analysis and positioning
+
+### **`/legal`** - Legal & Compliance
+- **[Privacy Policy](./legal/PRIVACY_POLICY.md)** - Data privacy and usage policies
+- **[Security Policy](./legal/SECURITY.md)** - Security reporting and procedures
+
 ### **`/claude-code`** - AI Development Support
 - **[Instructions](./claude-code/instructions.md)** - Claude Code development instructions
-- **[Prompts](./claude-code/prompts.md)** - AI prompt templates and workflows
 
 ## 🚀 Current Development Status
 
@@ -49,32 +72,39 @@ This directory contains comprehensive documentation for the MyWorkoutLog Android
 - **Export & Data Management**: CSV/JSON export/import with validation pipeline and error handling
 - **Cloud Backup & Restore**: AES-256-GCM encryption, Google Drive integration, cross-device synchronization
 
-#### **Tier 3 - Enhanced Dashboard (IN PROGRESS)**
-- **Phase 1**: Widget-based architecture with adaptive dashboard system ✅
-- **Phase 2.1**: Expandable widget cards with smooth animations ✅
-- **Phase 2.2**: Pull-to-refresh implementation ✅
-- **Phase 2.3**: Interactive charts with real-time data visualization ✅
-- **Phase 2.4**: Widget content implementation with real data 🔄 **NEXT**
+#### **Tier 3 - Enhanced Dashboard & Intelligence (COMPLETE) ✅**
+- **Complete Dashboard System**: Widget-based architecture with real data visualization
+- **Interactive Experience**: Expandable cards, pull-to-refresh, smooth animations  
+- **Smart Insights**: GitHub-style heatmaps, micro-charts, achievement detection
+- **Advanced Analytics**: Professional-grade data visualization and trend analysis
 
-### **🎯 Active Development: Dashboard Widget Content**
-Transforming dashboard widgets from placeholder content to production-ready implementations:
-- **CycleProgressWidget**: Real cycle progress tracking with completion visualization
-- **ActivityHeatmapWidget**: GitHub-style workout pattern heatmap
-- **BodyweightTrendWidget**: Bodyweight progression charts and trend analysis
-- **NextSessionWidget**: Session preview with exercise details and difficulty indicators
-- **AchievementWidget**: Achievement detection system with PR celebrations
+### **🚨 Current Development: Critical Bug Fixes**
+> **📍 See [NEXT_TASK.md](./NEXT_TASK.md) for complete current task details**
 
-### **🚀 Upcoming Development (Tier 3 Phase 3-5)**
-1. **Advanced Data Visualization**: Activity heatmaps, micro-charts, comparative analysis
-2. **Smart Insights Engine**: AI-driven performance analysis and predictive analytics
-3. **Personalization System**: Drag-and-drop widgets, adaptive layouts, custom themes
+Addressing critical UX issues discovered after Galaxy Z Fold 6 optimization completion:
+- **Issue 1**: Large screen dashboard missing hidden widget recovery functionality
+- **Issue 2**: No delete functionality for templates and program blueprints
+- **Priority**: HIGH - Must be fixed before proceeding with personalization features
+- **Timeline**: 1-2 days for complete resolution
+
+### **🎯 Next: Advanced Personalization (After Fixes)**
+Building on completed Galaxy Z Fold 6 optimization with user-controlled dashboard customization:
+- **Drag-and-Drop Widget Reordering**: Intuitive dashboard customization system
+- **Layout Intelligence**: Smart suggestions based on user behavior patterns
+- **Theme Customization**: Multiple dashboard layout options and visual themes
+- **Widget Visibility Controls**: Show/hide specific widgets with intelligent defaults
+
+### **🚀 Upcoming Development Phases**
+1. **AI-Powered Insights**: Performance plateau detection, predictive analytics, recommendation system
+2. **Platform Expansion**: Web companion, API development, potential iOS version
+3. **Hardware Integration**: Smart gym equipment connectivity and wearable device support
 
 ## 📊 Competitive Position
 
-- **Basic Fitness Apps**: ✅ **Completely Surpassed** (Fitbit, Samsung Health)
-- **Mid-Tier Apps**: ✅ **Significantly Exceeded** (Strong, Jefit basic)
-- **Premium Apps**: 🟡 **Approaching** (Strong Pro, Jefit Premium)
-- **Elite Apps**: 🎯 **Target** (Beyond current market offerings)
+- **Basic Fitness Apps**: ✅ **Completely Surpassed** (Samsung Health, Google Fit, Apple Fitness)
+- **Mid-Tier Apps**: ✅ **Significantly Exceeded** (FitNotes, Simple Workout Log)
+- **Premium Apps**: ✅ **Competitive/Superior** (Strong Pro, Jefit Premium) - *Superior in privacy, analytics, large screen*
+- **Elite Apps**: 🎯 **Pioneering** (Creating new category with Galaxy Z Fold optimization)
 
 ## 🏗️ Technical Excellence
 
@@ -105,6 +135,13 @@ Transforming dashboard widgets from placeholder content to production-ready impl
 ### **For Testing & QA**
 - [Phase 1 Testing Checklist](./development/phase1-testing-checklist.md) - Testing protocols
 - [Bug Fixes Log](./development/bug-fixes-log.md) - Historical issue tracking
+- [Testing Standards](./contributing/testing-standards.md) - Testing strategy and requirements
+
+### **For Contributors**
+- [Contributing Guidelines](./contributing/CONTRIBUTING.md) - Complete guide to contributing
+- [Code Style Guide](./contributing/code-style-guide.md) - Kotlin and Compose coding standards
+- [Development Workflow](./contributing/development-workflow.md) - Git workflow and collaboration processes
+- [Release Management](./contributing/release-management.md) - Version control and deployment procedures
 
 ---
 

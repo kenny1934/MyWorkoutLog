@@ -1,12 +1,18 @@
 # Claude Development Context
 
+## 🚨 IMMEDIATE PRIORITY: Critical Bug Fixes
+> **📍 See [docs/NEXT_TASK.md](./docs/NEXT_TASK.md) for complete current task details**
+
+**Branch**: `feature/workout-logger-ui-improvements`  
+**Priority**: HIGH - Fix critical UX issues discovered after Galaxy Z Fold 6 completion  
+**Goal**: Fix hidden widget recovery on large screens and implement template/program deletion
+
 ## Current Status
-- Branch: `feature/workout-logger-ui-improvements`
 - Last commit: `feat: Exercise Management master-detail layout with advanced filtering and comprehensive editing`
-- Development Phase: **Exercise Management Large Screen Optimization COMPLETE** ✅
+- Development Phase: **Galaxy Z Fold 6 Large Screen Optimization - COMPLETE** ✅ (100% complete)
 
 ## App State Summary
-**Production-ready fitness app** with enhanced workout logging, session persistence, user choice dialogs, video form references, rest time tracking, and modern UI components.
+**Production-ready enterprise-grade fitness application** with comprehensive analytics, cloud backup, Galaxy Z Fold 6 optimization, and professional user experience that rivals commercial fitness applications.
 
 ## 🏆 Major Completed Features
 - ✅ **Enhanced Workout Logger**: Modern UI with advanced input components, rest time tracking, and video references
