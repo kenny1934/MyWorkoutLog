@@ -100,6 +100,40 @@
 
 **Result**: Duration editing is now intuitive, flexible, and preserves data precision while supporting natural user input patterns. The single-field approach reduces cognitive load and maintains consistency with duration displays throughout the app.
 
+### **Workout Deletion Functionality - COMPLETE** ✅
+**Problem Solved**: The app previously only allowed editing workouts but had no way to delete workout sessions. Added comprehensive deletion functionality with proper safeguards and confirmation dialogs.
+
+**🔧 Database Layer Enhancement**:
+- **DAO Methods**: Added `@Delete` and `@Query`-based deletion methods to LoggedWorkoutDao
+- **ViewModel Integration**: Added `deleteWorkout()` function with coroutine-based deletion
+- **Safe Deletion**: Uses coroutine with IO dispatcher for non-blocking database operations
+
+**🎨 User Interface Implementation**:
+- **Delete Buttons**: Added delete buttons next to edit buttons in both master-detail and full-screen views
+- **Visual Distinction**: Delete buttons use error color tinting and proper delete icons
+- **Dual Location Support**: Available in History detail panel (master-detail) and HistoryDetailScreen (full-screen)
+- **Professional Placement**: Delete buttons positioned next to edit buttons for consistent UX
+
+**✨ Safety and Confirmation**:
+- **DeleteWorkoutConfirmationDialog**: Professional confirmation dialog with workout details
+- **Workout Information Display**: Shows workout name, date, and program cycle context
+- **Warning Message**: Clear "cannot be undone" warning with error styling
+- **Two-Step Process**: Requires explicit confirmation to prevent accidental deletion
+
+**🔧 Navigation and State Management**:
+- **Master-Detail Handling**: Clears selection and shows empty state after deletion
+- **Full-Screen Navigation**: Automatically navigates back to history list after deletion
+- **State Synchronization**: Proper dialog state management with dismiss and confirm callbacks
+- **Program Context Awareness**: Displays warning when deleting workouts from active program cycles
+
+**✨ Technical Implementation**:
+- **Room Database Integration**: Uses `@Delete` annotation for type-safe deletion
+- **Alternative ID-based Deletion**: `deleteLoggedWorkoutById()` for direct ID-based removal
+- **Coroutine Safety**: Non-blocking deletion operations with proper error handling
+- **UI State Management**: Remember-based dialog visibility with proper lifecycle handling
+
+**Result**: Users can now safely delete workout sessions with appropriate safeguards, confirmation dialogs, and proper navigation handling. The implementation prevents accidental data loss while providing clear feedback and maintaining data integrity throughout the deletion process.
+
 ### **Previous Enhancement: Exercise Management Master-Detail Optimization - COMPLETE** ✅
 
 ### **Exercise Management Master-Detail Layout Implementation - COMPLETE** ✅

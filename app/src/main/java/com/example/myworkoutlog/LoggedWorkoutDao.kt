@@ -1,6 +1,7 @@
 package com.example.myworkoutlog
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -14,6 +15,13 @@ interface LoggedWorkoutDao {
 
     @androidx.room.Update
     fun updateLoggedWorkout(loggedWorkout: LoggedWorkout)
+    
+    @Delete
+    fun deleteLoggedWorkout(loggedWorkout: LoggedWorkout)
+    
+    // Alternative delete method by ID for easier use
+    @Query("DELETE FROM logged_workout_table WHERE id = :workoutId")
+    fun deleteLoggedWorkoutById(workoutId: String)
 
     // We'll use this function later for the History screen
     @Query("SELECT * FROM logged_workout_table ORDER BY startTimestamp DESC, date DESC")

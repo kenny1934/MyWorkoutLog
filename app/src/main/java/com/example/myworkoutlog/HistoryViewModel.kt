@@ -3,12 +3,14 @@ package com.example.myworkoutlog
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 // Data structures for mesocycle-aware history
 data class CycleWithWorkouts(
@@ -182,6 +184,13 @@ class HistoryViewModel(
 
     fun getWorkoutsByProgramTemplate(programTemplateId: String): Flow<List<LoggedWorkout>> {
         return loggedWorkoutDao.getWorkoutsByProgramTemplate(programTemplateId)
+    }
+    
+    // Delete workout function
+    fun deleteWorkout(workoutId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            loggedWorkoutDao.deleteLoggedWorkoutById(workoutId)
+        }
     }
 }
 

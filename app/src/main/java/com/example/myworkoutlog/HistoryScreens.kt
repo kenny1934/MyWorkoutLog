@@ -325,7 +325,8 @@ private fun HistoryMasterDetailView(
                 selectedWorkoutId = selectedWorkoutId,
                 viewModel = viewModel,
                 onNavigateToWorkout = onNavigateToWorkout,
-                onNavigateToEdit = onNavigateToEdit
+                onNavigateToEdit = onNavigateToEdit,
+                onWorkoutDeleted = { onWorkoutSelected(null) } // Clear selection after deletion
             )
         }
     }
@@ -336,8 +337,10 @@ fun HistoryDetailPanel(
     selectedWorkoutId: String?,
     viewModel: HistoryViewModel,
     onNavigateToWorkout: (String) -> Unit,
-    onNavigateToEdit: (String) -> Unit
+    onNavigateToEdit: (String) -> Unit,
+    onWorkoutDeleted: () -> Unit = {}
 ) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
     if (selectedWorkoutId == null) {
         // No workout selected - show placeholder
         Box(
@@ -386,10 +389,20 @@ fun HistoryDetailPanel(
                         Text(
                             text = currentWorkout.name ?: "Workout Details",
                             style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
                         )
-                        IconButton(onClick = { onNavigateToEdit(selectedWorkoutId) }) {
-                            Icon(Icons.Filled.Edit, contentDescription = "Edit Workout")
+                        Row {
+                            IconButton(onClick = { onNavigateToEdit(selectedWorkoutId) }) {
+                                Icon(Icons.Filled.Edit, contentDescription = "Edit Workout")
+                            }
+                            IconButton(onClick = { showDeleteDialog = true }) {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    contentDescription = "Delete Workout",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                     }
                     
@@ -570,6 +583,20 @@ fun HistoryDetailPanel(
                 }
             }
         }
+    }
+    
+    // Delete confirmation dialog
+    if (currentWorkout != null) {
+        DeleteWorkoutConfirmationDialog(
+            isVisible = showDeleteDialog,
+            workout = currentWorkout,
+            onDismiss = { showDeleteDialog = false },
+            onConfirmDelete = {
+                viewModel.deleteWorkout(selectedWorkoutId)
+                showDeleteDialog = false
+                onWorkoutDeleted()
+            }
+        )
     }
 }
 
@@ -1294,6 +1321,7 @@ fun HistoryDetailScreen(
     onNavigateToEdit: (String) -> Unit
 ) {
     val workout by viewModel.getLoggedWorkoutById(workoutId).collectAsState(initial = null)
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -1307,6 +1335,13 @@ fun HistoryDetailScreen(
                 actions = {
                     IconButton(onClick = { onNavigateToEdit(workoutId) }) {
                         Icon(Icons.Filled.Edit, contentDescription = "Edit Workout")
+                    }
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(
+                            Icons.Filled.Delete,
+                            contentDescription = "Delete Workout",
+                            tint = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             )
@@ -1503,6 +1538,20 @@ fun HistoryDetailScreen(
             }
         }
     }
+    
+    // Delete confirmation dialog
+    if (workout != null) {
+        DeleteWorkoutConfirmationDialog(
+            isVisible = showDeleteDialog,
+            workout = workout,
+            onDismiss = { showDeleteDialog = false },
+            onConfirmDelete = {
+                viewModel.deleteWorkout(workoutId)
+                showDeleteDialog = false
+                onNavigateUp() // Navigate back after deletion
+            }
+        )
+    }
 }
 
 private fun calculateDurationMinutes(start: Long?, end: Long?): Long? {
@@ -1678,4 +1727,79 @@ private fun ProgramContextCard(workout: LoggedWorkout) {
             }
         }
     }
+}
+
+@Composable
+fun DeleteWorkoutConfirmationDialog(
+    isVisible: Boolean,
+    workout: LoggedWorkout,
+    onDismiss: () -> Unit,
+    onConfirmDelete: () -> Unit
+) {
+    if (!isVisible) return
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                Icons.Filled.Warning,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error
+            )
+        },
+        title = {
+            Text("Delete Workout")
+        },
+        text = {
+            Column {
+                Text(
+                    text = "Are you sure you want to delete this workout?",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                // Show workout details
+                Text(
+                    text = "• ${workout.name ?: "Unnamed Workout"}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "• ${workout.date}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                
+                if (workout.activeProgramCycleId != null) {
+                    Text(
+                        text = "• Part of active program cycle",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                
+                Text(
+                    text = "\nThis action cannot be undone.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(top = 16.dp)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirmDelete,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                )
+            ) {
+                Text("Delete")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
