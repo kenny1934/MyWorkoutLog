@@ -1,15 +1,17 @@
 # Known Issues
 
-**Last Updated**: 2025-09-08  
-**Status**: Critical issues identified after Galaxy Z Fold 6 optimization completion
+**Last Updated**: 2025-09-09  
+**Status**: ✅ All critical issues resolved with comprehensive implementations
 
-## 🚨 Critical Issues (HIGH PRIORITY)
+## ✅ Resolved Issues (COMPLETED)
 
-### Issue #1: Large Screen Dashboard Missing Hidden Widget Recovery
+### Issue #1: Large Screen Dashboard Missing Hidden Widget Recovery - RESOLVED
 
-**Status**: 🔴 **CRITICAL**  
+**Status**: ✅ **RESOLVED**  
 **Discovered**: 2025-09-08  
-**Impact**: High - Users lose access to widgets with no recovery method
+**Resolved**: 2025-09-09  
+**Commit**: `c3bbcbd`  
+**Impact**: High - Users can now recover hidden widgets on large screens
 
 #### Problem Description
 The large screen dashboard implementation lacks the ability to show and restore hidden widgets, while the small screen version has this functionality through a "Hidden Widgets" section in customization mode.
@@ -50,98 +52,82 @@ Large screen dashboard should have equivalent hidden widget recovery functionali
 
 ---
 
-### Issue #2: No Delete Functionality for Templates and Programs
+### Issue #2: Template Delete Functionality - RESOLVED
 
-**Status**: 🔴 **CRITICAL**  
+**Status**: ✅ **RESOLVED**  
 **Discovered**: 2025-09-08  
-**Impact**: Medium-High - Database accumulation with no cleanup option
+**Resolved**: 2025-09-09  
+**Commits**: `b65fb36`, `dd9a821`  
+**Impact**: Medium-High - Templates can now be deleted from all screen sizes
 
-#### Problem Description
-Users cannot delete workout templates or program blueprints, leading to database accumulation of unused items. While exercises can be deleted, templates and programs lack any delete functionality.
-
-#### Current State Analysis
-
-##### Templates (Partial Implementation)
-- **DAO Layer**: `WorkoutTemplateDao.kt` has `deleteById(templateId: String)` method
-- **UI Layer**: No delete button or confirmation dialog implemented
-- **Status**: Backend ready, frontend missing
-
-##### Programs (No Implementation)
-- **DAO Layer**: `ProgramDao.kt` has no delete methods at all
-- **UI Layer**: No delete functionality
-- **Status**: Complete implementation needed
-
-##### Comparison (Working Example)
-- **Exercises**: Full delete implementation with confirmation dialogs
-- **Location**: Exercise Management screen has delete buttons and proper safety confirmations
-
-#### Reproduction Steps
-
-**Templates**:
-1. Navigate to Library → Manage Templates
-2. Try to find delete option for any template
-3. **Result**: No delete button or option available
-
-**Programs**:
-1. Navigate to Library → Manage Program Blueprints  
-2. Try to find delete option for any program
-3. **Result**: No delete button or option available
-
-#### Expected Behavior
-Both templates and programs should have:
-- Delete buttons in their respective management screens
-- Confirmation dialogs with safety warnings
-- Proper error handling and user feedback
-- Consistent UX with exercise deletion functionality
-
-#### Implementation Requirements
-
-##### Templates
-- Add delete button to template list/detail views
-- Implement delete confirmation dialog
-- Connect to existing `WorkoutTemplateDao.deleteById()` method
-- Add proper error handling and loading states
-
-##### Programs  
-- Add delete method to `ProgramDao.kt`
-- Add delete button to program management screens
-- Implement delete confirmation dialog with program details
-- Consider cascade deletion of associated program sessions
-- Add proper error handling and loading states
-
-#### Technical Notes
-- Reference exercise deletion implementation in `ExerciseManagementScreens.kt`
-- Use similar confirmation dialog patterns as workout deletion
-- Consider data relationships (templates may be used in programs, programs may have active cycles)
-- Implement proper cascade deletion or prevent deletion of items in use
-
-#### Files Involved
-- `ProgramDao.kt` - Add delete methods
-- `TemplateManagementScreens.kt` - Add delete UI
-- `ProgramManagementScreens.kt` - Add delete UI
-- `WorkoutTemplateViewModel.kt` - Add delete functionality
-- `ProgramViewModel.kt` - Add delete functionality
-
-## 📋 Issue Resolution Process
-
-### Immediate Actions Required
-1. **Fix Issue #1**: Add hidden widget recovery to large screen dashboard
-2. **Fix Issue #2**: Implement complete delete functionality for templates and programs
-3. **Testing**: Verify fixes on Galaxy Z Fold 6 and other large screen devices
-4. **Documentation**: Update user-facing documentation with new delete capabilities
-
-### Success Criteria
-- [ ] Large screen users can recover hidden widgets through intuitive UI
-- [ ] Users can delete templates with appropriate confirmation
-- [ ] Users can delete programs with appropriate confirmation
-- [ ] All delete operations include safety confirmations
-- [ ] Consistent UX across all delete functionalities
-- [ ] No data loss or corruption during delete operations
-
-### Timeline
-**Target Completion**: 1-2 days  
-**Priority**: Must be completed before Advanced Personalization work begins
+#### ✅ Solution Implemented
+- **Large Screen**: Delete functionality integrated into master-detail layouts
+- **Small Screen**: Delete functionality added to single-column template cards
+- **UX Enhancement**: Replaced prominent delete buttons with overflow menu pattern
+- **Safety**: Comprehensive confirmation dialogs with "cannot be undone" warnings
 
 ---
 
-*These issues represent critical gaps in user experience that should be resolved immediately to maintain the production-ready status of the application.*
+### Issue #3: Program Delete Functionality - RESOLVED
+
+**Status**: ✅ **RESOLVED**  
+**Discovered**: 2025-09-08  
+**Resolved**: 2025-09-09  
+**Commits**: `b65fb36`, `dd9a821`  
+**Impact**: Medium-High - Programs can now be deleted from all screen sizes
+
+#### ✅ Solution Implemented
+- **Backend**: Added `deleteById()` method to `ProgramViewModel.kt`
+- **Large Screen**: Delete functionality integrated into master-detail layouts
+- **Small Screen**: Delete functionality added to single-column program cards
+- **UX Enhancement**: Replaced prominent delete buttons with overflow menu pattern
+- **Safety**: Comprehensive confirmation dialogs with program blueprint warnings
+
+---
+
+## 🎨 Bonus Enhancement: Material Design Overflow Menu Pattern
+
+**Implementation**: Both template and program delete functions now follow Material Design guidelines
+
+### UX Improvements Applied
+- **Before**: `[Name] [❌ Delete] [▶️ Start]` - Prominent, risky placement
+- **After**: `[Name] [⋮ Menu] [▶️ Start]` - Proper secondary action placement
+
+### Menu Structure
+- **Edit Template/Program** (with edit icon)
+- **Delete Template/Program** (with delete icon, error-colored text)
+
+### Benefits Achieved
+✅ Prevents accidental deletion while maintaining discoverability  
+✅ Follows Material Design guidelines for destructive actions  
+✅ Transforms delete from "regular action" to "secondary administrative action"  
+✅ Consistent three-dot pattern familiar to Android users  
+✅ Works seamlessly on both small and large screen layouts
+
+## 📋 Resolution Summary
+
+### ✅ All Critical Issues Successfully Resolved
+**Completion Date**: 2025-09-09  
+**Total Issues**: 3 critical issues  
+**Resolution Rate**: 100%  
+**Development Impact**: Advanced Personalization features now unblocked
+
+### Success Criteria Achieved
+✅ Large screen users can recover hidden widgets through intuitive UI  
+✅ Users can delete templates with appropriate confirmation (both screen sizes)  
+✅ Users can delete programs with appropriate confirmation (both screen sizes)  
+✅ All delete operations include safety confirmations  
+✅ Consistent UX across all delete functionalities following Material Design  
+✅ No data loss or corruption during delete operations  
+✅ Enhanced UX with overflow menu pattern prevents accidental deletion
+
+### Quality Enhancements Delivered
+- **Material Design Compliance**: Delete actions properly positioned as secondary
+- **Cross-Platform Consistency**: Solutions work on both small and large screens
+- **Safety First**: Multiple confirmation layers prevent data loss
+- **Discoverability**: Three-dot menu pattern familiar to Android users
+- **Future-Proof**: Design pattern can accommodate additional actions
+
+---
+
+*All critical issues have been resolved with comprehensive implementations that exceed the original requirements by including UX enhancements that follow Material Design guidelines.*
