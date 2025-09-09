@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -58,6 +59,8 @@ private fun TemplateManagementSingleColumnView(
     val templates by viewModel.allTemplates.collectAsStateWithLifecycle()
     var showDialog by remember { mutableStateOf(false) }
     var templateName by remember { mutableStateOf("") }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var templateToDelete by remember { mutableStateOf<WorkoutTemplate?>(null) }
 
     Scaffold(
         floatingActionButton = {
@@ -94,10 +97,24 @@ private fun TemplateManagementSingleColumnView(
                                 ) {
                                     Text(template.name)
                                 }
+                                // DELETE button
+                                IconButton(
+                                    onClick = { 
+                                        templateToDelete = template
+                                        showDeleteConfirmation = true 
+                                    },
+                                    modifier = Modifier.padding(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Delete,
+                                        contentDescription = "Delete Template",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
                                 // START button
                                 IconButton(
                                     onClick = { onStartWorkout(template.id) },
-                                    modifier = Modifier.padding(16.dp)
+                                    modifier = Modifier.padding(8.dp)
                                 ) {
                                     Icon(
                                         Icons.Filled.PlayArrow,
@@ -122,6 +139,54 @@ private fun TemplateManagementSingleColumnView(
                         viewModel.insert(templateName, null)
                         templateName = ""
                         showDialog = false
+                    }
+                )
+            }
+            
+            // Delete confirmation dialog
+            if (showDeleteConfirmation && templateToDelete != null) {
+                AlertDialog(
+                    onDismissRequest = { 
+                        showDeleteConfirmation = false
+                        templateToDelete = null
+                    },
+                    title = {
+                        Text(
+                            text = "Delete Template",
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                    },
+                    text = {
+                        Text(
+                            text = "Are you sure you want to delete \"${templateToDelete?.name}\"? This action cannot be undone.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                templateToDelete?.let { template ->
+                                    viewModel.deleteById(template.id)
+                                }
+                                showDeleteConfirmation = false
+                                templateToDelete = null
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text("Delete")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = { 
+                                showDeleteConfirmation = false
+                                templateToDelete = null
+                            }
+                        ) {
+                            Text("Cancel")
+                        }
                     }
                 )
             }

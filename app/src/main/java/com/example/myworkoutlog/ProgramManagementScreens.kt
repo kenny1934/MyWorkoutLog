@@ -85,6 +85,8 @@ private fun ProgramMasterDetailLayout(
     
     var selectedProgramId by remember { mutableStateOf<String?>(null) }
     var isEditing by remember { mutableStateOf(false) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var programIdToDelete by remember { mutableStateOf<String?>(null) }
     
     Row(
         modifier = Modifier
@@ -133,6 +135,10 @@ private fun ProgramMasterDetailLayout(
                     isEditing = isEditing,
                     onEditModeChanged = { isEditing = it },
                     onNavigateToDashboard = onNavigateToDashboard,
+                    onDeleteProgram = { programId ->
+                        programIdToDelete = programId
+                        showDeleteConfirmation = true
+                    },
                     modifier = Modifier.padding(16.dp)
                 )
             } else {
@@ -143,6 +149,69 @@ private fun ProgramMasterDetailLayout(
                 )
             }
         }
+    }
+    
+    // Delete confirmation dialog
+    if (showDeleteConfirmation && programIdToDelete != null) {
+        val programs by programViewModel.allPrograms.collectAsStateWithLifecycle()
+        val programToDelete = programs.find { it.id == programIdToDelete }
+        
+        AlertDialog(
+            onDismissRequest = { 
+                showDeleteConfirmation = false
+                programIdToDelete = null
+            },
+            title = {
+                Text(
+                    text = "Delete Program",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "Are you sure you want to delete \"${programToDelete?.name}\"?",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "This will permanently delete the program blueprint and cannot be undone.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        programIdToDelete?.let { programId ->
+                            programViewModel.deleteById(programId)
+                            // Clear selection if deleted program was selected
+                            if (selectedProgramId == programId) {
+                                selectedProgramId = null
+                            }
+                        }
+                        showDeleteConfirmation = false
+                        programIdToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showDeleteConfirmation = false
+                        programIdToDelete = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -162,6 +231,8 @@ private fun ProgramMasterPanel(
     var searchQuery by remember { mutableStateOf("") }
     var showCreateDialog by remember { mutableStateOf(false) }
     var showStartCycleDialog by remember { mutableStateOf<ProgramTemplate?>(null) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var programToDelete by remember { mutableStateOf<ProgramTemplate?>(null) }
     var newName by remember { mutableStateOf("") }
     
     // Filter programs based on search
@@ -223,6 +294,10 @@ private fun ProgramMasterPanel(
                         isSelected = program.id == selectedProgramId,
                         onProgramClick = { onProgramSelected(program.id) },
                         onStartCycle = { showStartCycleDialog = program },
+                        onDeleteProgram = { 
+                            programToDelete = program
+                            showDeleteConfirmation = true 
+                        },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -278,6 +353,62 @@ private fun ProgramMasterPanel(
             }
         )
     }
+    
+    // Delete confirmation dialog
+    if (showDeleteConfirmation && programToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { 
+                showDeleteConfirmation = false
+                programToDelete = null
+            },
+            title = {
+                Text(
+                    text = "Delete Program",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "Are you sure you want to delete \"${programToDelete?.name}\"?",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "This will permanently delete the program blueprint and cannot be undone.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        programToDelete?.let { program ->
+                            programViewModel.deleteById(program.id)
+                        }
+                        showDeleteConfirmation = false
+                        programToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showDeleteConfirmation = false
+                        programToDelete = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -290,6 +421,8 @@ fun ManageProgramsScreen(
     val programs by programViewModel.allPrograms.collectAsStateWithLifecycle()
     var showCreateProgramDialog by remember { mutableStateOf(false) }
     var showStartCycleDialog by remember { mutableStateOf<ProgramTemplate?>(null) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var programToDelete by remember { mutableStateOf<ProgramTemplate?>(null) }
     var newName by remember { mutableStateOf("") }
 
     Scaffold(
@@ -323,8 +456,25 @@ fun ManageProgramsScreen(
                                         .clickable { onNavigateToProgram(program.id) }
                                         .padding(vertical = 16.dp)
                                 ) { Text(program.name) }
+                                // DELETE button
+                                IconButton(
+                                    onClick = { 
+                                        programToDelete = program
+                                        showDeleteConfirmation = true 
+                                    },
+                                    modifier = Modifier.padding(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Delete,
+                                        contentDescription = "Delete Program",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
                                 // "Start Cycle" button
-                                IconButton(onClick = { showStartCycleDialog = program }) {
+                                IconButton(
+                                    onClick = { showStartCycleDialog = program },
+                                    modifier = Modifier.padding(8.dp)
+                                ) {
                                     Icon(
                                         Icons.Outlined.PlayArrow,
                                         contentDescription = "Start Cycle"
@@ -399,6 +549,62 @@ fun ManageProgramsScreen(
                         TextButton(onClick = {
                             showStartCycleDialog = null
                         }) { Text("Cancel") }
+                    }
+                )
+            }
+            
+            // Delete confirmation dialog
+            if (showDeleteConfirmation && programToDelete != null) {
+                AlertDialog(
+                    onDismissRequest = { 
+                        showDeleteConfirmation = false
+                        programToDelete = null
+                    },
+                    title = {
+                        Text(
+                            text = "Delete Program",
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                    },
+                    text = {
+                        Column {
+                            Text(
+                                text = "Are you sure you want to delete \"${programToDelete?.name}\"?",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "This will permanently delete the program blueprint and cannot be undone.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                programToDelete?.let { program ->
+                                    programViewModel.deleteById(program.id)
+                                }
+                                showDeleteConfirmation = false
+                                programToDelete = null
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text("Delete")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = { 
+                                showDeleteConfirmation = false
+                                programToDelete = null
+                            }
+                        ) {
+                            Text("Cancel")
+                        }
                     }
                 )
             }
@@ -891,6 +1097,7 @@ private fun EnhancedProgramCard(
     isSelected: Boolean,
     onProgramClick: () -> Unit,
     onStartCycle: () -> Unit,
+    onDeleteProgram: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val touchTargetSize = workoutTouchTargetSize()
@@ -947,15 +1154,28 @@ private fun EnhancedProgramCard(
                     }
                 }
                 
-                IconButton(
-                    onClick = onStartCycle,
-                    modifier = Modifier.size(touchTargetSize)
-                ) {
-                    Icon(
-                        Icons.Outlined.PlayArrow,
-                        contentDescription = "Start Cycle",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                Row {
+                    IconButton(
+                        onClick = onDeleteProgram,
+                        modifier = Modifier.size(touchTargetSize)
+                    ) {
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription = "Delete Program",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    
+                    IconButton(
+                        onClick = onStartCycle,
+                        modifier = Modifier.size(touchTargetSize)
+                    ) {
+                        Icon(
+                            Icons.Outlined.PlayArrow,
+                            contentDescription = "Start Cycle",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
             
@@ -1224,6 +1444,7 @@ private fun ProgramDetailPanel(
     isEditing: Boolean,
     onEditModeChanged: (Boolean) -> Unit,
     onNavigateToDashboard: () -> Unit,
+    onDeleteProgram: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val programFromDb by programViewModel.getProgramById(programId).collectAsState(initial = null)
@@ -1252,6 +1473,7 @@ private fun ProgramDetailPanel(
             activeCycleViewModel = activeCycleViewModel,
             onStartEdit = { onEditModeChanged(true) },
             onNavigateToDashboard = onNavigateToDashboard,
+            onDeleteProgram = onDeleteProgram,
             modifier = modifier
         )
     }
@@ -1274,6 +1496,7 @@ private fun ProgramDetailViewer(
     activeCycleViewModel: ActiveCycleViewModel,
     onStartEdit: () -> Unit,
     onNavigateToDashboard: () -> Unit,
+    onDeleteProgram: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showStartCycleDialog by remember { mutableStateOf(false) }
@@ -1294,6 +1517,18 @@ private fun ProgramDetailViewer(
             )
             
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Icon-only Delete button
+                IconButton(
+                    onClick = { onDeleteProgram(program.id) }
+                ) {
+                    Icon(
+                        Icons.Outlined.Delete,
+                        contentDescription = "Delete Program",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                
                 // Icon-only Edit button for maximum space efficiency
                 IconButton(onClick = onStartEdit) {
                     Icon(
