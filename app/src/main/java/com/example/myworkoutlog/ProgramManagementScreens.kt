@@ -445,6 +445,8 @@ fun ManageProgramsScreen(
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(programs) { program ->
+                        var showOverflowMenu by remember { mutableStateOf(false) }
+                        
                         Card(elevation = CardDefaults.cardElevation(2.dp)) {
                             Row(
                                 modifier = Modifier.padding(start = 16.dp),
@@ -456,19 +458,56 @@ fun ManageProgramsScreen(
                                         .clickable { onNavigateToProgram(program.id) }
                                         .padding(vertical = 16.dp)
                                 ) { Text(program.name) }
-                                // DELETE button
-                                IconButton(
-                                    onClick = { 
-                                        programToDelete = program
-                                        showDeleteConfirmation = true 
-                                    },
-                                    modifier = Modifier.padding(8.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Delete,
-                                        contentDescription = "Delete Program",
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
+                                // OVERFLOW MENU
+                                Box {
+                                    IconButton(
+                                        onClick = { showOverflowMenu = true },
+                                        modifier = Modifier.padding(8.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.MoreVert,
+                                            contentDescription = "More options"
+                                        )
+                                    }
+                                    
+                                    DropdownMenu(
+                                        expanded = showOverflowMenu,
+                                        onDismissRequest = { showOverflowMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Edit Program") },
+                                            onClick = {
+                                                showOverflowMenu = false
+                                                onNavigateToProgram(program.id)
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Outlined.Edit,
+                                                    contentDescription = null
+                                                )
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { 
+                                                Text(
+                                                    "Delete Program",
+                                                    color = MaterialTheme.colorScheme.error
+                                                )
+                                            },
+                                            onClick = {
+                                                showOverflowMenu = false
+                                                programToDelete = program
+                                                showDeleteConfirmation = true
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Outlined.Delete,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.error
+                                                )
+                                            }
+                                        )
+                                    }
                                 }
                                 // "Start Cycle" button
                                 IconButton(

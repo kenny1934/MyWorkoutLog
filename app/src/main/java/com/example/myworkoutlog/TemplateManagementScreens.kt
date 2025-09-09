@@ -81,6 +81,8 @@ private fun TemplateManagementSingleColumnView(
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(templates) { template ->
+                        var showOverflowMenu by remember { mutableStateOf(false) }
+                        
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             elevation = CardDefaults.cardElevation(2.dp)
@@ -97,19 +99,56 @@ private fun TemplateManagementSingleColumnView(
                                 ) {
                                     Text(template.name)
                                 }
-                                // DELETE button
-                                IconButton(
-                                    onClick = { 
-                                        templateToDelete = template
-                                        showDeleteConfirmation = true 
-                                    },
-                                    modifier = Modifier.padding(8.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Delete,
-                                        contentDescription = "Delete Template",
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
+                                // OVERFLOW MENU
+                                Box {
+                                    IconButton(
+                                        onClick = { showOverflowMenu = true },
+                                        modifier = Modifier.padding(8.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.MoreVert,
+                                            contentDescription = "More options"
+                                        )
+                                    }
+                                    
+                                    DropdownMenu(
+                                        expanded = showOverflowMenu,
+                                        onDismissRequest = { showOverflowMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Edit Template") },
+                                            onClick = {
+                                                showOverflowMenu = false
+                                                onNavigateToTemplate(template.id)
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Outlined.Edit,
+                                                    contentDescription = null
+                                                )
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { 
+                                                Text(
+                                                    "Delete Template",
+                                                    color = MaterialTheme.colorScheme.error
+                                                )
+                                            },
+                                            onClick = {
+                                                showOverflowMenu = false
+                                                templateToDelete = template
+                                                showDeleteConfirmation = true
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Outlined.Delete,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.error
+                                                )
+                                            }
+                                        )
+                                    }
                                 }
                                 // START button
                                 IconButton(
