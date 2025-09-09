@@ -2,6 +2,7 @@
 
 package com.example.myworkoutlog
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -141,6 +142,8 @@ private fun TemplateManagementMasterDetailView(
     var selectedTemplate by remember { mutableStateOf<WorkoutTemplate?>(null) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var templateName by remember { mutableStateOf("") }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var templateToDelete by remember { mutableStateOf<WorkoutTemplate?>(null) }
     
     // Auto-select first template when data loads or when selected template is no longer available
     LaunchedEffect(templates) {
@@ -233,7 +236,11 @@ private fun TemplateManagementMasterDetailView(
                                 isSelected = selectedTemplate?.id == template.id,
                                 onTemplateSelected = { selectedTemplate = template },
                                 onStartWorkout = { onStartWorkout(template.id) },
-                                onEditTemplate = { onNavigateToTemplate(template.id) }
+                                onEditTemplate = { onNavigateToTemplate(template.id) },
+                                onDeleteTemplate = { 
+                                    templateToDelete = template
+                                    showDeleteConfirmation = true 
+                                }
                             )
                         }
                     }
@@ -255,7 +262,14 @@ private fun TemplateManagementMasterDetailView(
                 selectedTemplate = selectedTemplate,
                 allExercises = allExercises,
                 onStartWorkout = onStartWorkout,
-                onEditTemplate = onNavigateToTemplate
+                onEditTemplate = onNavigateToTemplate,
+                onDeleteTemplate = { templateId ->
+                    val template = templates.find { it.id == templateId }
+                    if (template != null) {
+                        templateToDelete = template
+                        showDeleteConfirmation = true
+                    }
+                }
             )
         }
     }
@@ -276,6 +290,58 @@ private fun TemplateManagementMasterDetailView(
             }
         )
     }
+    
+    // Delete confirmation dialog
+    if (showDeleteConfirmation && templateToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { 
+                showDeleteConfirmation = false
+                templateToDelete = null
+            },
+            title = {
+                Text(
+                    text = "Delete Template",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to delete \"${templateToDelete?.name}\"? This action cannot be undone.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        templateToDelete?.let { template ->
+                            viewModel.deleteById(template.id)
+                            // Clear selection if deleted template was selected
+                            if (selectedTemplate?.id == template.id) {
+                                selectedTemplate = null
+                            }
+                        }
+                        showDeleteConfirmation = false
+                        templateToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showDeleteConfirmation = false
+                        templateToDelete = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -284,7 +350,8 @@ private fun TemplateListItem(
     isSelected: Boolean,
     onTemplateSelected: () -> Unit,
     onStartWorkout: () -> Unit,
-    onEditTemplate: () -> Unit
+    onEditTemplate: () -> Unit,
+    onDeleteTemplate: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -333,34 +400,56 @@ private fun TemplateListItem(
             Spacer(modifier = Modifier.height(8.dp))
             
             // Action buttons
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                OutlinedButton(
-                    onClick = onEditTemplate,
-                    modifier = Modifier.weight(1f)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit",
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Edit")
+                    OutlinedButton(
+                        onClick = onEditTemplate,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Edit")
+                    }
+                    
+                    Button(
+                        onClick = onStartWorkout,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = "Start",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Start")
+                    }
                 }
                 
-                Button(
-                    onClick = onStartWorkout,
-                    modifier = Modifier.weight(1f)
+                OutlinedButton(
+                    onClick = onDeleteTemplate,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = "Start",
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete",
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Start")
+                    Text("Delete")
                 }
             }
         }
@@ -372,7 +461,8 @@ private fun TemplateDetailPanel(
     selectedTemplate: WorkoutTemplate?,
     allExercises: List<Exercise>,
     onStartWorkout: (String) -> Unit,
-    onEditTemplate: (String) -> Unit
+    onEditTemplate: (String) -> Unit,
+    onDeleteTemplate: (String) -> Unit
 ) {
     if (selectedTemplate == null) {
         // No template selected - show placeholder
@@ -456,6 +546,27 @@ private fun TemplateDetailPanel(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Start Workout")
+                    }
+                }
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedButton(
+                        onClick = { onDeleteTemplate(selectedTemplate.id) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Template",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Delete Template")
                     }
                 }
             }
