@@ -54,6 +54,13 @@ class ProgramViewModel(
             programDao.update(program)
         }
     }
+    
+    // NEW: Delete a program by ID
+    fun deleteById(programId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            programDao.deleteById(programId)
+        }
+    }
 }
 
 class ProgramViewModelFactory(
