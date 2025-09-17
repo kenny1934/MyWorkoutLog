@@ -725,9 +725,7 @@ class DashboardViewModel(
                     notes = notes
                 )
 
-                withContext(Dispatchers.IO) {
-                    bodyweightDao.insertBodyweightEntry(entry)
-                }
+                bodyweightDao.insertBodyweightEntry(entry)
 
                 // Hide dialog and refresh dashboard to update bodyweight trend widget
                 _showBodyweightDialog.value = false
