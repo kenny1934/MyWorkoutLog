@@ -43,7 +43,8 @@ class MainActivity : ComponentActivity() {
             (application as WorkoutApplication).database.loggedWorkoutDao(),
             (application as WorkoutApplication).database.personalRecordDao(),
             (application as WorkoutApplication).database.exerciseDao(),
-            (application as WorkoutApplication).database.activeCycleDao()
+            (application as WorkoutApplication).database.activeCycleDao(),
+            (application as WorkoutApplication).database.bodyweightDao()
         )
     }
 
@@ -157,14 +158,16 @@ class MainActivity : ComponentActivity() {
             (application as WorkoutApplication).database.loggedWorkoutDao(),
             (application as WorkoutApplication).database.activeCycleDao(),
             (application as WorkoutApplication).database.programTemplateDao(),
-            (application as WorkoutApplication).database.workoutTemplateDao()
+            (application as WorkoutApplication).database.workoutTemplateDao(),
+            (application as WorkoutApplication).database.bodyweightDao()
         )
         val preferencesManager = DashboardPreferencesManager(this)
         DashboardViewModelFactory(
             widgetRepository,
             (application as WorkoutApplication).database.activeCycleDao(),
             analyticsRepository,
-            preferencesManager
+            preferencesManager,
+            (application as WorkoutApplication).database.bodyweightDao()
         )
     }
 

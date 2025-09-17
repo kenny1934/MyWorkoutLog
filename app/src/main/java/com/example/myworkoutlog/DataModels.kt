@@ -273,6 +273,17 @@ data class PersonalRecord(
     val usesBodyweight: Boolean = false // Flag indicating if exercise uses bodyweight
 )
 
+// Standalone bodyweight tracking entity for tracking bodyweight independently of workouts
+@Entity(tableName = "bodyweight_entry_table")
+data class BodyweightEntry(
+    @PrimaryKey val id: String, // Format: "bw_${date}_${timestamp}"
+    val date: String, // Format: YYYY-MM-DD
+    val weight: Double, // User's bodyweight
+    val weightUnit: String, // kg or lbs
+    val timestamp: Long, // When the entry was created
+    val notes: String? = null // Optional notes (e.g., "morning weight", "after workout")
+)
+
 // Data class for cycle workout count query results
 data class CycleWorkoutCount(
     val activeProgramCycleId: String,

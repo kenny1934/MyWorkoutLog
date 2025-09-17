@@ -14,7 +14,8 @@ class DashboardViewModel(
     private val widgetRepository: WidgetRepositorySimplified,
     private val activeCycleDao: ActiveCycleDao,
     private val analyticsRepository: AnalyticsRepository,
-    private val preferencesManager: DashboardPreferencesManager
+    private val preferencesManager: DashboardPreferencesManager,
+    private val bodyweightDao: BodyweightDao
 ) : ViewModel() {
     
     private val _refreshTrigger = MutableStateFlow(0)
@@ -40,7 +41,11 @@ class DashboardViewModel(
     // Widget reordering state (simplified for library integration)
     private val _isReordering = MutableStateFlow(false)
     val isReordering: StateFlow<Boolean> = _isReordering.asStateFlow()
-    
+
+    // Bodyweight dialog state
+    private val _showBodyweightDialog = MutableStateFlow(false)
+    val showBodyweightDialog: StateFlow<Boolean> = _showBodyweightDialog.asStateFlow()
+
     // Get active cycle as a flow
     private val activeCycle = activeCycleDao.getActiveCycle()
     
@@ -191,9 +196,8 @@ class DashboardViewModel(
             }
             
             QuickActionType.ADD_BODYWEIGHT -> {
-                // Navigate to workout logger for bodyweight entry
-                // This will open the workout logger where users can enter bodyweight at the top
-                onNavigate(Screen.WorkoutLogger.route)
+                // Show the bodyweight entry dialog instead of navigating to workout logger
+                _showBodyweightDialog.value = true
             }
             
             QuickActionType.VIEW_HISTORY -> {
@@ -698,6 +702,41 @@ class DashboardViewModel(
             saveDashboardPreferences()
         }
     }
+
+    // Bodyweight dialog methods
+    fun showBodyweightDialog() {
+        _showBodyweightDialog.value = true
+    }
+
+    fun hideBodyweightDialog() {
+        _showBodyweightDialog.value = false
+    }
+
+    fun saveBodyweightEntry(weight: Double, date: String, notes: String?) {
+        viewModelScope.launch {
+            try {
+                val timestamp = System.currentTimeMillis()
+                val entry = BodyweightEntry(
+                    id = "bw_${date}_${timestamp}",
+                    date = date,
+                    weight = weight,
+                    weightUnit = "kg", // TODO: Get from user preferences
+                    timestamp = timestamp,
+                    notes = notes
+                )
+
+                withContext(Dispatchers.IO) {
+                    bodyweightDao.insertBodyweightEntry(entry)
+                }
+
+                // Hide dialog and refresh dashboard to update bodyweight trend widget
+                _showBodyweightDialog.value = false
+                refreshDashboard()
+            } catch (e: Exception) {
+                println("Error saving bodyweight entry: ${e.message}")
+            }
+        }
+    }
 }
 
 // Helper data class for quick analytics
@@ -721,12 +760,13 @@ class DashboardViewModelFactory(
     private val widgetRepository: WidgetRepositorySimplified,
     private val activeCycleDao: ActiveCycleDao,
     private val analyticsRepository: AnalyticsRepository,
-    private val preferencesManager: DashboardPreferencesManager
+    private val preferencesManager: DashboardPreferencesManager,
+    private val bodyweightDao: BodyweightDao
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return DashboardViewModel(widgetRepository, activeCycleDao, analyticsRepository, preferencesManager) as T
+            return DashboardViewModel(widgetRepository, activeCycleDao, analyticsRepository, preferencesManager, bodyweightDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

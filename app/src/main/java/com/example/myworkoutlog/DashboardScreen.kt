@@ -2167,6 +2167,7 @@ fun EnhancedDashboardScreen(
     val isCustomizationMode by dashboardViewModel.isCustomizationMode.collectAsStateWithLifecycle()
     val dashboardPreferences by dashboardViewModel.dashboardPreferences.collectAsStateWithLifecycle()
     val hiddenWidgets by dashboardViewModel.hiddenWidgets.collectAsStateWithLifecycle()
+    val showBodyweightDialog by dashboardViewModel.showBodyweightDialog.collectAsStateWithLifecycle()
     
     // Adaptive layout information
     val layoutInfo = rememberAdaptiveLayoutInfo()
@@ -2586,7 +2587,7 @@ fun EnhancedDashboardScreen(
             },
             dismissButton = {
                 TextButton(
-                    onClick = { 
+                    onClick = {
                         showCompleteCycleConfirmation = false
                         pendingCompleteCycleAction = null
                     }
@@ -2594,6 +2595,17 @@ fun EnhancedDashboardScreen(
                     Text("Cancel")
                 }
             }
+        )
+    }
+
+    // Bodyweight Entry Dialog
+    if (showBodyweightDialog) {
+        BodyweightEntryDialog(
+            onDismiss = { dashboardViewModel.hideBodyweightDialog() },
+            onSave = { weight, date, notes ->
+                dashboardViewModel.saveBodyweightEntry(weight, date, notes)
+            },
+            weightUnit = "kg" // TODO: Get from user preferences
         )
     }
 }

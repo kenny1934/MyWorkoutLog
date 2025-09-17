@@ -24,7 +24,8 @@ class WorkoutLoggerViewModel(
     private val loggedWorkoutDao: LoggedWorkoutDao,
     private val personalRecordDao: PersonalRecordDao,
     private val exerciseDao: ExerciseDao,
-    private val activeCycleDao: ActiveCycleDao
+    private val activeCycleDao: ActiveCycleDao,
+    private val bodyweightDao: BodyweightDao
 ) : ViewModel() {
 
     // A private mutable state flow to hold the in-progress workout
@@ -309,14 +310,22 @@ class WorkoutLoggerViewModel(
                     )
                 }
 
+                // Get today's bodyweight entry if available
+                val todayDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                val todayBodyweight = try {
+                    bodyweightDao.getBodyweightForDate(todayDate)?.weight
+                } catch (e: Exception) {
+                    null
+                }
+
                 val newLoggedWorkout = LoggedWorkout(
                     id = UUID.randomUUID().toString(),
                     name = template.name,
-                    date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
+                    date = todayDate,
                     startTimestamp = workoutStartTimeMillis, // Save start time
                     endTimestamp = null, // End time is null for now
                     performedWeightUnit = null,
-                    bodyweight = null,
+                    bodyweight = todayBodyweight, // Auto-populate from bodyweight entry
                     activeProgramCycleId = cycleId, // Save the cycle context
                     programWeekDefinitionId = weekId, // Save the week context
                     programSessionDefinitionId = sessionId, // Save the session context
@@ -1047,12 +1056,13 @@ class WorkoutLoggerViewModelFactory(
     private val loggedWorkoutDao: LoggedWorkoutDao,
     private val personalRecordDao: PersonalRecordDao,
     private val exerciseDao: ExerciseDao,
-    private val activeCycleDao: ActiveCycleDao
+    private val activeCycleDao: ActiveCycleDao,
+    private val bodyweightDao: BodyweightDao
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(WorkoutLoggerViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return WorkoutLoggerViewModel(templateDao, loggedWorkoutDao, personalRecordDao, exerciseDao, activeCycleDao) as T
+            return WorkoutLoggerViewModel(templateDao, loggedWorkoutDao, personalRecordDao, exerciseDao, activeCycleDao, bodyweightDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

@@ -19,7 +19,8 @@ class WidgetRepositorySimplified(
     private val loggedWorkoutDao: LoggedWorkoutDao,
     private val activeCycleDao: ActiveCycleDao,
     private val programTemplateDao: ProgramTemplateDao,
-    private val workoutTemplateDao: WorkoutTemplateDao
+    private val workoutTemplateDao: WorkoutTemplateDao,
+    private val bodyweightDao: BodyweightDao
 ) {
     
     suspend fun getDashboardState(activeCycle: ActiveProgramCycle?, dismissedInsights: Set<String> = emptySet()): Flow<DashboardState> {
@@ -501,17 +502,45 @@ class WidgetRepositorySimplified(
     
     private suspend fun getBodyweightTrendData(): List<BodyweightPoint> {
         return try {
+            // Get bodyweight data from both sources
+            val bodyweightEntries = bodyweightDao.getAllBodyweightEntries().first()
             val workouts = loggedWorkoutDao.getAllLoggedWorkouts().first()
-            workouts
+
+            // Convert BodyweightEntry to BodyweightPoint
+            val entriesData = bodyweightEntries.map { entry ->
+                BodyweightPoint(
+                    date = java.time.LocalDate.parse(entry.date),
+                    weight = entry.weight.toFloat()
+                )
+            }
+
+            // Convert LoggedWorkout to BodyweightPoint (only if no entry exists for that date)
+            val workoutData = workouts
                 .filter { it.bodyweight != null && it.bodyweight!! > 0 }
-                .sortedBy { it.date }
-                .takeLast(30) // Last 30 data points
                 .map { workout ->
                     BodyweightPoint(
                         date = java.time.LocalDate.parse(workout.date),
                         weight = workout.bodyweight!!.toFloat()
                     )
                 }
+
+            // Combine data, prioritizing BodyweightEntry over LoggedWorkout for same dates
+            val allData = mutableMapOf<java.time.LocalDate, BodyweightPoint>()
+
+            // Add workout data first
+            workoutData.forEach { point ->
+                allData[point.date] = point
+            }
+
+            // Add/override with bodyweight entries (higher priority)
+            entriesData.forEach { point ->
+                allData[point.date] = point
+            }
+
+            // Return sorted and limited data
+            allData.values
+                .sortedBy { it.date }
+                .takeLast(30) // Last 30 data points
         } catch (e: Exception) {
             emptyList()
         }
