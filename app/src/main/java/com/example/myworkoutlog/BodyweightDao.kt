@@ -31,7 +31,7 @@ interface BodyweightDao {
     fun getRecentBodyweightEntries(limit: Int): Flow<List<BodyweightEntry>>
 
     @Query("DELETE FROM bodyweight_entry_table WHERE id = :entryId")
-    suspend fun deleteBodyweightEntryById(entryId: String)
+    fun deleteBodyweightEntryById(entryId: String)
 
     // Get the most recent bodyweight before or on a specific date
     @Query("SELECT * FROM bodyweight_entry_table WHERE date <= :date ORDER BY date DESC, timestamp DESC LIMIT 1")
