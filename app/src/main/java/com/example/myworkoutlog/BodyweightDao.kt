@@ -7,13 +7,13 @@ import kotlinx.coroutines.flow.Flow
 interface BodyweightDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertBodyweightEntry(entry: BodyweightEntry)
+    fun insertBodyweightEntry(entry: BodyweightEntry)
 
     @Update
-    suspend fun updateBodyweightEntry(entry: BodyweightEntry)
+    fun updateBodyweightEntry(entry: BodyweightEntry)
 
     @Delete
-    suspend fun deleteBodyweightEntry(entry: BodyweightEntry)
+    fun deleteBodyweightEntry(entry: BodyweightEntry)
 
     @Query("SELECT * FROM bodyweight_entry_table WHERE date = :date ORDER BY timestamp DESC LIMIT 1")
     suspend fun getBodyweightForDate(date: String): BodyweightEntry?
