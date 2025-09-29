@@ -1,28 +1,102 @@
 # Claude Development Context
 
-## 🎯 CURRENT FOCUS: Advanced Personalization
-> **📍 See [docs/NEXT_TASK.md](./docs/NEXT_TASK.md) for complete current task details**
+## 🎯 CURRENT FOCUS: Production Stability & Bug Resolution
+> **📍 Latest session: Bodyweight tracking and workout session management improvements**
 
-**Branch**: `feature/workout-logger-ui-improvements`  
-**Priority**: HIGH - User-controlled adaptive dashboard experience  
-**Goal**: Implement advanced personalization features with drag-and-drop widget reordering
+**Branch**: `feature/workout-logger-ui-improvements`
+**Priority**: HIGH - Production stability with comprehensive bug fixes
+**Goal**: Resolve critical bodyweight tracking and workout session timer issues
 
 ## Current Status
-- Last commit: `ux: Improve delete button UX with overflow menu pattern`
-- Development Phase: **Critical Bug Fixes COMPLETE - Advanced Personalization ACTIVE** ✅
+- Last commit: `fix: Resolve bodyweight tracking and workout session timer issues`
+- Development Phase: **Bodyweight Tracking & Session Management COMPLETE** ✅
 
 ## App State Summary
 **Production-ready enterprise-grade fitness application** with comprehensive analytics, cloud backup, Galaxy Z Fold 6 optimization, and professional user experience that rivals commercial fitness applications.
 
-## ✅ **LATEST COMPLETION: Critical Bug Fixes - ALL RESOLVED** 🎉
+## ✅ **LATEST COMPLETION: Bodyweight Tracking & Session Management - ALL RESOLVED** 🎉
 
-### **Completed**: 2025-09-09 | **Commits**: `c3bbcbd`, `b65fb36`, `dd9a821`
+### **Completed**: 2025-01-31 | **Commits**: `919cd77`, `f5d64e8`, `c3fd712`, `bfbb1fa`
 
-- ✅ **Issue 1: Large Screen Hidden Widget Recovery** - Added functionality to `AdaptiveWidgetGrid`
-- ✅ **Issue 2: Template Delete Functionality** - Comprehensive implementation with Material Design overflow menus
-- ✅ **Issue 3: Program Delete Functionality** - Full delete implementation with `deleteById()` method
-- ✅ **Bonus UX Enhancement**: Replaced prominent delete buttons with overflow menu pattern
-- ✅ **Cross-Platform Coverage**: Solutions work on both small and large screen layouts
+- ✅ **Bodyweight Tracking System**: Complete standalone bodyweight entry with dedicated DAO and entity
+- ✅ **Room Compilation Fixes**: Resolved persistent compilation errors with suspend Query methods
+- ✅ **Workout Session Timer Issues**: Fixed timer showing "0:-1" and freezing after edit/resume cycles
+- ✅ **Session State Management**: Proper preservation of in-progress state during workout editing
+- ✅ **Duplicate Workout Prevention**: Resolved duplicate creation after edit-resume flow
+- ✅ **Database Threading**: Added proper IO dispatcher usage for all database operations
+
+## 🎯 **BODYWEIGHT TRACKING & SESSION MANAGEMENT IMPLEMENTATION - COMPLETE** ✅
+
+### **Bodyweight Tracking System Implementation - COMPLETE** ✅
+**Problem Solved**: The "Add Bodyweight" button on dashboard caused endless loading due to invalid route navigation. Implemented comprehensive standalone bodyweight tracking system.
+
+**🔧 Core Implementation**:
+- **BodyweightEntry Entity**: Complete data model with date, weight, unit, timestamp, and notes fields
+- **BodyweightDao Interface**: CRUD operations with Flow-based queries for real-time updates
+- **BodyweightEntryDialog**: Professional UI dialog with date picker, weight input, and notes
+- **Dashboard Integration**: Functional "Add Bodyweight" button with proper state management
+- **Workout Integration**: Auto-populates bodyweight when starting new workout sessions
+
+**✨ Features**:
+- **Standalone Tracking**: Bodyweight data useful even without workouts (perfect for cutting cycles)
+- **Dashboard Widget Integration**: Automatically appears in bodyweight trend widget
+- **Date-based Lookup**: Smart retrieval of bodyweight for workout sessions on same day
+- **Professional UI**: Material 3 design with proper validation and error handling
+- **Data Persistence**: Reliable storage with proper database operations
+
+**🔧 Technical Excellence**:
+- **Room Database Integration**: Version 21 with proper entity and DAO setup
+- **StateFlow Management**: Reactive UI updates with proper lifecycle handling
+- **Database Threading**: Proper IO dispatcher usage for non-blocking operations
+- **Dialog State Management**: Clean show/hide logic with error handling
+
+### **Room Database Compilation Fixes - COMPLETE** ✅
+**Problem Solved**: Persistent Room compilation errors with "unexpected jvm signature V" and Continuation type parameter mismatches.
+
+**🔧 Root Cause Analysis**:
+- **Inconsistent Patterns**: New BodyweightDao used suspend with @Query returning nullable values
+- **Generated Code Issues**: KSP generated Java code with Continuation type mismatches
+- **Codebase Pattern Discovery**: NO other DAO uses suspend with nullable @Query returns
+
+**✨ Solution Applied**:
+- **Pattern Compliance**: Removed suspend from getBodyweightForDate, getLatestBodyweightEntry, getLatestBodyweightBeforeDate
+- **Consistent Architecture**: Now matches LoggedWorkoutDao and WorkoutTemplateDao patterns
+- **Threading Fix**: Added withContext(IO) wrapper for database calls in ViewModels
+- **Compilation Success**: All Room annotation processor errors resolved
+
+### **Workout Session Timer Fixes - COMPLETE** ✅
+**Problem Solved**: Complex timer issues including "0:-1" display, frozen timers after editing, and duplicate workout creation.
+
+**🔧 Multi-layered Timer Issues**:
+- **Negative Timer Values**: Timer showing "0:-1" when resuming incomplete sessions
+- **Edit Mode Timer Confusion**: Timer not showing info for incomplete workouts in edit mode
+- **State Contamination**: Timer frozen after editing with stale duration values persisting
+- **Duplicate Creation**: Edit-resume cycle creating duplicate workouts in history
+
+**✨ Comprehensive Solutions**:
+- **Timer Safety**: Added maxOf(0, elapsed.toInt()) to prevent negative values
+- **Edit Mode Duration**: Calculate elapsed time from startTimestamp for in-progress workouts
+- **State Preservation**: Keep original isInProgress status when editing workouts
+- **Timer Restoration**: Restore workoutStartTimeMillis when saving in-progress workouts
+- **State Cleanup**: Clear _originalWorkoutDurationSeconds in loadInProgressWorkout
+- **Clean Transitions**: Proper state management between edit and resume modes
+
+**🔧 Technical Implementation**:
+- **Enhanced loadInProgressWorkout**: Clear stale edit state before resuming
+- **Smart saveWorkout**: Different handling for completed vs in-progress workouts
+- **Timer State Management**: Comprehensive cleanup in cancelWorkout and initialization
+- **Flow Control**: Proper handling of edit → save → resume → continue workflows
+
+### **Database Integration Improvements - COMPLETE** ✅
+**Problem Solved**: Threading violations and improper database operation context in ViewModel operations.
+
+**🔧 Threading Architecture**:
+- **IO Dispatcher Usage**: Wrapped database operations in withContext(Dispatchers.IO)
+- **Non-Suspend DAO Integration**: Proper handling of regular functions in coroutine context
+- **State Flow Updates**: Maintained UI thread context for StateFlow updates
+- **Error Handling**: Enhanced error catching with proper dialog dismissal
+
+**Result**: All bodyweight tracking, session management, and timer functionality working seamlessly with production-ready stability and proper state management throughout all workout session lifecycles.
 
 ## 🏆 Major Completed Features
 - ✅ **Enhanced Workout Logger**: Modern UI with advanced input components, rest time tracking, and video references

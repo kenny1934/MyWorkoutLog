@@ -725,13 +725,18 @@ class DashboardViewModel(
                     notes = notes
                 )
 
-                bodyweightDao.insertBodyweightEntry(entry)
+                withContext(Dispatchers.IO) {
+                    bodyweightDao.insertBodyweightEntry(entry)
+                }
 
                 // Hide dialog and refresh dashboard to update bodyweight trend widget
                 _showBodyweightDialog.value = false
                 refreshDashboard()
             } catch (e: Exception) {
                 println("Error saving bodyweight entry: ${e.message}")
+                e.printStackTrace()
+                // Hide dialog even on error so user isn't stuck
+                _showBodyweightDialog.value = false
             }
         }
     }

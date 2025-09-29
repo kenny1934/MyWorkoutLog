@@ -88,7 +88,7 @@ class WorkoutLoggerViewModel(
                 } ?: emit(-1)  // Fallback to disabled if no duration available
             } else if (workoutStartTimeMillis > 0) {
                 val elapsed = (System.currentTimeMillis() - workoutStartTimeMillis) / 1000
-                emit(elapsed.toInt())
+                emit(maxOf(0, elapsed.toInt())) // Prevent negative timer values
             } else {
                 emit(0)
             }
@@ -222,8 +222,14 @@ class WorkoutLoggerViewModel(
                 if (existingWorkout != null) {
                     // Don't set workoutStartTimeMillis in edit mode to prevent timer from running
                     // Calculate and store original workout duration for display
-                    val originalDurationSeconds = if (existingWorkout.startTimestamp != null && existingWorkout.endTimestamp != null) {
-                        ((existingWorkout.endTimestamp - existingWorkout.startTimestamp) / 1000).toInt()
+                    val originalDurationSeconds = if (existingWorkout.startTimestamp != null) {
+                        if (existingWorkout.endTimestamp != null) {
+                            // Completed workout: use actual duration
+                            ((existingWorkout.endTimestamp - existingWorkout.startTimestamp) / 1000).toInt()
+                        } else {
+                            // In-progress workout: calculate elapsed time from start to now
+                            ((System.currentTimeMillis() - existingWorkout.startTimestamp) / 1000).toInt()
+                        }
                     } else null
                     _originalWorkoutDurationSeconds.value = originalDurationSeconds
                     
@@ -278,6 +284,9 @@ class WorkoutLoggerViewModel(
             
             // No existing workout found, create new one
             workoutStartTimeMillis = System.currentTimeMillis()
+
+            // Clear any stale timer state from previous sessions
+            _originalWorkoutDurationSeconds.value = null
             
             // Get template snapshot for immediate access
             val template = try {
@@ -417,13 +426,14 @@ class WorkoutLoggerViewModel(
                 // Create the final workout object to be saved, using the session's bodyweight
                 // or the fallback value we just found.
                 val finalWorkout = if (isEditMode && originalWorkoutId != null) {
-                    // For edit mode, preserve original timestamps and ID
+                    // For edit mode, preserve original timestamps, ID, and in-progress state
+                    val originalWorkout = _activeWorkoutState.value
                     workoutToSave.copy(
                         id = originalWorkoutId!!, // Keep original ID
                         performedWeightUnit = currentUnit,
                         bodyweight = finalBodyweight,
                         userCycleName = activeCycle?.userCycleName,
-                        isInProgress = false // Mark as completed
+                        isInProgress = originalWorkout?.isInProgress ?: false // Preserve original in-progress state
                         // Note: We don't update endTimestamp in edit mode to preserve original workout timing
                     )
                 } else {
@@ -468,7 +478,18 @@ class WorkoutLoggerViewModel(
                 // Reset edit mode state
                 isEditMode = false
                 originalWorkoutId = null
-                _activeWorkoutState.value = null
+
+                // Handle state based on workout completion status
+                if (finalWorkout.isInProgress == false) {
+                    // Workout is completed - clear all state
+                    _activeWorkoutState.value = null
+                    _originalWorkoutDurationSeconds.value = null
+                    workoutStartTimeMillis = 0L
+                } else {
+                    // Workout is still in-progress - restore timer state for continuation
+                    workoutStartTimeMillis = finalWorkout.startTimestamp ?: System.currentTimeMillis()
+                    _originalWorkoutDurationSeconds.value = null // Clear edit mode duration
+                }
             }
         }
     }
@@ -952,9 +973,14 @@ class WorkoutLoggerViewModel(
     
     // PHASE 4: Load an existing in-progress workout (must be called from IO context)
     private suspend fun loadInProgressWorkout(workout: LoggedWorkout) {
-        // Set timing context
+        // Clear any stale edit mode state
+        isEditMode = false
+        originalWorkoutId = null
+        _originalWorkoutDurationSeconds.value = null
+
+        // Set timing context for live timer
         workoutStartTimeMillis = workout.startTimestamp ?: System.currentTimeMillis()
-        
+
         // Load the workout into active state (switch to Main thread for UI update)
         withContext(Dispatchers.Main) {
             _activeWorkoutState.value = workout
@@ -1027,6 +1053,8 @@ class WorkoutLoggerViewModel(
         _activeWorkoutState.value = null
         isEditMode = false
         originalWorkoutId = null
+        workoutStartTimeMillis = 0L
+        _originalWorkoutDurationSeconds.value = null
     }
     
     // PHASE 5: Lifecycle Management - Clean up when ViewModel is destroyed
