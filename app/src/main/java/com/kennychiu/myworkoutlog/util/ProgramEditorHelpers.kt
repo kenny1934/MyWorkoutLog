@@ -32,3 +32,28 @@ fun moveWeek(
     }
     return reordered.mapIndexed { i, w -> w.copy(order = i + 1) }
 }
+
+fun moveSessionToWeek(
+    weeks: List<ProgramWeekDefinition>,
+    fromWeekId: String,
+    sessionId: String,
+    toWeekId: String
+): List<ProgramWeekDefinition> {
+    if (fromWeekId == toWeekId) return weeks
+    val fromWeek = weeks.firstOrNull { it.id == fromWeekId } ?: return weeks
+    val toWeek = weeks.firstOrNull { it.id == toWeekId } ?: return weeks
+    val session = fromWeek.sessions.firstOrNull { it.id == sessionId } ?: return weeks
+
+    val remainingFrom = fromWeek.sessions
+        .filter { it.id != sessionId }
+        .mapIndexed { i, s -> s.copy(order = i + 1) }
+    val appendedTo = (toWeek.sessions + session.copy(order = toWeek.sessions.size + 1))
+
+    return weeks.map { w ->
+        when (w.id) {
+            fromWeekId -> w.copy(sessions = remainingFrom)
+            toWeekId -> w.copy(sessions = appendedTo)
+            else -> w
+        }
+    }
+}

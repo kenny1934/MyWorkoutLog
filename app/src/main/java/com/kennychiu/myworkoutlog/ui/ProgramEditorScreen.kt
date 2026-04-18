@@ -238,6 +238,10 @@ fun ProgramEditorScreen(
                                                     w.copy(sessions = reorderedSessions)
                                                 } else w
                                             }
+                                        },
+                                        otherWeeks = editedWeeks.filter { it.id != week.id },
+                                        onMoveToWeek = { targetWeekId ->
+                                            editedWeeks = moveSessionToWeek(editedWeeks, week.id, session.id, targetWeekId)
                                         }
                                     )
                                     Spacer(Modifier.height(8.dp))
@@ -313,10 +317,13 @@ fun SessionCard(
     canMoveUp: Boolean = false,
     canMoveDown: Boolean = false,
     onMoveUp: (() -> Unit)? = null,
-    onMoveDown: (() -> Unit)? = null
+    onMoveDown: (() -> Unit)? = null,
+    otherWeeks: List<ProgramWeekDefinition> = emptyList(),
+    onMoveToWeek: ((targetWeekId: String) -> Unit)? = null
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showMoveDialog by remember { mutableStateOf(false) }
     var showTemplateDropdown by remember { mutableStateOf(false) }
 
     Card(
@@ -413,6 +420,20 @@ fun SessionCard(
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                if (onMoveToWeek != null && otherWeeks.isNotEmpty()) {
+                    IconButton(
+                        onClick = { showMoveDialog = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SwapHoriz,
+                            contentDescription = "Move session to another week",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
                 // Edit button
                 IconButton(
                     onClick = { showEditDialog = true },
@@ -529,6 +550,39 @@ fun SessionCard(
                 TextButton(onClick = { showEditDialog = false }) {
                     Text("Cancel")
                 }
+            }
+        )
+    }
+
+    // Move-to-Week Dialog
+    if (showMoveDialog && onMoveToWeek != null) {
+        AlertDialog(
+            onDismissRequest = { showMoveDialog = false },
+            title = { Text("Move to Week") },
+            text = {
+                Column {
+                    Text(
+                        text = "Move \"${session.sessionName}\" to:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    otherWeeks.forEach { targetWeek ->
+                        Text(
+                            text = targetWeek.weekLabel,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onMoveToWeek(targetWeek.id)
+                                    showMoveDialog = false
+                                }
+                                .padding(vertical = 10.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showMoveDialog = false }) { Text("Cancel") }
             }
         )
     }
@@ -800,6 +854,10 @@ fun EnhancedProgramEditor(
                                                 w.copy(sessions = reorderedSessions)
                                             } else w
                                         }
+                                    },
+                                    otherWeeks = editedWeeks.filter { it.id != week.id },
+                                    onMoveToWeek = { targetWeekId ->
+                                        editedWeeks = moveSessionToWeek(editedWeeks, week.id, session.id, targetWeekId)
                                     }
                                 )
                             }

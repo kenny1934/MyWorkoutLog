@@ -141,6 +141,76 @@ class ProgramEditorHelpersTest {
     }
 
     @Test
+    fun `moveSessionToWeek appends session to target week with correct order`() {
+        val weeks = listOf(
+            week("w1", sessions = listOf(session("s1", order = 1), session("s2", order = 2))),
+            week("w2", sessions = listOf(session("t1", order = 1)))
+        )
+        val result = moveSessionToWeek(weeks, fromWeekId = "w1", sessionId = "s1", toWeekId = "w2")
+
+        val dest = result.first { it.id == "w2" }
+        assertEquals(listOf("t1", "s1"), dest.sessions.map { it.id })
+        assertEquals(listOf(1, 2), dest.sessions.map { it.order })
+    }
+
+    @Test
+    fun `moveSessionToWeek renumbers source week sessions after removal`() {
+        val weeks = listOf(
+            week("w1", sessions = listOf(
+                session("s1", order = 1),
+                session("s2", order = 2),
+                session("s3", order = 3)
+            )),
+            week("w2")
+        )
+        val result = moveSessionToWeek(weeks, fromWeekId = "w1", sessionId = "s2", toWeekId = "w2")
+
+        val src = result.first { it.id == "w1" }
+        assertEquals(listOf("s1", "s3"), src.sessions.map { it.id })
+        assertEquals(listOf(1, 2), src.sessions.map { it.order })
+    }
+
+    @Test
+    fun `moveSessionToWeek is a no-op when source and target are the same week`() {
+        val weeks = listOf(week("w1", sessions = listOf(session("s1"))))
+        val result = moveSessionToWeek(weeks, fromWeekId = "w1", sessionId = "s1", toWeekId = "w1")
+        assertEquals(weeks, result)
+    }
+
+    @Test
+    fun `moveSessionToWeek is a no-op when source week is missing`() {
+        val weeks = listOf(week("w1", sessions = listOf(session("s1"))), week("w2"))
+        assertEquals(weeks, moveSessionToWeek(weeks, fromWeekId = "missing", sessionId = "s1", toWeekId = "w2"))
+    }
+
+    @Test
+    fun `moveSessionToWeek is a no-op when target week is missing`() {
+        val weeks = listOf(week("w1", sessions = listOf(session("s1"))), week("w2"))
+        assertEquals(weeks, moveSessionToWeek(weeks, fromWeekId = "w1", sessionId = "s1", toWeekId = "missing"))
+    }
+
+    @Test
+    fun `moveSessionToWeek is a no-op when session is missing in source week`() {
+        val weeks = listOf(week("w1", sessions = listOf(session("s1"))), week("w2"))
+        assertEquals(weeks, moveSessionToWeek(weeks, fromWeekId = "w1", sessionId = "zzz", toWeekId = "w2"))
+    }
+
+    @Test
+    fun `moveSessionToWeek preserves session id sessionName and workoutTemplateId`() {
+        val original = ProgramSessionDefinition(id = "s1", sessionName = "Push A", workoutTemplateId = "tpl-42", order = 1)
+        val weeks = listOf(
+            week("w1", sessions = listOf(original)),
+            week("w2")
+        )
+        val result = moveSessionToWeek(weeks, fromWeekId = "w1", sessionId = "s1", toWeekId = "w2")
+
+        val moved = result.first { it.id == "w2" }.sessions.single()
+        assertEquals("s1", moved.id)
+        assertEquals("Push A", moved.sessionName)
+        assertEquals("tpl-42", moved.workoutTemplateId)
+    }
+
+    @Test
     fun `moveWeek preserves sessions and ids of the moved week`() {
         val sessions = listOf(session("s1"), session("s2", order = 2))
         val weeks = listOf(
