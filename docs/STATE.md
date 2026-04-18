@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 4 slice 9 — week reorder up/down buttons in the program editor).
+Last updated: 2026-04-19 (Phase 4 slice 10 — active-cycle rename from the cycle-detail screen).
 
 ## Next session — start here
 
@@ -43,6 +43,14 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 - Secondary fix on the compact WorkoutLogger `LazyColumn`: `.padding(paddingValues).padding(16.dp)` → `.padding(paddingValues)` with `contentPadding = PaddingValues(16.dp)`. This lets the last set scroll fully into view instead of being pinned inside a shrunk viewport. Same anti-pattern also exists in several other screens' `Column(.padding(paddingValues).padding(16.dp))` wrappers but isn't clipping anything visible there (Columns aren't scrollable), so left alone.
 - Dashboard compact-layout `LazyColumn`: `.padding(layoutInfo.contentPadding)` → `contentPadding = PaddingValues(layoutInfo.contentPadding)` so widgets scroll through the bottom padding instead of the whole list being pinned.
 - JVM tests still 36; no new tests (layout bug).
+
+**Phase 4 slice 10 landed 2026-04-19** (build + JVM tests green, no schema change):
+- `ActiveCycleDao.renameActiveCycle(newName)` — single-row UPDATE on the active cycle (`WHERE id = 1`).
+- `LoggedWorkoutDao.renameLoggedWorkoutsByCycle(cycleId, newName)` — UPDATE that backfills the `userCycleName` snapshot on every workout in the given cycle. `HistoryViewModel` and the completed-cycle rollup both read this snapshot field, so history picks up the new name without schema work.
+- `CycleDetailViewModel.renameActiveCycle(newName)` — trims input, no-ops on blank or when there's no active cycle, then dispatches both DAO writes on `Dispatchers.IO`. `CycleDetailViewModel` now holds `activeCycleDao` / `loggedWorkoutDao` as `private val` (was local ctor params).
+- `ui/CycleDetailScreen.kt::CycleHeaderCard` — Edit pencil `IconButton` next to the cycle name. Tapping opens a new private `RenameCycleDialog` composable (AlertDialog + single-line `OutlinedTextField` prefilled with the current name). Save is disabled until the trimmed input is non-blank AND different from the current name.
+- Semantics: rename works for the currently active cycle only. Once a cycle ends, its name is frozen on `LoggedWorkout.userCycleName` snapshots — no rename UX for ended cycles yet.
+- No schema change; no new tests (VM test would be a pure delegate over two DAOs — low value). JVM test count stays 49.
 
 **Phase 4 slice 9 landed 2026-04-19** (build + JVM tests green, no schema change):
 - New `util/ProgramEditorHelpers.kt::moveWeek(weeks, fromIndex, toIndex)` — pure helper. Moves the week at `fromIndex` to `toIndex` and renumbers every week's `order` to match list position. No-op if `fromIndex == toIndex`, or if either index is out of bounds. Sessions and all other week fields are preserved on the moved week.
@@ -214,7 +222,8 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-19, slice 7): cycle-context banner mirrored into the master-detail logger layout so the Z Fold's tablet layout shows the same deload/RIR context as the compact layout. Banner slot added to `MasterDetailWorkoutView`.
   - Done (2026-04-19, slice 8): bulk-copy-week action on each week card in both the compact and master-detail program editors. Pure helper `util/ProgramEditorHelpers.kt::duplicateWeekInto` with 6 JVM tests. No schema change.
   - Done (2026-04-19, slice 9): up/down reorder arrows on each week card in both program editors. Pure helper `util/ProgramEditorHelpers.kt::moveWeek` with 7 JVM tests. No schema change.
-  - Further candidates: per-exercise progression scheme (linear / double / RPE — separate from the per-set `targetWeight`); history-session rename when user-cycle name changes; session drag-reorder (currently up/down arrows only).
+  - Done (2026-04-19, slice 10): rename the active cycle from the cycle-detail screen. Two DAO updates (`ActiveCycleDao.renameActiveCycle`, `LoggedWorkoutDao.renameLoggedWorkoutsByCycle`) + `CycleDetailViewModel.renameActiveCycle` + Edit pencil + dialog. Backfills the `userCycleName` snapshot on every workout in the cycle so history picks up the new name. No schema change.
+  - Further candidates: per-exercise progression scheme (linear / double / RPE — separate from the per-set `targetWeight`); rename UX for ended cycles (surface via HistoryCycleViews); true drag-reorder (currently up/down arrows only).
 
 ## Deleted during cleanup
 
