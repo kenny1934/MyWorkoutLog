@@ -383,8 +383,8 @@ class WidgetRepositorySimplified(
         val actions = mutableListOf<QuickAction>()
         
         if (activeCycle != null) {
-            val isCycleCompleted = isCycleCompleted(activeCycle)
-            
+            val isCycleCompleted = cycleProgress(activeCycle).isComplete
+
             if (isCycleCompleted) {
                 // Cycle is completed - show completion actions
                 actions.add(QuickAction(
@@ -462,12 +462,6 @@ class WidgetRepositorySimplified(
         } catch (e: Exception) {
             null
         }
-    }
-    
-    private fun isCycleCompleted(activeCycle: ActiveProgramCycle): Boolean {
-        val totalSessions = activeCycle.cycleProgram.weeks.sumOf { it.sessions.size }
-        val completedSessions = activeCycle.completedSessions.size
-        return completedSessions >= totalSessions
     }
     
     private suspend fun getBodyweightTrendData(): List<BodyweightPoint> {
