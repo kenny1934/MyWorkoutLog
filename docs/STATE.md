@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 4 slices 14 — lastPerformance wiring, 15 — Compose deprecation sweep, 16 — isCycleCompleted dedup).
+Last updated: 2026-04-19 (Phase 4 slice 17 — lastPerformance in master-detail logger).
 
 ## Next session — start here
 
@@ -43,6 +43,13 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 - Secondary fix on the compact WorkoutLogger `LazyColumn`: `.padding(paddingValues).padding(16.dp)` → `.padding(paddingValues)` with `contentPadding = PaddingValues(16.dp)`. This lets the last set scroll fully into view instead of being pinned inside a shrunk viewport. Same anti-pattern also exists in several other screens' `Column(.padding(paddingValues).padding(16.dp))` wrappers but isn't clipping anything visible there (Columns aren't scrollable), so left alone.
 - Dashboard compact-layout `LazyColumn`: `.padding(layoutInfo.contentPadding)` → `contentPadding = PaddingValues(layoutInfo.contentPadding)` so widgets scroll through the bottom padding instead of the whole list being pinned.
 - JVM tests still 36; no new tests (layout bug).
+
+**Phase 4 slice 17 landed 2026-04-19** (build + JVM tests green on retry, no schema change):
+- `lastPerformance` wired into the master-detail logger's master panel. Each row in the exercise list now shows "Last: N × reps @ Wunit (days-ago)" under the "X/Y" sets counter, matching the compact-layout `EnhancedExerciseCard` treatment.
+- `ui/AdaptiveWorkoutComponents.kt::ExerciseListItem` gains an optional `lastPerformance: String? = null` param. Rendered as a `labelSmall` Text (to match the existing "X/Y" counter density), colored `onPrimaryContainer` when the row is selected and `onSurfaceVariant` otherwise — same coloring pattern as the name/count already uses.
+- `MasterDetailWorkoutView` gains a `lastPerformanceFor: (String) -> String? = { null }` lambda param and threads the exerciseId through to each `ExerciseListItem`. Default no-op preserves the previous behaviour for any other call site.
+- `WorkoutLoggerScreens.kt` call site passes `lastPerformanceFor = { exerciseId -> viewModel.getLastPerformance(exerciseId) }`. Same VM method the compact layout already uses — no new plumbing.
+- No schema change, no new tests (pure UI wiring over an existing VM accessor). JVM count stays 64.
 
 **Phase 4 slice 16 landed 2026-04-19** (build + JVM tests green, no schema change):
 - `WidgetRepositorySimplified.isCycleCompleted` folded into a call to `cycleProgress(activeCycle).isComplete`. Only caller was one branch in `getBasicQuickActions`. Private helper deleted (-6 LOC). Minor semantic tightening in the empty-program edge case — the old check (0 completed >= 0 total) flagged empty programs as complete; `cycleProgress` guards against that with `totalSessionCount > 0`. Existing `CycleProgressTest` coverage applies.
@@ -265,7 +272,8 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-19, slice 14): `lastPerformance` wiring. Pure helper `util/LastPerformance.kt::summarizeLastPerformance` with 8 JVM tests; `WorkoutLoggerViewModel` caches summaries alongside `performanceSuggestions`. `EnhancedExerciseCard` on the workout logger now shows the last session's top set. No schema change.
   - Done (2026-04-19, slice 15): Compose deprecation sweep. `Modifier.menuAnchor()` → `MenuAnchorType.PrimaryNotEditable` overload in 4 sites; `LinearProgressIndicator`/`CircularProgressIndicator` `progress: Float` → lambda in 4 sites; every auto-mirrored icon migrated (TrendingUp/Down/Flat, ShowChart, DirectionsRun, List, Assignment, Logout, Launch, ArrowForward). Only remaining deprecation in the build is in Google's `AndroidHttp` Java class — out of scope. No behavior change, no new tests.
   - Done (2026-04-19, slice 16): `isCycleCompleted` dedup. `WidgetRepositorySimplified` now calls `cycleProgress(cycle).isComplete`; private helper deleted. Existing `CycleProgressTest` coverage applies. Minor semantic fix: empty programs are no longer flagged as complete.
-  - Further candidates: per-exercise progression scheme (linear / double / RPE — separate from the per-set `targetWeight`); true drag-reorder (currently up/down arrows only); master-detail logger also rendering `lastPerformance` on its exercise rows (compact-only today).
+  - Done (2026-04-19, slice 17): `lastPerformance` in the master-detail logger's master panel. `ExerciseListItem` gains an optional `lastPerformance: String?` param; `MasterDetailWorkoutView` exposes a `lastPerformanceFor` lambda the `WorkoutLoggerScreens` call site fills from `viewModel.getLastPerformance`. Same VM accessor as the compact layout — no new plumbing, no schema change.
+  - Further candidates: per-exercise progression scheme (linear / double / RPE — separate from the per-set `targetWeight`); true drag-reorder (currently up/down arrows only).
 
 ## Deleted during cleanup
 
