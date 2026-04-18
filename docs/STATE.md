@@ -31,7 +31,7 @@ yes | sdkmanager --licenses
 sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 ```
 
-JDK 21 is already installed (`/usr/lib/jvm/java-21-openjdk-amd64`) and works with Gradle 8.13. No additional JDK needed.
+Use JDK 17 (`/usr/lib/jvm/java-17-openjdk-amd64`) — it has the full toolchain including `javac`. The `java-21-openjdk-amd64` package installed on this machine is JRE-only and Gradle rejects it with "does not provide the required capabilities: [JAVA_COMPILER]". Export `JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64` before running `./gradlew`.
 
 ### 2. Verify the 4 unpushed commits build
 
