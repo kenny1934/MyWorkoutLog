@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-18 (Phase 4 slice 1 landed).
+Last updated: 2026-04-18 (Phase 4 slice 1 landed; legacy dashboard path deleted).
 
 ## Next session — start here
 
@@ -10,11 +10,10 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 
 **Phase 3 kick-off landed 2026-04-18:** 20 JVM unit tests across `ActiveCycleViewModel` (4), `HistoryViewModel` (5), and `WorkoutLoggerViewModel` (11) pin the fragile timer/edit/resume flows, cycle UUID generation, and history cycle filtering. A Room `MigrationTestHelper` smoke test for schema v21 is committed under `app/src/androidTest/` but requires an emulator or device to run — run it from Windows Android Studio.
 
-**Phase 4 slice 1 landed 2026-04-18** (verified on device):
-- `util/CycleProgress.kt` adds a pure `cycleProgress(ActiveProgramCycle)` helper returning `CycleProgressInfo` (ordered weeks, current week + index, next session, completed/total session counts, start date, planned end date = `startDate + weeks.size` weeks, `isComplete` flag). 8 JVM tests in `util/CycleProgressTest.kt` cover fresh/mid/complete cycles, out-of-order weeks, malformed start date, and empty program. Unit test total is now 28.
-- `ui/DashboardWidgetCards.kt::SimpleCycleProgressWidgetCard` consumes the helper. The live dashboard's "Cycle Progress" widget now shows a "Started … · Planned end …" line below the session progress, and the primary button reads `Start <next session name>` and navigates with the correct `cycleId/weekId/sessionId/templateId` (previously `nextSession` was hardcoded to `null` in `WidgetRepositorySimplified.kt:210`, so the button fell through to an "Analytics" fallback and never actually opened the next session).
-- `ui/DashboardCycleViews.kt` (the `LegacyDashboardScreen` path) also got parallel treatment — header summary card, current-week highlight, "Up next" badge. That path is only reachable when `dashboardViewModel == null`, which in the current `MainActivity` wiring never happens. Kept for consistency; easy to delete if we ever prune the legacy screen.
-- No schema change. `calculateBasicCycleProgress` / `calculateCycleProgressText` in `WidgetRepositorySimplified.kt` still exist and populate the widget's legacy fields; they can be folded into the helper later.
+**Phase 4 slice 1 + cleanup landed 2026-04-18** (two commits pushed, device-verified):
+- `ee5d915` — slice 1. `util/CycleProgress.kt` adds a pure `cycleProgress(ActiveProgramCycle)` helper returning `CycleProgressInfo` (ordered weeks, current week + index, next session, completed/total session counts, start date, planned end date = `startDate + weeks.size` weeks, `isComplete` flag). 8 JVM tests in `util/CycleProgressTest.kt`. `ui/DashboardWidgetCards.kt::SimpleCycleProgressWidgetCard` consumes the helper — the live "Cycle Progress" widget now shows a "Started … · Planned end …" line and the primary button reads `Start <next session name>` with a correct cycleId/weekId/sessionId/templateId route. No schema change.
+- `c348f75` — cleanup. `LegacyDashboardScreen`, `ActiveCycleDashboard`, `NoActiveCycleDashboard`, and the whole `ui/DashboardCycleViews.kt` file were unreachable in the current `MainActivity` wiring (`dashboardViewModel` is always non-null). Deleted. `DashboardScreen` now just wraps `EnhancedDashboardScreen` and takes only the two params it actually needs. In `data/WidgetRepositorySimplified.kt`, `calculateBasicCycleProgress` / `calculateCycleProgressText` duplicated the helper's logic — replaced with one `cycleProgress(activeCycle)` call, preserved the existing widget text format, deleted both private functions. Net -310 LOC, no behavior change.
+- Unit test total is 28.
 
 The SDK setup section below is kept as a reference for reinstalling on a fresh machine.
 
@@ -133,11 +132,9 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-18): `WorkoutDatabaseMigrationTest` at `app/src/androidTest/.../data/` uses `MigrationTestHelper` to confirm the v21 schema opens cleanly. It does not run under `./gradlew test` — it's an instrumented test. Run from Android Studio with a connected device/emulator. When the first real `Migration` is added, extend this file with a `runMigrationsAndValidate` case.
   - Not started: tests for other ViewModels (dashboard, PRs, analytics, export/import). Not gating.
 - **Phase 4 — Resume feature work.** Complete mesocycle / program management UX.
-  - Done (2026-04-18, slice 1): current week / next session / planned end date on `ActiveCycleDashboard`. Pure `cycleProgress()` helper + 8 JVM tests; `DashboardCycleViews.kt` consumes it. No schema change.
-  - Next candidates (from the 2026-04-18 audit, no particular ordering):
-    - Deload-week flag on `ProgramWeekDefinition` (first real `Migration` bump to v22 — extend `WorkoutDatabaseMigrationTest` at that point).
-    - Per-exercise progression metadata on `TemplateExercise` (RIR/RPE ranges, rep/weight targets per week).
-    - Dedicated cycle-detail screen (week-by-week breakdown, PRs hit, volume/duration aggregates) — composes on top of what slice 1 computes.
+  - Done (2026-04-18, slice 1 + follow-up cleanup): current week / next session / planned end date live on the dashboard widget via the shared `cycleProgress()` helper. Legacy dashboard path deleted; cycle-progress calculations deduped. See the two commits above.
+  - Next slice (not started): **deload-week flag** on `ProgramWeekDefinition`. This will be the first real `Migration` object (v21 → v22) — `fallbackToDestructiveMigration` is scoped to legacy v1–20 only. Extend `WorkoutDatabaseMigrationTest` with a `runMigrationsAndValidate(21, 22, …)` case at that point, add a toggle on each week card in the program editor, and surface the flag in the dashboard widget when `cycleProgress(cycle).currentWeek?.isDeloadWeek == true`.
+  - Further candidates: per-exercise progression metadata on `TemplateExercise` (RIR/RPE ranges, rep/weight targets per week); dedicated cycle-detail screen (week-by-week breakdown, PRs hit, volume/duration aggregates).
 
 ## Deleted during cleanup
 
