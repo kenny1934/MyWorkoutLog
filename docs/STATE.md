@@ -6,7 +6,7 @@ Last updated: 2026-04-18 (during cleanup from 7-month stall).
 
 ## Next session — start here
 
-As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` is green, and the subpackage restructure has landed on `origin/master` (head: `e5495f2`). All 61 non-root source files now live under `data/`, `ui/`, `viewmodel/`, `util/`. What remains of Phase 2 is splitting the 4 monolithic screen files (sizes in "Structural issues" below).
+As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` is green, the subpackage restructure has landed, and the first of the four monolith splits is done: `DashboardScreen.kt` went from 2,612 → 995 lines, with widget cards, chart cards, and cycle dashboards extracted into sibling files under `ui/`. Three monolith splits remain (`ProgramManagementScreens.kt` 2,088, `HistoryScreens.kt` 1,805, `WorkoutLoggerScreens.kt` 1,618 — save the logger for last because it touches the known-broken timer state).
 
 The SDK setup section below is kept as a reference for reinstalling on a fresh machine.
 
@@ -87,7 +87,7 @@ These features exist in code and appear to be functional based on the screen and
 
 1. ~~**Flat package.**~~ Fixed. Files now live under `data/`, `ui/`, `viewmodel/`, `util/` subpackages. `MainActivity`, `WorkoutApplication`, `AppContainer` stay at the root because `AndroidManifest.xml` references them as `.Name`. Every subpackage file has star imports for the other three to cover cross-package references — a follow-up pass can tighten to specific imports if desired.
 
-2. **Monolithic screen files.** `DashboardScreen.kt` is 2,612 lines, `ProgramManagementScreens.kt` 2,088, `HistoryScreens.kt` 1,805, `WorkoutLoggerScreens.kt` 1,618. Each contains many Composables that should be separate files.
+2. **Monolithic screen files.** `DashboardScreen.kt` is now 995 lines (down from 2,612) after extracting `DashboardWidgetCards.kt` (1,149), `DashboardChartCards.kt` (358), and `DashboardCycleViews.kt` (150). Still to split: `ProgramManagementScreens.kt` 2,088, `HistoryScreens.kt` 1,805, `WorkoutLoggerScreens.kt` 1,618. Each contains many Composables that should be separate files.
 
 3. **Manual DI duplication.** `MainActivity` wires ~14 ViewModel factories with the same `(application as WorkoutApplication).database.xDao()` pattern repeated. Should be centralized in an `AppContainer`.
 
@@ -115,7 +115,8 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
 - **Phase 2 — Structural cleanup.** Partially done.
   - Done: manual DI extracted into `AppContainer`. `MainActivity` dropped from ~160 lines of repeated factory wiring to 14 one-liners. `WorkoutApplication` exposes `container`; all DAO/repository/factory construction lives in one place.
   - Done (2026-04-18): package restructure into `data/ui/viewmodel/util`. 61 files moved, every cross-package file gets star imports for the other three subpackages. Build verified green.
-  - Not started: splitting the 4 monolithic screen files (`DashboardScreen.kt` etc.).
+  - Done (2026-04-18): split `DashboardScreen.kt` (2,612 → 995) into `DashboardWidgetCards.kt`, `DashboardChartCards.kt`, `DashboardCycleViews.kt`. Build verified green.
+  - Not started: splitting the remaining 3 monolithic screen files (`ProgramManagementScreens.kt`, `HistoryScreens.kt`, `WorkoutLoggerScreens.kt`).
 - **Phase 3 — Tests for broken areas.** Not started. Room migration tests; ViewModel unit tests for workout logger timer, active cycle, history cycle filtering.
 - **Phase 4 — Resume feature work.** Complete mesocycle / program management UX.
 
