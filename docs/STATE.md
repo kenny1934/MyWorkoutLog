@@ -6,7 +6,7 @@ Last updated: 2026-04-18 (during cleanup from 7-month stall).
 
 ## Next session — start here
 
-As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` is green, and the 6 cleanup commits (through `d3f6f20`) are pushed to `origin/master`. The next work is Phase 2: split the 4 monolithic screen files and introduce a `data/ui/viewmodel/util` subpackage structure.
+As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` is green, and the subpackage restructure has landed on `origin/master` (head: `e5495f2`). All 61 non-root source files now live under `data/`, `ui/`, `viewmodel/`, `util/`. What remains of Phase 2 is splitting the 4 monolithic screen files (sizes in "Structural issues" below).
 
 The SDK setup section below is kept as a reference for reinstalling on a fresh machine.
 
@@ -85,7 +85,7 @@ These features exist in code and appear to be functional based on the screen and
 
 ## Structural issues (code health)
 
-1. **Flat package.** All ~65 Kotlin files live directly in `com.kennychiu.myworkoutlog`. No `data/`, `ui/`, `viewmodel/` subpackages.
+1. ~~**Flat package.**~~ Fixed. Files now live under `data/`, `ui/`, `viewmodel/`, `util/` subpackages. `MainActivity`, `WorkoutApplication`, `AppContainer` stay at the root because `AndroidManifest.xml` references them as `.Name`. Every subpackage file has star imports for the other three to cover cross-package references — a follow-up pass can tighten to specific imports if desired.
 
 2. **Monolithic screen files.** `DashboardScreen.kt` is 2,612 lines, `ProgramManagementScreens.kt` 2,088, `HistoryScreens.kt` 1,805, `WorkoutLoggerScreens.kt` 1,618. Each contains many Composables that should be separate files.
 
@@ -95,17 +95,15 @@ These features exist in code and appear to be functional based on the screen and
 
 5. **Room DAO convention was unstable.** Recent commits flipped back and forth on `suspend` modifiers for `@Query` / `@Delete`. The current convention (see `CLAUDE.md`) is: suspend for writes, non-suspend for `Flow`/`LiveData` returns, non-suspend snapshot reads only where sync call sites require them.
 
-6. **TODOs.** Three unresolved, all about reading weight unit from user preferences (`DashboardScreen.kt:2608`, `DashboardViewModel.kt:723`, `WorkoutLoggerScreens.kt:503`).
+6. **TODOs.** Three unresolved, all about reading weight unit from user preferences (`ui/DashboardScreen.kt:2608`, `viewmodel/DashboardViewModel.kt:723`, `ui/WorkoutLoggerScreens.kt:503`).
 
 ## Branch state
 
-Master is 4 commits ahead of where the app was last actually developed (2025-09); those 4 commits were a later touch-up of bodyweight + timer. There are 5 other remote branches, most 7–10 months old:
+Only one non-master branch remains on the remote:
 
 - `origin/claude/evaluate-app-rewrite-Eqoyq` — **keep.** Contains the honest audit (`TECH_STACK_EVALUATION.md`) and a Next.js mockup exploring a rewrite direction. Historical reference.
-- `origin/feature/dashboard-enhancements` — stale (9 months), check for salvage then delete.
-- `origin/feature/enhanced-history-display` — stale (10 months), check for salvage then delete.
-- `origin/feature/reorderable-library-migration` — stale (10 months), check for salvage then delete.
-- `origin/feature/workout-logger-ui-improvements` — stale, this is what master was built on.
+
+The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-display, reorderable-library-migration, workout-logger-ui-improvements) were deleted during cleanup.
 
 ## Cleanup plan
 
@@ -116,7 +114,8 @@ Master is 4 commits ahead of where the app was last actually developed (2025-09)
   - Pending: prune the 4 stale remote feature branches.
 - **Phase 2 — Structural cleanup.** Partially done.
   - Done: manual DI extracted into `AppContainer`. `MainActivity` dropped from ~160 lines of repeated factory wiring to 14 one-liners. `WorkoutApplication` exposes `container`; all DAO/repository/factory construction lives in one place.
-  - Not started: package restructure into `data/ui/viewmodel/util` (bundled with the `applicationId` rename to avoid double-touching all 66 files); splitting the 4 monolithic screen files (`DashboardScreen.kt` etc.). Both require a working local build to verify — Android Studio on Windows is currently the only working build path.
+  - Done (2026-04-18): package restructure into `data/ui/viewmodel/util`. 61 files moved, every cross-package file gets star imports for the other three subpackages. Build verified green.
+  - Not started: splitting the 4 monolithic screen files (`DashboardScreen.kt` etc.).
 - **Phase 3 — Tests for broken areas.** Not started. Room migration tests; ViewModel unit tests for workout logger timer, active cycle, history cycle filtering.
 - **Phase 4 — Resume feature work.** Complete mesocycle / program management UX.
 
