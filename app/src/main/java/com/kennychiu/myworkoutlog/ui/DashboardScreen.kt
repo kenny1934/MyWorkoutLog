@@ -552,9 +552,8 @@ fun EnhancedDashboardScreen(
             // Use single column layout for compact screens
             LazyColumn(
                 state = lazyListState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(layoutInfo.contentPadding),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(layoutInfo.contentPadding),
                 verticalArrangement = Arrangement.spacedBy(spacing)
             ) {
             // Header with customization toggle

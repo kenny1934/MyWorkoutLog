@@ -58,7 +58,8 @@ fun ImportScreen(
                     }
                 }
             )
-        }
+        },
+        contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Column(
             modifier = Modifier

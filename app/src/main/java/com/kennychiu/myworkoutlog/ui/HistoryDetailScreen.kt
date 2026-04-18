@@ -52,7 +52,8 @@ fun HistoryDetailScreen(
                     }
                 }
             )
-        }
+        },
+        contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         val currentWorkout = workout
         if (currentWorkout == null) {

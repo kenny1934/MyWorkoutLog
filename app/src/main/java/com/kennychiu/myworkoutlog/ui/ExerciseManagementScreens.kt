@@ -54,7 +54,8 @@ private fun ExerciseManagementSingleColumnView(viewModel: ExerciseViewModel) {
             FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(Icons.Filled.Add, contentDescription = "Add new exercise")
             }
-        }
+        },
+        contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Column(
             modifier = Modifier

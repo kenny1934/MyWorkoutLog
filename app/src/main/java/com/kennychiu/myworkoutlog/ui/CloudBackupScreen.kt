@@ -81,7 +81,8 @@ private fun CloudBackupSingleColumnView(
                     }
                 }
             )
-        }
+        },
+        contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -932,7 +933,8 @@ private fun CloudBackupMasterDetailView(
                     }
                 }
             )
-        }
+        },
+        contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Row(
             modifier = Modifier

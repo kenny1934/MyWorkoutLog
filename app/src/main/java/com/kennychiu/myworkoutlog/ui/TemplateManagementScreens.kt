@@ -70,7 +70,8 @@ private fun TemplateManagementSingleColumnView(
             FloatingActionButton(onClick = { showDialog = true }) {
                 Icon(Icons.Filled.Add, contentDescription = "Create new template")
             }
-        }
+        },
+        contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
             Text("Workout Templates", fontSize = 24.sp, fontWeight = FontWeight.Bold)
@@ -925,7 +926,8 @@ fun TemplateDetailScreen(
             FloatingActionButton(onClick = { showAddExerciseDialog = true }) {
                 Icon(Icons.Filled.Add, "Add Exercise")
             }
-        }
+        },
+        contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Column(
             modifier = Modifier

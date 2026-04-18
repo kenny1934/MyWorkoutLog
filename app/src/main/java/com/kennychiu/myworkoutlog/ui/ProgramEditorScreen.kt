@@ -77,7 +77,8 @@ fun ProgramEditorScreen(
             }) {
                 Icon(Icons.Filled.Add, "Add Week")
             }
-        }
+        },
+        contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues).padding(horizontal = 16.dp)) {
             OutlinedTextField(

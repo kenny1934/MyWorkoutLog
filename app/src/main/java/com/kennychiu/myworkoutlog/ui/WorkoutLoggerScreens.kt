@@ -357,7 +357,12 @@ private fun WorkoutLoggerScreenContent(
                 onReset = { viewModel.resetRestTimer() },
                 onAddTime = { viewModel.addTimeToRestTimer(15) }
             )
-        }
+        },
+        // MainActivity's outer Scaffold already consumes the bottom system-nav inset
+        // via AppBottomNavigationBar. Without zeroing here, this nested Scaffold
+        // double-reserves that inset and clips the last set off the bottom of the
+        // scroll area.
+        contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         // If the workout is not loaded yet, show a loading indicator.
         if (activeWorkout == null) {
@@ -442,8 +447,8 @@ private fun WorkoutLoggerScreenContent(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(paddingValues)
-                            .padding(16.dp),
+                            .padding(paddingValues),
+                        contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                 // Cycle context banner (deload / target RIR) — only when this workout

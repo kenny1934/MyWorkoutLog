@@ -41,7 +41,8 @@ fun ManageProgramsScreen(
             FloatingActionButton(onClick = { showCreateProgramDialog = true }) {
                 Icon(Icons.Filled.Add, contentDescription = "Create new program")
             }
-        }
+        },
+        contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
             Text("Program Blueprints", fontSize = 24.sp, fontWeight = FontWeight.Bold)

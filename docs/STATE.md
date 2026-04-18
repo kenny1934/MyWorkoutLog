@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 4 slice 7 landed; cycle-context banner mirrored into master-detail logger layout).
+Last updated: 2026-04-19 (Bottom-padding / nested-Scaffold inset fix applied across all 11 nested Scaffolds in AppNavHost screens).
 
 ## Next session — start here
 
@@ -36,6 +36,13 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 - New private `CycleContextBanner` composable at the bottom of `ui/WorkoutLoggerScreens.kt`. Renders as the first `LazyColumn` item in the compact layout when the current week has `isDeloadWeek == true` or a non-blank `targetRir`. Shows the week label plus "Deload" (`tertiaryContainer`) and/or "RIR X" (`secondaryContainer`) badges — same theming as the dashboard widget so the two surfaces agree visually.
 - Skipped for the master-detail (`shouldUseWorkoutMasterDetail()`) layout for now — phone usage is the primary gym flow.
 - No data/schema change; reads existing fields added in slices 2/3. JVM tests still 28.
+
+**Bottom-padding fix landed 2026-04-19** (build + JVM tests green, no schema change):
+- The "nested-Scaffold double-reserves system-nav inset" bug documented in slice 5a was only patched on `CycleDetailScreen`. Every other `AppNavHost`-nested Scaffold had the same bug — content clipped above the bottom nav because the inner Scaffold re-reserved the system-nav inset that `MainActivity`'s outer Scaffold had already consumed. Kenny flagged it on the workout logger during an actual workout.
+- Canonical fix (`contentWindowInsets = WindowInsets(0)`) applied to all remaining inner Scaffolds: `WorkoutLoggerScreens.kt:270`, `HistoryDetailScreen.kt:33`, `ExerciseManagementScreens.kt:52`, `ProgramListScreen.kt:39`, `CloudBackupScreen.kt:74 + :925`, `ImportScreen.kt:51`, `ExportScreen.kt:52`, `ProgramEditorScreen.kt:48`, `TemplateManagementScreens.kt:68 + :899`.
+- Secondary fix on the compact WorkoutLogger `LazyColumn`: `.padding(paddingValues).padding(16.dp)` → `.padding(paddingValues)` with `contentPadding = PaddingValues(16.dp)`. This lets the last set scroll fully into view instead of being pinned inside a shrunk viewport. Same anti-pattern also exists in several other screens' `Column(.padding(paddingValues).padding(16.dp))` wrappers but isn't clipping anything visible there (Columns aren't scrollable), so left alone.
+- Dashboard compact-layout `LazyColumn`: `.padding(layoutInfo.contentPadding)` → `contentPadding = PaddingValues(layoutInfo.contentPadding)` so widgets scroll through the bottom padding instead of the whole list being pinned.
+- JVM tests still 36; no new tests (layout bug).
 
 **Phase 4 slice 7 landed 2026-04-19** (build + JVM tests green, no schema change):
 - `MasterDetailWorkoutView` in `ui/AdaptiveWorkoutComponents.kt` gains an optional `contextBanner: (@Composable () -> Unit)? = null` slot. When non-null, it renders full-width above the master + detail Row, inside the content column (right of the navigation rail, inside the same padding). Layout rearranged from `Row { rail; Row { masterCard; detailCard } }` to `Row { rail; Column { banner?; Row(weight=1f) { masterCard; detailCard } } }` so the banner and panels share horizontal space without the panels collapsing.
