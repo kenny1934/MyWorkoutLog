@@ -134,5 +134,6 @@ class AppContainer(appContext: Context) {
         analyticsRepository,
         dashboardPreferencesManager,
         bodyweightDao,
+        appSettingsRepository,
     )
 }

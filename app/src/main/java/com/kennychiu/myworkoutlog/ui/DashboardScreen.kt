@@ -514,6 +514,7 @@ fun EnhancedDashboardScreen(
     val dashboardPreferences by dashboardViewModel.dashboardPreferences.collectAsStateWithLifecycle()
     val hiddenWidgets by dashboardViewModel.hiddenWidgets.collectAsStateWithLifecycle()
     val showBodyweightDialog by dashboardViewModel.showBodyweightDialog.collectAsStateWithLifecycle()
+    val weightUnit by dashboardViewModel.weightUnit.collectAsStateWithLifecycle()
 
     // Adaptive layout information
     val layoutInfo = rememberAdaptiveLayoutInfo()
@@ -950,7 +951,7 @@ fun EnhancedDashboardScreen(
             onSave = { weight, date, notes ->
                 dashboardViewModel.saveBodyweightEntry(weight, date, notes)
             },
-            weightUnit = "kg" // TODO: Get from user preferences
+            weightUnit = weightUnit
         )
     }
 }

@@ -18,8 +18,16 @@ class DashboardViewModel(
     private val activeCycleDao: ActiveCycleDao,
     private val analyticsRepository: AnalyticsRepository,
     private val preferencesManager: DashboardPreferencesManager,
-    private val bodyweightDao: BodyweightDao
+    private val bodyweightDao: BodyweightDao,
+    private val appSettingsRepository: AppSettingsRepository
 ) : ViewModel() {
+
+    val weightUnit: StateFlow<String> = appSettingsRepository.weightUnitFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = "kg"
+        )
     
     private val _refreshTrigger = MutableStateFlow(0)
     
@@ -723,7 +731,7 @@ class DashboardViewModel(
                     id = "bw_${date}_${timestamp}",
                     date = date,
                     weight = weight,
-                    weightUnit = "kg", // TODO: Get from user preferences
+                    weightUnit = weightUnit.value,
                     timestamp = timestamp,
                     notes = notes
                 )
@@ -767,12 +775,13 @@ class DashboardViewModelFactory(
     private val activeCycleDao: ActiveCycleDao,
     private val analyticsRepository: AnalyticsRepository,
     private val preferencesManager: DashboardPreferencesManager,
-    private val bodyweightDao: BodyweightDao
+    private val bodyweightDao: BodyweightDao,
+    private val appSettingsRepository: AppSettingsRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return DashboardViewModel(widgetRepository, activeCycleDao, analyticsRepository, preferencesManager, bodyweightDao) as T
+            return DashboardViewModel(widgetRepository, activeCycleDao, analyticsRepository, preferencesManager, bodyweightDao, appSettingsRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
