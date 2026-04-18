@@ -17,4 +17,7 @@ interface ActiveCycleDao {
 
     @Query("DELETE FROM active_program_cycle_table")
     fun clear() // To end a cycle
+
+    @Query("UPDATE active_program_cycle_table SET userCycleName = :newName WHERE id = 1")
+    fun renameActiveCycle(newName: String): Int
 }

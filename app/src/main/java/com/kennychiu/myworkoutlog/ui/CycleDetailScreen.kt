@@ -12,12 +12,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -71,6 +74,7 @@ fun CycleDetailScreen(
         val info = remember(cycle) { cycleProgress(cycle) }
         val completed = cycle.completedSessions
         val aggregates = state.aggregates
+        var showRenameDialog by remember { mutableStateOf(false) }
 
         LazyColumn(
             modifier = Modifier.padding(paddingValues),
@@ -78,7 +82,11 @@ fun CycleDetailScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
-                CycleHeaderCard(cycle = cycle, info = info)
+                CycleHeaderCard(
+                    cycle = cycle,
+                    info = info,
+                    onRenameClick = { showRenameDialog = true },
+                )
             }
             if (aggregates.prsHit.isNotEmpty()) {
                 item {
@@ -109,11 +117,59 @@ fun CycleDetailScreen(
                 )
             }
         }
+
+        if (showRenameDialog) {
+            RenameCycleDialog(
+                currentName = cycle.userCycleName,
+                onConfirm = { newName ->
+                    viewModel.renameActiveCycle(newName)
+                    showRenameDialog = false
+                },
+                onDismiss = { showRenameDialog = false },
+            )
+        }
     }
 }
 
 @Composable
-private fun CycleHeaderCard(cycle: ActiveProgramCycle, info: CycleProgressInfo) {
+private fun RenameCycleDialog(
+    currentName: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var text by remember { mutableStateOf(currentName) }
+    val trimmed = text.trim()
+    val canSave = trimmed.isNotBlank() && trimmed != currentName
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rename Cycle") },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                label = { Text("Cycle name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(trimmed) },
+                enabled = canSave,
+            ) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+@Composable
+private fun CycleHeaderCard(
+    cycle: ActiveProgramCycle,
+    info: CycleProgressInfo,
+    onRenameClick: () -> Unit,
+) {
     val dateFormatter = remember { DateTimeFormatter.ofPattern("MMM d, yyyy") }
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -121,11 +177,21 @@ private fun CycleHeaderCard(cycle: ActiveProgramCycle, info: CycleProgressInfo) 
         shape = RoundedCornerShape(20.dp),
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text = cycle.userCycleName,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = cycle.userCycleName,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = onRenameClick) {
+                    Icon(
+                        imageVector = Icons.Filled.Edit,
+                        contentDescription = "Rename cycle",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
             Spacer(Modifier.height(4.dp))
             Text(
                 text = cycle.programTemplateName,

@@ -44,6 +44,11 @@ interface LoggedWorkoutDao {
     @Query("SELECT * FROM logged_workout_table WHERE activeProgramCycleId = :cycleId ORDER BY date DESC, startTimestamp DESC")
     fun getWorkoutsByCycle(cycleId: String): Flow<List<LoggedWorkout>>
     
+    // Backfill userCycleName snapshot on every workout in a given cycle.
+    // Used by the cycle-rename flow so history display picks up the new name.
+    @Query("UPDATE logged_workout_table SET userCycleName = :newName WHERE activeProgramCycleId = :cycleId")
+    fun renameLoggedWorkoutsByCycle(cycleId: String, newName: String): Int
+
     // Get all unique cycle IDs that have logged workouts
     @Query("SELECT DISTINCT activeProgramCycleId FROM logged_workout_table WHERE activeProgramCycleId IS NOT NULL ORDER BY activeProgramCycleId")
     fun getAllCycleIds(): Flow<List<String>>
