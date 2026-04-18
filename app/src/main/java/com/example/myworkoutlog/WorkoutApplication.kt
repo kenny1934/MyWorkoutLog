@@ -1,11 +1,11 @@
-package com.example.myworkoutlog // Your package name
+package com.example.myworkoutlog
 
 import android.app.Application
 
-// A custom Application class allows us to initialize things once when the app starts.
 class WorkoutApplication : Application() {
-    // 'lazy' means the database will only be created when it's first needed.
-    val database by lazy { WorkoutDatabase.getDatabase(this) }
-    // Create a single instance of the settings repository for the whole app
-    val appSettingsRepository by lazy { AppSettingsRepository(this) }
+    val container: AppContainer by lazy { AppContainer(this) }
+
+    // Kept for source-compatibility with existing call sites. Prefer `container` in new code.
+    val database: WorkoutDatabase get() = container.database
+    val appSettingsRepository: AppSettingsRepository get() = container.appSettingsRepository
 }

@@ -27,149 +27,22 @@ import androidx.navigation.navArgument
 import com.example.myworkoutlog.ui.theme.MyWorkoutLogTheme
 
 class MainActivity : ComponentActivity() {
-    private val exerciseViewModel: ExerciseViewModel by viewModels {
-        ExerciseViewModelFactory((application as WorkoutApplication).database.exerciseDao())
-    }
-    private val workoutTemplateViewModel: WorkoutTemplateViewModel by viewModels {
-        WorkoutTemplateViewModelFactory(
-            (application as WorkoutApplication).database.workoutTemplateDao(),
-            (application as WorkoutApplication).database.exerciseDao()
-        )
-    }
+    private val container get() = (application as WorkoutApplication).container
 
-    private val workoutLoggerViewModel: WorkoutLoggerViewModel by viewModels {
-        WorkoutLoggerViewModelFactory(
-            (application as WorkoutApplication).database.workoutTemplateDao(),
-            (application as WorkoutApplication).database.loggedWorkoutDao(),
-            (application as WorkoutApplication).database.personalRecordDao(),
-            (application as WorkoutApplication).database.exerciseDao(),
-            (application as WorkoutApplication).database.activeCycleDao(),
-            (application as WorkoutApplication).database.bodyweightDao()
-        )
-    }
-
-    private val historyViewModel: HistoryViewModel by viewModels {
-        HistoryViewModelFactory(
-            (application as WorkoutApplication).database.loggedWorkoutDao(),
-            (application as WorkoutApplication).database.activeCycleDao(),
-            (application as WorkoutApplication).database.programTemplateDao()
-        )
-    }
-
-    private val programViewModel: ProgramViewModel by viewModels {
-        ProgramViewModelFactory(
-            (application as WorkoutApplication).database.programTemplateDao(),
-            (application as WorkoutApplication).database.workoutTemplateDao()
-        )
-    }
-
-    private val activeCycleViewModel: ActiveCycleViewModel by viewModels {
-        ActiveCycleViewModelFactory((application as WorkoutApplication).database.activeCycleDao())
-    }
-
-    private val prViewModel: PrViewModel by viewModels {
-        PrViewModelFactory((application as WorkoutApplication).database.personalRecordDao())
-    }
-
-    private val settingsViewModel: SettingsViewModel by viewModels {
-        SettingsViewModelFactory((application as WorkoutApplication).appSettingsRepository)
-    }
-
-    private val volumeViewModel: VolumeViewModel by viewModels {
-        VolumeViewModelFactory(
-            (application as WorkoutApplication).database.loggedWorkoutDao(),
-            (application as WorkoutApplication).database.exerciseDao(),
-            (application as WorkoutApplication).database.programTemplateDao(),
-            (application as WorkoutApplication).database.activeCycleDao()
-        )
-    }
-
-    private val analyticsViewModel: AnalyticsViewModel by viewModels {
-        val analyticsRepository = AnalyticsRepository(
-            (application as WorkoutApplication).database.loggedWorkoutDao(),
-            (application as WorkoutApplication).database.activeCycleDao(),
-            (application as WorkoutApplication).database.personalRecordDao(),
-            (application as WorkoutApplication).database.exerciseDao()
-        )
-        AnalyticsViewModelFactory(
-            analyticsRepository,
-            (application as WorkoutApplication).database.exerciseDao(),
-            (application as WorkoutApplication).database.activeCycleDao()
-        )
-    }
-
-    private val exportViewModel: ExportViewModel by viewModels {
-        val exportRepository = ExportRepository(
-            (application as WorkoutApplication).database.loggedWorkoutDao(),
-            (application as WorkoutApplication).database.exerciseDao(),
-            (application as WorkoutApplication).database.personalRecordDao(),
-            (application as WorkoutApplication).database.programTemplateDao(),
-            (application as WorkoutApplication).database.activeCycleDao()
-        )
-        ExportViewModelFactory(exportRepository)
-    }
-
-    private val importViewModel: ImportViewModel by viewModels {
-        val importRepository = ImportRepository(
-            (application as WorkoutApplication).database.loggedWorkoutDao(),
-            (application as WorkoutApplication).database.exerciseDao(),
-            (application as WorkoutApplication).database.personalRecordDao(),
-            (application as WorkoutApplication).database.programTemplateDao(),
-            (application as WorkoutApplication).database.workoutTemplateDao(),
-            (application as WorkoutApplication).database.activeCycleDao()
-        )
-        ImportViewModelFactory(importRepository, this)
-    }
-
-    private val cloudBackupViewModel: CloudBackupViewModel by viewModels {
-        val cloudProvider = GoogleDriveCloudProvider(this)
-        val cloudBackupRepository = CloudBackupRepository(
-            this,
-            ExportRepository(
-                (application as WorkoutApplication).database.loggedWorkoutDao(),
-                (application as WorkoutApplication).database.exerciseDao(),
-                (application as WorkoutApplication).database.personalRecordDao(),
-                (application as WorkoutApplication).database.programTemplateDao(),
-                (application as WorkoutApplication).database.activeCycleDao()
-            ),
-            ImportRepository(
-                (application as WorkoutApplication).database.loggedWorkoutDao(),
-                (application as WorkoutApplication).database.exerciseDao(),
-                (application as WorkoutApplication).database.personalRecordDao(),
-                (application as WorkoutApplication).database.programTemplateDao(),
-                (application as WorkoutApplication).database.workoutTemplateDao(),
-                (application as WorkoutApplication).database.activeCycleDao()
-            ),
-            cloudProvider
-        )
-        CloudBackupViewModelFactory(cloudBackupRepository)
-    }
-
-    private val dashboardViewModel: DashboardViewModel by viewModels {
-        val analyticsRepository = AnalyticsRepository(
-            (application as WorkoutApplication).database.loggedWorkoutDao(),
-            (application as WorkoutApplication).database.activeCycleDao(),
-            (application as WorkoutApplication).database.personalRecordDao(),
-            (application as WorkoutApplication).database.exerciseDao()
-        )
-        val widgetRepository = WidgetRepositorySimplified(
-            analyticsRepository,
-            (application as WorkoutApplication).database.personalRecordDao(),
-            (application as WorkoutApplication).database.loggedWorkoutDao(),
-            (application as WorkoutApplication).database.activeCycleDao(),
-            (application as WorkoutApplication).database.programTemplateDao(),
-            (application as WorkoutApplication).database.workoutTemplateDao(),
-            (application as WorkoutApplication).database.bodyweightDao()
-        )
-        val preferencesManager = DashboardPreferencesManager(this)
-        DashboardViewModelFactory(
-            widgetRepository,
-            (application as WorkoutApplication).database.activeCycleDao(),
-            analyticsRepository,
-            preferencesManager,
-            (application as WorkoutApplication).database.bodyweightDao()
-        )
-    }
+    private val exerciseViewModel: ExerciseViewModel by viewModels { container.exerciseViewModelFactory() }
+    private val workoutTemplateViewModel: WorkoutTemplateViewModel by viewModels { container.workoutTemplateViewModelFactory() }
+    private val workoutLoggerViewModel: WorkoutLoggerViewModel by viewModels { container.workoutLoggerViewModelFactory() }
+    private val historyViewModel: HistoryViewModel by viewModels { container.historyViewModelFactory() }
+    private val programViewModel: ProgramViewModel by viewModels { container.programViewModelFactory() }
+    private val activeCycleViewModel: ActiveCycleViewModel by viewModels { container.activeCycleViewModelFactory() }
+    private val prViewModel: PrViewModel by viewModels { container.prViewModelFactory() }
+    private val settingsViewModel: SettingsViewModel by viewModels { container.settingsViewModelFactory() }
+    private val volumeViewModel: VolumeViewModel by viewModels { container.volumeViewModelFactory() }
+    private val analyticsViewModel: AnalyticsViewModel by viewModels { container.analyticsViewModelFactory() }
+    private val exportViewModel: ExportViewModel by viewModels { container.exportViewModelFactory() }
+    private val importViewModel: ImportViewModel by viewModels { container.importViewModelFactory() }
+    private val cloudBackupViewModel: CloudBackupViewModel by viewModels { container.cloudBackupViewModelFactory() }
+    private val dashboardViewModel: DashboardViewModel by viewModels { container.dashboardViewModelFactory() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
