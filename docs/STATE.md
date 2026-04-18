@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 4 slice 12 — move-session-across-weeks in program editor + slice 13 — weight-unit TODO cleanup).
+Last updated: 2026-04-19 (Phase 4 slices 14 — lastPerformance wiring, 15 — Compose deprecation sweep, 16 — isCycleCompleted dedup).
 
 ## Next session — start here
 
@@ -43,6 +43,23 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 - Secondary fix on the compact WorkoutLogger `LazyColumn`: `.padding(paddingValues).padding(16.dp)` → `.padding(paddingValues)` with `contentPadding = PaddingValues(16.dp)`. This lets the last set scroll fully into view instead of being pinned inside a shrunk viewport. Same anti-pattern also exists in several other screens' `Column(.padding(paddingValues).padding(16.dp))` wrappers but isn't clipping anything visible there (Columns aren't scrollable), so left alone.
 - Dashboard compact-layout `LazyColumn`: `.padding(layoutInfo.contentPadding)` → `contentPadding = PaddingValues(layoutInfo.contentPadding)` so widgets scroll through the bottom padding instead of the whole list being pinned.
 - JVM tests still 36; no new tests (layout bug).
+
+**Phase 4 slice 16 landed 2026-04-19** (build + JVM tests green, no schema change):
+- `WidgetRepositorySimplified.isCycleCompleted` folded into a call to `cycleProgress(activeCycle).isComplete`. Only caller was one branch in `getBasicQuickActions`. Private helper deleted (-6 LOC). Minor semantic tightening in the empty-program edge case — the old check (0 completed >= 0 total) flagged empty programs as complete; `cycleProgress` guards against that with `totalSessionCount > 0`. Existing `CycleProgressTest` coverage applies.
+
+**Phase 4 slice 15 landed 2026-04-19** (build + JVM tests green, no schema change):
+- Mechanical Compose deprecation sweep across the UI layer. No behavior change, no new tests.
+- `Modifier.menuAnchor()` → `.menuAnchor(MenuAnchorType.PrimaryNotEditable)` in `ProgramEditorScreen.kt`, `VolumeAnalysisScreen.kt` (x2), `AnalyticsScreen.kt`. All sites are `readOnly = true` `OutlinedTextField`s driving `ExposedDropdownMenu`.
+- `LinearProgressIndicator(progress: Float, …)` → lambda overload (`progress = { pct }`) in `CycleDetailScreen.kt`, `DashboardWidgetComponents.kt`, `AdaptiveWorkoutComponents.kt`. Same lambda-conversion for `CircularProgressIndicator` in `DashboardWidgetCards.kt`.
+- `Icons.Default.*` (alias for `Icons.Filled.*`) migrated to `Icons.AutoMirrored.Filled.*` for every icon that has an AutoMirrored equivalent: `TrendingUp` / `TrendingDown` / `TrendingFlat` / `ShowChart` / `DirectionsRun` across `DashboardChartCards.kt`, `DashboardWidgetCards.kt`, `DashboardWidgetComponents.kt`, `InteractiveChartComponents.kt`. `Icons.Filled.List` → `AutoMirrored.Filled.List` in `ExportScreen.kt`, `HistoryComponents.kt`. `Icons.Outlined.Assignment` → `AutoMirrored.Outlined.Assignment` in `ProgramDetailViews.kt`. `Icons.Filled.Logout` → `AutoMirrored.Filled.Logout` in `CloudBackupScreen.kt`. `Icons.Default.Launch` → `AutoMirrored.Filled.Launch` in `DashboardHelpers.kt`. `Icons.Default.ArrowForward` → `AutoMirrored.Filled.ArrowForward` in `DashboardScreen.kt`.
+- Files using AutoMirrored variants got a named import added alongside the existing `filled.*` / `outlined.*` star import — the nested `AutoMirrored.Filled` object isn't pulled in by `filled.*`.
+- Only remaining deprecations in the build are in `data/GoogleDriveCloudProvider.kt` on Google's `AndroidHttp` Java class — out of scope.
+
+**Phase 4 slice 14 landed 2026-04-19** (build + JVM tests green on retry, no schema change):
+- `lastPerformance` TODO at `ui/WorkoutLoggerScreens.kt:551` replaced by a real summary.
+- New `util/LastPerformance.kt::summarizeLastPerformance(workout, exercise, today)` — pure helper. Picks the heaviest completed set (highest `weight`, requires `reps > 0`) and renders `"N × reps @ Wunit (days-ago)"`, where unit defaults to "kg" when `performedWeightUnit` is null. Time-based fallback `"N × Xs"` when the exercise has completed secs-only sets. Integer weights render without decimal (`60kg`); fractional render as decimal (`22.5lb`). Days-ago suffix: `"today"` / `"yesterday"` / `"Nd ago"`; unparseable date → suffix omitted. Returns null when no completed sets.
+- `WorkoutLoggerViewModel` now caches summaries in `_lastPerformanceSummaries: StateFlow<Map<String, String>>` populated alongside `_performanceSuggestions` in one DB-lookup loop. The lookup logic (same-template first, global fallback) was extracted into `findRecentWorkoutForExercise` + a refactored `buildSuggestionFromRecent` so both consumers share one fetch. Public getter `getLastPerformance(exerciseId): String?` mirrors `getPerformanceSuggestion`.
+- 8 new JVM tests in `LastPerformanceTest`: heaviest-set pick across 3 sets, integer / fractional weight rendering, time-based fallback, null unit default, empty-set null return, zero-reps skip, unparseable-date suffix drop. JVM count 56 → 64.
 
 **Phase 4 slice 13 landed 2026-04-19** (build + JVM tests green on retry, no schema change):
 - Thread `AppSettingsRepository.weightUnitFlow` through `DashboardViewModel`. New ctor param `appSettingsRepository`; new `weightUnit: StateFlow<String>` exposure (`stateIn` with default `"kg"`, parallel to `SettingsViewModel`).
@@ -197,11 +214,11 @@ These features exist in code and appear to be functional based on the screen and
 
 3. **Manual DI duplication.** `MainActivity` wires ~14 ViewModel factories with the same `(application as WorkoutApplication).database.xDao()` pattern repeated. Should be centralized in an `AppContainer`.
 
-4. **Test coverage is still thin but no longer zero.** The wizard defaults were removed 2026-04-18. There are now 56 JVM unit tests (20 ViewModel + 8 for `CycleProgress` + 8 for `CycleAggregates` + 20 for `ProgramEditorHelpers`) plus four instrumented migration tests (v21 open, v21→22, v22→23, v23→24). Coverage targets the known-fragile areas: workout timer + edit/resume, active cycle UUID flow, history cycle filtering, cycle progress derivation, and week-duplicate integrity. Everything else (dashboard widgets, PRs, import/export, cloud backup, volume, analytics) is still validated only by running the app.
+4. **Test coverage is still thin but no longer zero.** The wizard defaults were removed 2026-04-18. There are now 64 JVM unit tests (20 ViewModel + 8 for `CycleProgress` + 8 for `CycleAggregates` + 20 for `ProgramEditorHelpers` + 8 for `LastPerformance`) plus four instrumented migration tests (v21 open, v21→22, v22→23, v23→24). Coverage targets the known-fragile areas: workout timer + edit/resume, active cycle UUID flow, history cycle filtering, cycle progress derivation, week-duplicate integrity, and last-performance summary formatting. Everything else (dashboard widgets, PRs, import/export, cloud backup, volume, analytics) is still validated only by running the app.
 
 5. **Room DAO convention was unstable.** Recent commits flipped back and forth on `suspend` modifiers for `@Query` / `@Delete`. The current convention (see `CLAUDE.md`) is: suspend for writes, non-suspend for `Flow`/`LiveData` returns, non-suspend snapshot reads only where sync call sites require them.
 
-6. **TODOs.** Two weight-unit TODOs resolved in slice 13 (`DashboardViewModel.saveBodyweightEntry` + `EnhancedDashboardScreen`'s `BodyweightEntryDialog`); both now read from `AppSettingsRepository.weightUnitFlow` via `DashboardViewModel.weightUnit`. The remaining `WorkoutLoggerScreens.kt:551` TODO is `lastPerformance = null // TODO: Implement based on available data` — unrelated to weight unit.
+6. **TODOs.** The two weight-unit TODOs were resolved in slice 13, and the `lastPerformance` TODO at `WorkoutLoggerScreens.kt:551` was resolved in slice 14. No tracked TODOs remain in the workout-logger path.
 
 ## Branch state
 
@@ -245,7 +262,10 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-19, slice 11): rename ENDED cycles from the history screen. Shared `ui/RenameCycleDialog.kt` + `HistoryViewModel.renameCompletedCycle` + Edit pencil on both `CycleCard` and `CycleCardMaster`. Reuses the slice 10 DAO method. No schema change.
   - Done (2026-04-19, slice 12): move-session-across-weeks in the program editor. Pure helper `moveSessionToWeek` + 7 JVM tests + `SwapHoriz` IconButton + week-picker dialog on `SessionCard`. No schema change.
   - Done (2026-04-19, slice 13): weight-unit TODO cleanup. `DashboardViewModel` now holds `AppSettingsRepository` and exposes `weightUnit: StateFlow<String>`. `saveBodyweightEntry` and `BodyweightEntryDialog` both read from it. No schema change.
-  - Further candidates: per-exercise progression scheme (linear / double / RPE — separate from the per-set `targetWeight`); true drag-reorder (currently up/down arrows only).
+  - Done (2026-04-19, slice 14): `lastPerformance` wiring. Pure helper `util/LastPerformance.kt::summarizeLastPerformance` with 8 JVM tests; `WorkoutLoggerViewModel` caches summaries alongside `performanceSuggestions`. `EnhancedExerciseCard` on the workout logger now shows the last session's top set. No schema change.
+  - Done (2026-04-19, slice 15): Compose deprecation sweep. `Modifier.menuAnchor()` → `MenuAnchorType.PrimaryNotEditable` overload in 4 sites; `LinearProgressIndicator`/`CircularProgressIndicator` `progress: Float` → lambda in 4 sites; every auto-mirrored icon migrated (TrendingUp/Down/Flat, ShowChart, DirectionsRun, List, Assignment, Logout, Launch, ArrowForward). Only remaining deprecation in the build is in Google's `AndroidHttp` Java class — out of scope. No behavior change, no new tests.
+  - Done (2026-04-19, slice 16): `isCycleCompleted` dedup. `WidgetRepositorySimplified` now calls `cycleProgress(cycle).isComplete`; private helper deleted. Existing `CycleProgressTest` coverage applies. Minor semantic fix: empty programs are no longer flagged as complete.
+  - Further candidates: per-exercise progression scheme (linear / double / RPE — separate from the per-set `targetWeight`); true drag-reorder (currently up/down arrows only); master-detail logger also rendering `lastPerformance` on its exercise rows (compact-only today).
 
 ## Deleted during cleanup
 
