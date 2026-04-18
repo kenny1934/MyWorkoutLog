@@ -132,39 +132,6 @@ fun CycleDetailScreen(
 }
 
 @Composable
-private fun RenameCycleDialog(
-    currentName: String,
-    onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var text by remember { mutableStateOf(currentName) }
-    val trimmed = text.trim()
-    val canSave = trimmed.isNotBlank() && trimmed != currentName
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Rename Cycle") },
-        text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                label = { Text("Cycle name") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(trimmed) },
-                enabled = canSave,
-            ) { Text("Save") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
-}
-
-@Composable
 private fun CycleHeaderCard(
     cycle: ActiveProgramCycle,
     info: CycleProgressInfo,

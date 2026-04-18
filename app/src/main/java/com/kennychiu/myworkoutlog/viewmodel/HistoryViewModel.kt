@@ -195,6 +195,14 @@ class HistoryViewModel(
             loggedWorkoutDao.deleteLoggedWorkoutById(workoutId)
         }
     }
+
+    fun renameCompletedCycle(cycleId: String, newName: String) {
+        val trimmed = newName.trim()
+        if (trimmed.isBlank() || cycleId.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            loggedWorkoutDao.renameLoggedWorkoutsByCycle(cycleId, trimmed)
+        }
+    }
 }
 
 // The factory for creating our HistoryViewModel

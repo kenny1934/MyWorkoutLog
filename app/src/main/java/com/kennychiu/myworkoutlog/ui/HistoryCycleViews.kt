@@ -30,6 +30,7 @@ fun MesocycleHistoryMasterView(
     val activeCycleWorkouts by viewModel.activeCycleWorkouts.collectAsStateWithLifecycle()
     val completedCycles by viewModel.completedCycles.collectAsStateWithLifecycle()
     val orphanedWorkouts by viewModel.orphanedWorkouts.collectAsStateWithLifecycle()
+    var renameTarget by remember { mutableStateOf<CycleWithWorkouts?>(null) }
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         // Active cycle section
@@ -59,7 +60,8 @@ fun MesocycleHistoryMasterView(
                 CycleCardMaster(
                     cycleWithWorkouts = cycleWithWorkouts,
                     selectedWorkoutId = selectedWorkoutId,
-                    onWorkoutSelected = onWorkoutSelected
+                    onWorkoutSelected = onWorkoutSelected,
+                    onRenameClick = { renameTarget = cycleWithWorkouts }
                 )
             }
         }
@@ -98,6 +100,17 @@ fun MesocycleHistoryMasterView(
             }
         }
     }
+
+    renameTarget?.let { target ->
+        RenameCycleDialog(
+            currentName = target.userCycleName.orEmpty(),
+            onConfirm = { newName ->
+                viewModel.renameCompletedCycle(target.cycleId, newName)
+                renameTarget = null
+            },
+            onDismiss = { renameTarget = null },
+        )
+    }
 }
 
 @Composable
@@ -109,6 +122,7 @@ fun MesocycleHistoryView(
     val activeCycleWorkouts by viewModel.activeCycleWorkouts.collectAsStateWithLifecycle()
     val completedCycles by viewModel.completedCycles.collectAsStateWithLifecycle()
     val orphanedWorkouts by viewModel.orphanedWorkouts.collectAsStateWithLifecycle()
+    var renameTarget by remember { mutableStateOf<CycleWithWorkouts?>(null) }
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         // Active cycle section
@@ -136,7 +150,8 @@ fun MesocycleHistoryView(
             items(completedCycles) { cycleWithWorkouts ->
                 CycleCard(
                     cycleWithWorkouts = cycleWithWorkouts,
-                    onNavigateToWorkout = onNavigateToWorkout
+                    onNavigateToWorkout = onNavigateToWorkout,
+                    onRenameClick = { renameTarget = cycleWithWorkouts }
                 )
             }
         }
@@ -172,6 +187,17 @@ fun MesocycleHistoryView(
                 }
             }
         }
+    }
+
+    renameTarget?.let { target ->
+        RenameCycleDialog(
+            currentName = target.userCycleName.orEmpty(),
+            onConfirm = { newName ->
+                viewModel.renameCompletedCycle(target.cycleId, newName)
+                renameTarget = null
+            },
+            onDismiss = { renameTarget = null },
+        )
     }
 }
 
@@ -349,18 +375,29 @@ fun ActiveCycleSection(
 fun CycleCardMaster(
     cycleWithWorkouts: CycleWithWorkouts,
     selectedWorkoutId: String?,
-    onWorkoutSelected: (String) -> Unit
+    onWorkoutSelected: (String) -> Unit,
+    onRenameClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = cycleWithWorkouts.userCycleName ?: "Cycle ${cycleWithWorkouts.cycleId}",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = cycleWithWorkouts.userCycleName ?: "Cycle ${cycleWithWorkouts.cycleId}",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onRenameClick) {
+                    Icon(
+                        imageVector = Icons.Filled.Edit,
+                        contentDescription = "Rename cycle",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
 
             if (cycleWithWorkouts.startDate != null) {
                 Text(
@@ -426,18 +463,29 @@ fun CycleCardMaster(
 @Composable
 fun CycleCard(
     cycleWithWorkouts: CycleWithWorkouts,
-    onNavigateToWorkout: (String) -> Unit
+    onNavigateToWorkout: (String) -> Unit,
+    onRenameClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = cycleWithWorkouts.userCycleName ?: "Cycle ${cycleWithWorkouts.cycleId}",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = cycleWithWorkouts.userCycleName ?: "Cycle ${cycleWithWorkouts.cycleId}",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onRenameClick) {
+                    Icon(
+                        imageVector = Icons.Filled.Edit,
+                        contentDescription = "Rename cycle",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
 
             if (cycleWithWorkouts.startDate != null) {
                 Text(
