@@ -3,6 +3,7 @@ package com.kennychiu.myworkoutlog.ui
 import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,12 +21,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CycleDetailScreen(
     activeCycleViewModel: ActiveCycleViewModel,
+    navController: NavHostController,
     onNavigateUp: () -> Unit,
 ) {
     val activeCycle by activeCycleViewModel.activeCycle.collectAsStateWithLifecycle()
@@ -63,10 +66,8 @@ fun CycleDetailScreen(
         val completed = cycle.completedSessions
 
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
+            modifier = Modifier.padding(paddingValues),
+            contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
@@ -77,6 +78,22 @@ fun CycleDetailScreen(
                     week = week,
                     completedSessions = completed,
                     isCurrentWeek = week.id == info.currentWeek?.id,
+                    onSessionClick = { session ->
+                        val key = "${week.id}_${session.id}"
+                        val completedWorkoutId = completed[key]
+                        if (completedWorkoutId != null) {
+                            navController.navigate(Screen.HistoryDetail.createRoute(completedWorkoutId))
+                        } else {
+                            navController.navigate(
+                                Screen.WorkoutLogger.createRoute(
+                                    templateId = session.workoutTemplateId,
+                                    cycleId = cycle.cycleUuid,
+                                    weekId = week.id,
+                                    sessionId = session.id,
+                                )
+                            )
+                        }
+                    },
                 )
             }
         }
@@ -148,6 +165,7 @@ private fun CycleWeekCard(
     week: ProgramWeekDefinition,
     completedSessions: Map<String, String>,
     isCurrentWeek: Boolean,
+    onSessionClick: (ProgramSessionDefinition) -> Unit,
 ) {
     val rir = week.targetRir?.takeIf { it.isNotBlank() }
     Card(
@@ -220,17 +238,22 @@ private fun CycleWeekCard(
             val sortedSessions = remember(week) { week.sessions.sortedBy { it.order } }
             sortedSessions.forEach { session ->
                 val done = completedSessions.containsKey("${week.id}_${session.id}")
-                SessionRow(sessionName = session.sessionName, done = done)
+                SessionRow(
+                    sessionName = session.sessionName,
+                    done = done,
+                    onClick = { onSessionClick(session) },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun SessionRow(sessionName: String, done: Boolean) {
+private fun SessionRow(sessionName: String, done: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -247,6 +270,7 @@ private fun SessionRow(sessionName: String, done: Boolean) {
             style = MaterialTheme.typography.bodyLarge,
             color = if (done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
             fontWeight = if (done) FontWeight.Normal else FontWeight.Medium,
+            modifier = Modifier.weight(1f),
         )
     }
 }
