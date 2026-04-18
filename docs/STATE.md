@@ -6,7 +6,7 @@ Last updated: 2026-04-18 (during cleanup from 7-month stall).
 
 ## Next session — start here
 
-As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` is green, the subpackage restructure has landed, and two of the four monolith splits are done: `DashboardScreen.kt` 2,612 → 995 and `ProgramManagementScreens.kt` 2,091 → 461. Two monolith splits remain (`HistoryScreens.kt` 1,805, `WorkoutLoggerScreens.kt` 1,618 — save the logger for last because it touches the known-broken timer state).
+As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` is green, the subpackage restructure has landed, and three of the four monolith splits are done: `DashboardScreen.kt` 2,612 → 995, `ProgramManagementScreens.kt` 2,091 → 461, and `HistoryScreens.kt` 1,808 → 481. One monolith split remains: `WorkoutLoggerScreens.kt` (1,618 lines) — handle with extra care because it touches the known-broken timer state.
 
 The SDK setup section below is kept as a reference for reinstalling on a fresh machine.
 
@@ -87,7 +87,7 @@ These features exist in code and appear to be functional based on the screen and
 
 1. ~~**Flat package.**~~ Fixed. Files now live under `data/`, `ui/`, `viewmodel/`, `util/` subpackages. `MainActivity`, `WorkoutApplication`, `AppContainer` stay at the root because `AndroidManifest.xml` references them as `.Name`. Every subpackage file has star imports for the other three to cover cross-package references — a follow-up pass can tighten to specific imports if desired.
 
-2. **Monolithic screen files.** Two of four done. `DashboardScreen.kt` is now 995 lines (down from 2,612) after extracting `DashboardWidgetCards.kt` (1,149), `DashboardChartCards.kt` (358), `DashboardCycleViews.kt` (150). `ProgramManagementScreens.kt` is now 461 lines (down from 2,091) after extracting `ProgramListScreen.kt` (263), `ProgramEditorScreen.kt` (762, includes `SessionCard` and `EnhancedProgramEditor`), `ProgramDetailViews.kt` (316), `ProgramCardsAndDialogs.kt` (359). Still to split: `HistoryScreens.kt` 1,805, `WorkoutLoggerScreens.kt` 1,618.
+2. **Monolithic screen files.** Three of four done. `DashboardScreen.kt` is now 995 lines (down from 2,612) after extracting `DashboardWidgetCards.kt` (1,149), `DashboardChartCards.kt` (358), `DashboardCycleViews.kt` (150). `ProgramManagementScreens.kt` is now 461 lines (down from 2,091) after extracting `ProgramListScreen.kt` (263), `ProgramEditorScreen.kt` (762, includes `SessionCard` and `EnhancedProgramEditor`), `ProgramDetailViews.kt` (316), `ProgramCardsAndDialogs.kt` (359). `HistoryScreens.kt` is now 481 lines (down from 1,808) after extracting `HistoryComponents.kt` (581, shared components + helpers), `HistoryCycleViews.kt` (543), `HistoryDetailScreen.kt` (263). Still to split: `WorkoutLoggerScreens.kt` 1,618.
 
 3. **Manual DI duplication.** `MainActivity` wires ~14 ViewModel factories with the same `(application as WorkoutApplication).database.xDao()` pattern repeated. Should be centralized in an `AppContainer`.
 
@@ -117,7 +117,8 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-18): package restructure into `data/ui/viewmodel/util`. 61 files moved, every cross-package file gets star imports for the other three subpackages. Build verified green.
   - Done (2026-04-18): split `DashboardScreen.kt` (2,612 → 995) into `DashboardWidgetCards.kt`, `DashboardChartCards.kt`, `DashboardCycleViews.kt`. Build verified green.
   - Done (2026-04-18): split `ProgramManagementScreens.kt` (2,091 → 461) into `ProgramListScreen.kt`, `ProgramEditorScreen.kt`, `ProgramDetailViews.kt`, `ProgramCardsAndDialogs.kt`. Bumped 7 private composables to package-level so callers across files can reach them. Build verified green.
-  - Not started: splitting the remaining 2 monolithic screen files (`HistoryScreens.kt`, `WorkoutLoggerScreens.kt`).
+  - Done (2026-04-18): split `HistoryScreens.kt` (1,808 → 481) into `HistoryComponents.kt`, `HistoryCycleViews.kt`, `HistoryDetailScreen.kt`. Bumped `WorkoutSummaryCard`, `ProgramContextCard`, `formatTimestampToTime`, `formatHistoryWeight` from private to package-level; other helpers kept file-scoped with their only callers. Build verified green.
+  - Not started: splitting the remaining monolithic screen file `WorkoutLoggerScreens.kt`.
 - **Phase 3 — Tests for broken areas.** Not started. Room migration tests; ViewModel unit tests for workout logger timer, active cycle, history cycle filtering.
 - **Phase 4 — Resume feature work.** Complete mesocycle / program management UX.
 

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,234 +21,39 @@ import androidx.compose.ui.unit.sp
 import java.util.concurrent.TimeUnit
 
 @Composable
-fun HistoryScreen(
+fun HistoryDetailScreen(
+    workoutId: String,
     viewModel: HistoryViewModel,
-    onNavigateToWorkout: (String) -> Unit,
-    onNavigateToEdit: (String) -> Unit = onNavigateToWorkout // Default to existing behavior for backward compatibility
-) {
-    var viewMode by remember { mutableStateOf(HistoryViewMode.MESOCYCLES) }
-    var selectedWorkoutId by remember { mutableStateOf<String?>(null) }
-    val layoutInfo = rememberAdaptiveLayoutInfo()
-
-    if (layoutInfo.useMasterDetail) {
-        // Large screen: Master-detail layout
-        HistoryMasterDetailView(
-            layoutInfo = layoutInfo,
-            viewModel = viewModel,
-            viewMode = viewMode,
-            onViewModeChanged = { viewMode = it },
-            selectedWorkoutId = selectedWorkoutId,
-            onWorkoutSelected = { selectedWorkoutId = it },
-            onNavigateToWorkout = onNavigateToWorkout,
-            onNavigateToEdit = onNavigateToEdit
-        )
-    } else {
-        // Small screen: Original single-column layout
-        HistorySingleColumnView(
-            viewModel = viewModel,
-            viewMode = viewMode,
-            onViewModeChanged = { viewMode = it },
-            onNavigateToWorkout = onNavigateToWorkout
-        )
-    }
-}
-
-@Composable
-private fun HistorySingleColumnView(
-    viewModel: HistoryViewModel,
-    viewMode: HistoryViewMode,
-    onViewModeChanged: (HistoryViewMode) -> Unit,
-    onNavigateToWorkout: (String) -> Unit
-) {
-    Column(modifier = Modifier.padding(16.dp)) {
-        HistoryHeader(
-            viewMode = viewMode,
-            onViewModeChanged = onViewModeChanged
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        when (viewMode) {
-            HistoryViewMode.MESOCYCLES -> MesocycleHistoryView(viewModel, onNavigateToWorkout)
-            HistoryViewMode.CHRONOLOGICAL -> ChronologicalHistoryView(viewModel, onNavigateToWorkout)
-            HistoryViewMode.EXERCISE_FOCUSED -> ChronologicalHistoryView(viewModel, onNavigateToWorkout) // Placeholder
-        }
-    }
-}
-
-@Composable
-private fun HistoryHeader(
-    viewMode: HistoryViewMode,
-    onViewModeChanged: (HistoryViewMode) -> Unit
-) {
-    val layoutInfo = rememberAdaptiveLayoutInfo()
-
-    // Use Column layout when in master panel (constrained width)
-    if (layoutInfo.useMasterDetail) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Workout History", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // View mode toggle buttons - stacked vertically for better visibility
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    onClick = { onViewModeChanged(HistoryViewMode.MESOCYCLES) },
-                    label = { Text("Cycles") },
-                    selected = viewMode == HistoryViewMode.MESOCYCLES,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                FilterChip(
-                    onClick = { onViewModeChanged(HistoryViewMode.CHRONOLOGICAL) },
-                    label = { Text("All") },
-                    selected = viewMode == HistoryViewMode.CHRONOLOGICAL,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-    } else {
-        // Original Row layout for single-column mode (full width available)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Workout History", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.weight(1f))
-
-            // View mode toggle buttons
-            Row {
-                FilterChip(
-                    onClick = { onViewModeChanged(HistoryViewMode.MESOCYCLES) },
-                    label = { Text("Cycles") },
-                    selected = viewMode == HistoryViewMode.MESOCYCLES
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                FilterChip(
-                    onClick = { onViewModeChanged(HistoryViewMode.CHRONOLOGICAL) },
-                    label = { Text("All") },
-                    selected = viewMode == HistoryViewMode.CHRONOLOGICAL
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun HistoryMasterDetailView(
-    layoutInfo: AdaptiveLayoutInfo,
-    viewModel: HistoryViewModel,
-    viewMode: HistoryViewMode,
-    onViewModeChanged: (HistoryViewMode) -> Unit,
-    selectedWorkoutId: String?,
-    onWorkoutSelected: (String?) -> Unit,
-    onNavigateToWorkout: (String) -> Unit,
+    onNavigateUp: () -> Unit,
     onNavigateToEdit: (String) -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(layoutInfo.contentPadding)
-    ) {
-        // Master Panel (Left side - 40%)
-        Card(
-            modifier = Modifier
-                .fillMaxHeight()
-                .weight(0.4f),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
-                HistoryHeader(
-                    viewMode = viewMode,
-                    onViewModeChanged = onViewModeChanged
-                )
+    val workout by viewModel.getLoggedWorkoutById(workoutId).collectAsState(initial = null)
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Master panel content with selection
-                when (viewMode) {
-                    HistoryViewMode.MESOCYCLES -> MesocycleHistoryMasterView(
-                        viewModel = viewModel,
-                        selectedWorkoutId = selectedWorkoutId,
-                        onWorkoutSelected = onWorkoutSelected
-                    )
-                    HistoryViewMode.CHRONOLOGICAL -> ChronologicalHistoryMasterView(
-                        viewModel = viewModel,
-                        selectedWorkoutId = selectedWorkoutId,
-                        onWorkoutSelected = onWorkoutSelected
-                    )
-                    HistoryViewMode.EXERCISE_FOCUSED -> ChronologicalHistoryMasterView(
-                        viewModel = viewModel,
-                        selectedWorkoutId = selectedWorkoutId,
-                        onWorkoutSelected = onWorkoutSelected
-                    )
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(workout?.name ?: "Workout Details") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateUp) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { onNavigateToEdit(workoutId) }) {
+                        Icon(Icons.Filled.Edit, contentDescription = "Edit Workout")
+                    }
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(
+                            Icons.Filled.Delete,
+                            contentDescription = "Delete Workout",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
-            }
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        // Detail Panel (Right side - 60%)
-        Card(
-            modifier = Modifier
-                .fillMaxHeight()
-                .weight(0.6f),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            HistoryDetailPanel(
-                selectedWorkoutId = selectedWorkoutId,
-                viewModel = viewModel,
-                onNavigateToWorkout = onNavigateToWorkout,
-                onNavigateToEdit = onNavigateToEdit,
-                onWorkoutDeleted = { onWorkoutSelected(null) } // Clear selection after deletion
             )
         }
-    }
-}
-
-@Composable
-fun HistoryDetailPanel(
-    selectedWorkoutId: String?,
-    viewModel: HistoryViewModel,
-    onNavigateToWorkout: (String) -> Unit,
-    onNavigateToEdit: (String) -> Unit,
-    onWorkoutDeleted: () -> Unit = {}
-) {
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    if (selectedWorkoutId == null) {
-        // No workout selected - show placeholder
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.FitnessCenter,
-                    contentDescription = "Select Workout",
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "Select a workout to view details",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    } else {
-        // Workout selected - show details
-        val workout by viewModel.getLoggedWorkoutById(selectedWorkoutId).collectAsState(initial = null)
-
+    ) { paddingValues ->
         val currentWorkout = workout
         if (currentWorkout == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -255,39 +61,14 @@ fun HistoryDetailPanel(
             }
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.padding(paddingValues),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item {
-                    // Header with edit button
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = currentWorkout.name ?: "Workout Details",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Row {
-                            IconButton(onClick = { onNavigateToEdit(selectedWorkoutId) }) {
-                                Icon(Icons.Filled.Edit, contentDescription = "Edit Workout")
-                            }
-                            IconButton(onClick = { showDeleteDialog = true }) {
-                                Icon(
-                                    Icons.Filled.Delete,
-                                    contentDescription = "Delete Workout",
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
-                    }
-
-                    // Display the date prominently
-                    Text(currentWorkout.date, style = MaterialTheme.typography.titleMedium)
+                    // Display the date prominently here
+                    Text(currentWorkout.date, style = MaterialTheme.typography.headlineSmall)
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Program Context Card
                     if (!currentWorkout.userCycleName.isNullOrBlank() || !currentWorkout.activeProgramCycleId.isNullOrBlank()) {
@@ -417,7 +198,7 @@ fun HistoryDetailPanel(
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    "Weight (${currentWorkout.performedWeightUnit ?: "kg"})",
+                                    "Weight (${workout!!.performedWeightUnit ?: "kg"})",
                                     modifier = Modifier.weight(1f),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -448,34 +229,35 @@ fun HistoryDetailPanel(
                                 color = MaterialTheme.colorScheme.outlineVariant
                             )
 
-                            // Display each logged set using the existing component
+                            // Display each logged set using the new component
                             exercise.sets.forEachIndexed { index, set ->
                                 HistorySetRow(
                                     set = set,
                                     setNumber = index + 1,
-                                    weightUnit = currentWorkout.performedWeightUnit ?: "kg",
+                                    weightUnit = workout!!.performedWeightUnit ?: "kg",
                                     exercise = exercise,
-                                    workout = currentWorkout
+                                    workout = workout!!
                                 )
                             }
                         }
                     }
                 }
             }
-
-            // Delete confirmation dialog
-            DeleteWorkoutConfirmationDialog(
-                isVisible = showDeleteDialog,
-                workout = currentWorkout,
-                onDismiss = { showDeleteDialog = false },
-                onConfirmDelete = {
-                    selectedWorkoutId?.let { id ->
-                        viewModel.deleteWorkout(id)
-                        showDeleteDialog = false
-                        onWorkoutDeleted()
-                    }
-                }
-            )
         }
+    }
+
+    // Delete confirmation dialog
+    val currentWorkout = workout
+    if (currentWorkout != null) {
+        DeleteWorkoutConfirmationDialog(
+            isVisible = showDeleteDialog,
+            workout = currentWorkout,
+            onDismiss = { showDeleteDialog = false },
+            onConfirmDelete = {
+                viewModel.deleteWorkout(workoutId)
+                showDeleteDialog = false
+                onNavigateUp() // Navigate back after deletion
+            }
+        )
     }
 }
