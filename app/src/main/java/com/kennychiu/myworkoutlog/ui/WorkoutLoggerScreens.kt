@@ -374,11 +374,23 @@ private fun WorkoutLoggerScreenContent(
             ) { useMasterDetail ->
                 if (useMasterDetail) {
                     // Large screen: Master-detail layout
+                    val masterDetailBannerWeek = currentCycleWeek?.takeIf { week ->
+                        week.isDeloadWeek || !week.targetRir.isNullOrBlank()
+                    }
                     MasterDetailWorkoutView(
                         activeWorkout = activeWorkout,
                         exerciseList = activeWorkout!!.loggedExercises,
                         selectedExerciseId = selectedExerciseId,
                         onExerciseSelected = { exerciseId -> selectedExerciseId = exerciseId },
+                        contextBanner = masterDetailBannerWeek?.let { week ->
+                            {
+                                CycleContextBanner(
+                                    weekLabel = week.weekLabel,
+                                    isDeloadWeek = week.isDeloadWeek,
+                                    targetRir = week.targetRir?.takeIf { it.isNotBlank() },
+                                )
+                            }
+                        },
                         sessionContent = {
                             CompactSessionInfo(
                                 bodyweightText = bodyweightText,

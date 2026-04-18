@@ -50,11 +50,15 @@ fun MasterDetailWorkoutView(
     selectedExerciseContent: @Composable () -> Unit,
     navigationRail: @Composable () -> Unit,
     paddingValues: PaddingValues,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Optional cycle-context banner rendered full-width above both panels.
+    // Mirrors the compact layout's top-of-LazyColumn banner so deload / target
+    // RIR context is visible on the Z Fold's tablet layout too.
+    contextBanner: (@Composable () -> Unit)? = null,
 ) {
     val masterWidth = workoutMasterPanelWidth()
     val spacing = workoutElementSpacing()
-    
+
     Row(
         modifier = modifier.fillMaxSize()
     ) {
@@ -64,23 +68,33 @@ fun MasterDetailWorkoutView(
         ) {
             navigationRail()
         }
-        
+
         // Content area with proper padding
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(start = spacing)
         ) {
-            // Master panel - Exercise list and session overview
-            Card(
+            if (contextBanner != null) {
+                Box(modifier = Modifier.padding(end = spacing, bottom = spacing)) {
+                    contextBanner()
+                }
+            }
+            Row(
                 modifier = Modifier
-                    .width(masterWidth)
-                    .fillMaxHeight()
-                    .padding(end = spacing),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                shape = RoundedCornerShape(16.dp)
+                    .fillMaxWidth()
+                    .weight(1f)
             ) {
+                // Master panel - Exercise list and session overview
+                Card(
+                    modifier = Modifier
+                        .width(masterWidth)
+                        .fillMaxHeight()
+                        .padding(end = spacing),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -135,6 +149,7 @@ fun MasterDetailWorkoutView(
             ) {
                 selectedExerciseContent()
             }
+            } // end inner master+detail Row
         }
     }
 }
