@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 4 slice 6 landed; per-set target weight on TemplateExerciseSet / LoggedSet, v23 → v24).
+Last updated: 2026-04-19 (Phase 4 slice 7 landed; cycle-context banner mirrored into master-detail logger layout).
 
 ## Next session — start here
 
@@ -36,6 +36,12 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 - New private `CycleContextBanner` composable at the bottom of `ui/WorkoutLoggerScreens.kt`. Renders as the first `LazyColumn` item in the compact layout when the current week has `isDeloadWeek == true` or a non-blank `targetRir`. Shows the week label plus "Deload" (`tertiaryContainer`) and/or "RIR X" (`secondaryContainer`) badges — same theming as the dashboard widget so the two surfaces agree visually.
 - Skipped for the master-detail (`shouldUseWorkoutMasterDetail()`) layout for now — phone usage is the primary gym flow.
 - No data/schema change; reads existing fields added in slices 2/3. JVM tests still 28.
+
+**Phase 4 slice 7 landed 2026-04-19** (build + JVM tests green, no schema change):
+- `MasterDetailWorkoutView` in `ui/AdaptiveWorkoutComponents.kt` gains an optional `contextBanner: (@Composable () -> Unit)? = null` slot. When non-null, it renders full-width above the master + detail Row, inside the content column (right of the navigation rail, inside the same padding). Layout rearranged from `Row { rail; Row { masterCard; detailCard } }` to `Row { rail; Column { banner?; Row(weight=1f) { masterCard; detailCard } } }` so the banner and panels share horizontal space without the panels collapsing.
+- `WorkoutLoggerScreens.kt` passes `contextBanner = { CycleContextBanner(...) }` into the `MasterDetailWorkoutView` call when `currentCycleWeek?.isDeloadWeek` or `targetRir` is non-blank — same gating as the compact-layout `LazyColumn` banner. The composable itself is reused as-is (still file-scoped `private`; both call sites are in `WorkoutLoggerScreens.kt`).
+- Motivation: the prior "skip unless tablet used" gating was based on a bad assumption. Kenny's daily device is a Samsung Z Fold — the inner screen held horizontally trips `shouldUseWorkoutMasterDetail()`, so compact-only features were invisible to him during workouts on the unfolded device. Any new workout-logger UI should target both layouts from the start.
+- No data/schema change. JVM tests still 36.
 
 **Phase 4 slice 6 landed 2026-04-19** (build + JVM tests green; third real Room migration):
 - `TemplateExerciseSet` gains `targetWeight: String? = null` as its last field. Freeform (e.g. "60", "60-65", "BW+20"). Null = no prescribed load. Lives inside the JSON blob in `workout_template_table.templateExercises` — no SQL column.
@@ -187,7 +193,8 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-18, slice 5a): read-only cycle-detail screen with week-by-week breakdown and session completion state. Tappable from the dashboard widget.
   - Done (2026-04-18, slice 5b): per-week aggregates (sets / volume / duration) + PRs-hit-this-cycle card on the cycle-detail screen. New `CycleDetailViewModel` combines cycle + logged workouts + PRs. Pure `util/CycleAggregates.kt` with 8 JVM tests.
   - Done (2026-04-19, slice 6): per-set `targetWeight` on `TemplateExerciseSet` + `LoggedSet`. Third real Room migration (v23 → v24, no-op). Template editor gets a Weight field per set; workout logger shows it as a placeholder hint on the Weight input.
-  - Further candidates: mirror the slice 4 banner into the master-detail logger layout; per-exercise progression scheme (linear / double / RPE-based — separate from the per-set target).
+  - Done (2026-04-19, slice 7): cycle-context banner mirrored into the master-detail logger layout so the Z Fold's tablet layout shows the same deload/RIR context as the compact layout. Banner slot added to `MasterDetailWorkoutView`.
+  - Further candidates: per-exercise progression scheme (linear / double / RPE — separate from the per-set `targetWeight`); history-session rename when user-cycle name changes; program editor drag-reorder / bulk-copy week.
 
 ## Deleted during cleanup
 
