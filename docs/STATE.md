@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 4 slice 18 — per-exercise progression scheme data + picker + passive hint).
+Last updated: 2026-04-19 (Phase 4 slice 19 — scheme-aware smart-pre-fill chip).
 
 ## Next session — start here
 
@@ -43,6 +43,17 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 - Secondary fix on the compact WorkoutLogger `LazyColumn`: `.padding(paddingValues).padding(16.dp)` → `.padding(paddingValues)` with `contentPadding = PaddingValues(16.dp)`. This lets the last set scroll fully into view instead of being pinned inside a shrunk viewport. Same anti-pattern also exists in several other screens' `Column(.padding(paddingValues).padding(16.dp))` wrappers but isn't clipping anything visible there (Columns aren't scrollable), so left alone.
 - Dashboard compact-layout `LazyColumn`: `.padding(layoutInfo.contentPadding)` → `contentPadding = PaddingValues(layoutInfo.contentPadding)` so widgets scroll through the bottom padding instead of the whole list being pinned.
 - JVM tests still 36; no new tests (layout bug).
+
+**Phase 4 slice 19 landed 2026-04-19** (build + JVM tests green on retry; no schema change):
+- `util/ProgressionChip.kt::suggestForScheme` — pure helper that returns a `ChipSuggestion(weight, reps, rir, label)` given the exercise's progression scheme, its params, and the representative last-session set. Scheme rules: LINEAR adds `progressionIncrement` (null falls back to maintain); DOUBLE bumps reps when `lastReps < maxReps`, else bumps weight by `progressionIncrement` (default 2.5) and resets to `minReps`; RPE keeps last weight/reps and derives RIR from the target (ranges like "7-8" use the lower bound); TOP_SET set 1 adds `progressionIncrement` (default 2.5), backoff sets copy last. Labels include a scheme-specific suffix: `(next)`, `(top)`, `(backoff)`, or `@ RPE X`. 18 JVM tests; count 79 → 97.
+- `data/DataModels.kt::PerformanceSuggestion` gains `suggestionLabel: String? = null`. When non-null, the chip renders it verbatim instead of the legacy "Wkg Nr (Xd ago)" format. In-memory data class — no schema change.
+- `WorkoutLoggerViewModel` caches per-exercise `TemplateExercise` (in `_templateExercisesByExerciseId`, populated alongside `_progressionHints` from the same template lookup) and the representative recent set (in `_recentRepresentatives`, populated alongside `_performanceSuggestions` from the same DB lookup). New public `getChipSuggestion(exerciseId, setNumber): PerformanceSuggestion?` consults both caches, runs `suggestForScheme`, and wraps the result in a `PerformanceSuggestion` with `confidence = 1f` and the scheme label; falls through to the cached legacy suggestion when no scheme is configured or the helper has nothing to offer.
+- Pull-apart refactor inside the VM: `buildSuggestionFromRecent` split into `pickRecentRepresentative` (the filter + pick logic) + `buildSuggestionFromRepresentative` (legacy progression math). The picker is now the single source of truth feeding both the scheme-aware chip and the legacy path. Also extracts `RecentRepresentative` data class with the set + working-set count + daysAgo.
+- `ui/WorkoutLoggerSetRow.kt` swaps `viewModel.getPerformanceSuggestion(exerciseId)` → `viewModel.getChipSuggestion(exerciseId, setNumber)` and renders `suggestionLabel` when non-null. Legacy path now also reads `weightUnit` from the row param (was hardcoded "kg").
+- Template editor gets two new inputs to complete the round trip:
+  - DOUBLE: a "Weight bump at max" field (writes `progressionIncrement`) so the chip has a number to bump by when reps hit max.
+  - TOP_SET: a "Top-set bump" field (writes `progressionIncrement`) so the top-set bump is configurable.
+  - Scheme-switch param-strip logic extended: `progressionIncrement` now survives switches into LINEAR, DOUBLE, or TOP_SET (previously only LINEAR).
 
 **Phase 4 slice 18 landed 2026-04-19** (build + JVM tests green first try; fourth real Room migration):
 - `TemplateExercise` gains `progressionScheme: ProgressionScheme?` (enum: LINEAR / DOUBLE / RPE / TOP_SET / NONE) plus four per-scheme params (`progressionIncrement: Double?`, `progressionMinReps: Int?`, `progressionMaxReps: Int?`, `progressionTargetRpe: String?`). All default null. Lives inside the JSON blob in `workout_template_table.templateExercises` — no SQL column.
@@ -232,7 +243,7 @@ These features exist in code and appear to be functional based on the screen and
 
 3. **Manual DI duplication.** `MainActivity` wires ~14 ViewModel factories with the same `(application as WorkoutApplication).database.xDao()` pattern repeated. Should be centralized in an `AppContainer`.
 
-4. **Test coverage is still thin but no longer zero.** The wizard defaults were removed 2026-04-18. There are now 79 JVM unit tests (20 ViewModel + 8 for `CycleProgress` + 8 for `CycleAggregates` + 20 for `ProgramEditorHelpers` + 8 for `LastPerformance` + 15 for `ProgressionHint`) plus five instrumented migration tests (v21 open, v21→22, v22→23, v23→24, v24→25). Coverage targets the known-fragile areas: workout timer + edit/resume, active cycle UUID flow, history cycle filtering, cycle progress derivation, week-duplicate integrity, last-performance summary formatting, and progression-hint formatting. Everything else (dashboard widgets, PRs, import/export, cloud backup, volume, analytics) is still validated only by running the app.
+4. **Test coverage is still thin but no longer zero.** The wizard defaults were removed 2026-04-18. There are now 97 JVM unit tests (20 ViewModel + 8 for `CycleProgress` + 8 for `CycleAggregates` + 20 for `ProgramEditorHelpers` + 8 for `LastPerformance` + 15 for `ProgressionHint` + 18 for `ProgressionChip`) plus five instrumented migration tests (v21 open, v21→22, v22→23, v23→24, v24→25). Coverage targets the known-fragile areas: workout timer + edit/resume, active cycle UUID flow, history cycle filtering, cycle progress derivation, week-duplicate integrity, last-performance summary formatting, progression-hint formatting, and scheme-aware chip suggestions. Everything else (dashboard widgets, PRs, import/export, cloud backup, volume, analytics) is still validated only by running the app.
 
 5. **Room DAO convention was unstable.** Recent commits flipped back and forth on `suspend` modifiers for `@Query` / `@Delete`. The current convention (see `CLAUDE.md`) is: suspend for writes, non-suspend for `Flow`/`LiveData` returns, non-suspend snapshot reads only where sync call sites require them.
 
@@ -285,7 +296,8 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-19, slice 16): `isCycleCompleted` dedup. `WidgetRepositorySimplified` now calls `cycleProgress(cycle).isComplete`; private helper deleted. Existing `CycleProgressTest` coverage applies. Minor semantic fix: empty programs are no longer flagged as complete.
   - Done (2026-04-19, slice 17): `lastPerformance` in the master-detail logger's master panel. `ExerciseListItem` gains an optional `lastPerformance: String?` param; `MasterDetailWorkoutView` exposes a `lastPerformanceFor` lambda the `WorkoutLoggerScreens` call site fills from `viewModel.getLastPerformance`. Same VM accessor as the compact layout — no new plumbing, no schema change.
   - Done (2026-04-19, slice 18): per-exercise progression scheme (LINEAR/DOUBLE/RPE/TOP_SET/NONE) + optional per-scheme params on `TemplateExercise`. Fourth real Room migration (v24 → v25, no-op). Template editor picker, template preview hint, and workout logger passive hint on both layouts. Pure `util/ProgressionHint.kt::formatProgressionHint` with 15 JVM tests. Smart-pre-fill chip stays scheme-agnostic in this slice; slice 19 makes it scheme-aware.
-  - Further candidates: scheme-aware smart-pre-fill chip (slice 19a); true drag-reorder (currently up/down arrows only).
+  - Done (2026-04-19, slice 19): scheme-aware smart-pre-fill chip. Pure `util/ProgressionChip.kt::suggestForScheme` with 18 JVM tests. `PerformanceSuggestion` gains an optional `suggestionLabel`; `WorkoutLoggerViewModel` caches per-exercise `TemplateExercise` + representative recent set and exposes `getChipSuggestion(exerciseId, setNumber)` that runs the helper and falls back to legacy. Template editor gains "Weight bump at max" input for DOUBLE and "Top-set bump" input for TOP_SET.
+  - Further candidates: true drag-reorder (currently up/down arrows only); AnalyticsViewModel `@OptIn(ExperimentalCoroutinesApi)` cleanup.
 
 ## Deleted during cleanup
 
