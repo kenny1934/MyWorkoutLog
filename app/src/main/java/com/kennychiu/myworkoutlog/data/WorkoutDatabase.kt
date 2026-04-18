@@ -9,6 +9,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [
@@ -20,7 +21,7 @@ import androidx.room.migration.Migration
         PersonalRecord::class,
         BodyweightEntry::class,
     ],
-    version = 21,
+    version = 22,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -35,10 +36,20 @@ abstract class WorkoutDatabase : RoomDatabase() {
     abstract fun bodyweightDao(): BodyweightDao
 
     companion object {
+        // v21 → v22: added ProgramWeekDefinition.isDeloadWeek. The field lives inside
+        // the JSON blob stored in program_template_table.weeks (and inside cycleProgram
+        // on active_program_cycle_table), so there is no SQL column to add. Gson reads
+        // missing booleans as false, which matches the Kotlin default.
+        val MIGRATION_21_22: Migration = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // No-op: schema unchanged; only the JSON shape inside an existing TEXT column.
+            }
+        }
+
         // Migrations from v21 onwards MUST be added here. No new schema changes are
         // allowed without a Migration object — prior dev history wiped user data on
         // every schema bump and that is not acceptable going forward.
-        val MIGRATIONS: Array<Migration> = emptyArray()
+        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_21_22)
 
         // Versions 1–20 were only ever opened under fallbackToDestructiveMigration.
         // Any device still holding one of those versions would have been wiped anyway,

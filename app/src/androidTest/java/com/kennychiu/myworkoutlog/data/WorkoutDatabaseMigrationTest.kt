@@ -24,7 +24,6 @@ class WorkoutDatabaseMigrationTest {
 
     // Smoke test: the v21 schema JSON is exported under app/schemas/ and
     // MigrationTestHelper can open a fresh DB at that version cleanly.
-    // When a real Migration is added later, this file gets a runMigrationsAndValidate() test.
     @Test
     fun canOpenSchemaAtVersion21() {
         helper.createDatabase(dbName, 21).close()
@@ -38,5 +37,19 @@ class WorkoutDatabaseMigrationTest {
             .build()
         db.openHelper.writableDatabase.use { }
         db.close()
+    }
+
+    // v21 → v22 added ProgramWeekDefinition.isDeloadWeek inside the JSON blob in
+    // program_template_table.weeks. SQL schema is unchanged, so the migration is a
+    // no-op and runMigrationsAndValidate just confirms it lands on a valid v22 schema.
+    @Test
+    fun migrate21To22() {
+        helper.createDatabase(dbName, 21).close()
+        helper.runMigrationsAndValidate(
+            dbName,
+            22,
+            true,
+            WorkoutDatabase.MIGRATION_21_22,
+        ).close()
     }
 }

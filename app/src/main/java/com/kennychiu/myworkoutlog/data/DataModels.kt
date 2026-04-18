@@ -219,7 +219,10 @@ data class ProgramWeekDefinition(
     val id: String,
     val weekLabel: String, // e.g., "Week 1: RIR 3"
     val sessions: List<ProgramSessionDefinition>,
-    val order: Int
+    val order: Int,
+    // Stored inside the JSON blob for ProgramTemplate.weeks (no SQL column).
+    // Gson instantiates via Unsafe, so missing-from-JSON deserializes to false.
+    val isDeloadWeek: Boolean = false
 )
 
 // This is the main database table for our program blueprints

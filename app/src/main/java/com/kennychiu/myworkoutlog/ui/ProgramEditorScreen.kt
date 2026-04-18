@@ -107,6 +107,19 @@ fun ProgramEditorScreen(
                                     Icon(Icons.Default.Delete, contentDescription = "Delete Week")
                                 }
                             }
+                            Spacer(Modifier.height(4.dp))
+                            FilterChip(
+                                selected = week.isDeloadWeek,
+                                onClick = {
+                                    editedWeeks = editedWeeks.map {
+                                        if (it.id == week.id) it.copy(isDeloadWeek = !it.isDeloadWeek) else it
+                                    }
+                                },
+                                label = { Text("Deload week") },
+                                leadingIcon = if (week.isDeloadWeek) {
+                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                } else null
+                            )
                             Spacer(Modifier.height(8.dp))
                             // Simple session cards with arrow button reordering
                             val sortedSessions = week.sessions.sortedBy { it.order }
@@ -601,6 +614,21 @@ fun EnhancedProgramEditor(
                                 Icon(Icons.Default.Delete, contentDescription = "Delete Week")
                             }
                         }
+
+                        Spacer(Modifier.height(8.dp))
+
+                        FilterChip(
+                            selected = week.isDeloadWeek,
+                            onClick = {
+                                editedWeeks = editedWeeks.map {
+                                    if (it.id == week.id) it.copy(isDeloadWeek = !it.isDeloadWeek) else it
+                                }
+                            },
+                            label = { Text("Deload week") },
+                            leadingIcon = if (week.isDeloadWeek) {
+                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                            } else null
+                        )
 
                         Spacer(Modifier.height(12.dp))
 
