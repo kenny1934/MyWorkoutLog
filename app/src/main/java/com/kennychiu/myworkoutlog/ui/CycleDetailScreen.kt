@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -28,11 +29,11 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CycleDetailScreen(
-    activeCycleViewModel: ActiveCycleViewModel,
+    viewModel: CycleDetailViewModel,
     navController: NavHostController,
     onNavigateUp: () -> Unit,
 ) {
-    val activeCycle by activeCycleViewModel.activeCycle.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -50,7 +51,7 @@ fun CycleDetailScreen(
         // reserves that space again and leaves a blank strip above the nav bar.
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
-        val cycle = activeCycle
+        val cycle = state.cycle
         if (cycle == null) {
             Box(
                 modifier = Modifier
@@ -69,6 +70,7 @@ fun CycleDetailScreen(
 
         val info = remember(cycle) { cycleProgress(cycle) }
         val completed = cycle.completedSessions
+        val aggregates = state.aggregates
 
         LazyColumn(
             modifier = Modifier.padding(paddingValues),
@@ -78,11 +80,23 @@ fun CycleDetailScreen(
             item {
                 CycleHeaderCard(cycle = cycle, info = info)
             }
+            if (aggregates.prsHit.isNotEmpty()) {
+                item {
+                    CyclePrsCard(
+                        prs = aggregates.prsHit,
+                        onPrClick = { pr ->
+                            navController.navigate(Screen.HistoryDetail.createRoute(pr.loggedWorkoutId))
+                        },
+                    )
+                }
+            }
             items(info.orderedWeeks) { week ->
                 CycleWeekCard(
                     week = week,
                     completedSessions = completed,
                     isCurrentWeek = week.id == info.currentWeek?.id,
+                    aggregate = aggregates.perWeek[week.id],
+                    weightUnit = aggregates.weightUnit,
                     onSessionClick = { session ->
                         val key = "${week.id}_${session.id}"
                         val completedWorkoutId = completed[key]
@@ -159,10 +173,117 @@ private fun CycleHeaderCard(cycle: ActiveProgramCycle, info: CycleProgressInfo) 
 }
 
 @Composable
+private fun CyclePrsCard(
+    prs: List<CyclePrHit>,
+    onPrClick: (PersonalRecord) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Filled.EmojiEvents,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "PRs this cycle",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                ) {
+                    Text(
+                        text = "${prs.size}",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            prs.forEach { hit ->
+                PrRow(hit = hit, onClick = { onPrClick(hit.pr) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun PrRow(hit: CyclePrHit, onClick: () -> Unit) {
+    val pr = hit.pr
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = pr.exerciseName,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                text = formatPrSummary(pr),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            text = pr.date,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+private fun formatPrSummary(pr: PersonalRecord): String {
+    val unit = pr.weightUnit ?: "kg"
+    return when (pr.type) {
+        PRType.MAX_WEIGHT_FOR_REPS -> {
+            val w = pr.weight?.let { trim(it) } ?: "-"
+            val r = pr.reps?.toString() ?: "-"
+            "Max weight · $w $unit × $r"
+        }
+        PRType.MAX_REPS_AT_WEIGHT -> {
+            val w = pr.weight?.let { trim(it) } ?: "-"
+            val r = pr.reps?.toString() ?: "-"
+            "Max reps · $r @ $w $unit"
+        }
+        PRType.DURATION -> {
+            val s = pr.durationSecs ?: 0
+            "Duration · ${formatSecondsShort(s)}"
+        }
+    }
+}
+
+private fun trim(v: Double): String =
+    if (v % 1.0 == 0.0) v.toLong().toString() else "%.1f".format(v)
+
+private fun formatSecondsShort(secs: Int): String {
+    val m = secs / 60
+    val s = secs % 60
+    return if (m > 0) "${m}m ${s}s" else "${s}s"
+}
+
+@Composable
 private fun CycleWeekCard(
     week: ProgramWeekDefinition,
     completedSessions: Map<String, String>,
     isCurrentWeek: Boolean,
+    aggregate: CycleWeekAggregate?,
+    weightUnit: String?,
     onSessionClick: (ProgramSessionDefinition) -> Unit,
 ) {
     val rir = week.targetRir?.takeIf { it.isNotBlank() }
@@ -231,6 +352,11 @@ private fun CycleWeekCard(
                 }
             }
 
+            if (aggregate != null && aggregate.workoutCount > 0) {
+                Spacer(Modifier.height(8.dp))
+                WeekAggregatesRow(aggregate = aggregate, weightUnit = weightUnit)
+            }
+
             Spacer(Modifier.height(12.dp))
 
             val sortedSessions = remember(week) { week.sessions.sortedBy { it.order } }
@@ -244,6 +370,65 @@ private fun CycleWeekCard(
             }
         }
     }
+}
+
+@Composable
+private fun WeekAggregatesRow(aggregate: CycleWeekAggregate, weightUnit: String?) {
+    val unit = weightUnit ?: "kg"
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        AggregateChip(
+            label = "Sets",
+            value = aggregate.setCount.toString(),
+            modifier = Modifier.weight(1f),
+        )
+        AggregateChip(
+            label = "Volume",
+            value = "${trim(aggregate.totalVolume)} $unit",
+            modifier = Modifier.weight(1f),
+        )
+        AggregateChip(
+            label = "Time",
+            value = formatDurationShort(aggregate.totalDurationMs),
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun AggregateChip(label: String, value: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+    }
+}
+
+private fun formatDurationShort(ms: Long): String {
+    if (ms <= 0L) return "—"
+    val totalMinutes = ms / 60_000L
+    val hours = totalMinutes / 60L
+    val minutes = totalMinutes % 60L
+    return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
 }
 
 @Composable

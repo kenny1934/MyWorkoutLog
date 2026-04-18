@@ -102,6 +102,12 @@ class AppContainer(appContext: Context) {
 
     fun activeCycleViewModelFactory() = ActiveCycleViewModelFactory(activeCycleDao)
 
+    fun cycleDetailViewModelFactory() = CycleDetailViewModelFactory(
+        activeCycleDao,
+        loggedWorkoutDao,
+        personalRecordDao,
+    )
+
     fun prViewModelFactory() = PrViewModelFactory(personalRecordDao)
 
     fun settingsViewModelFactory() = SettingsViewModelFactory(appSettingsRepository)

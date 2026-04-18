@@ -47,6 +47,7 @@ class MainActivity : ComponentActivity() {
     private val importViewModel: ImportViewModel by viewModels { container.importViewModelFactory() }
     private val cloudBackupViewModel: CloudBackupViewModel by viewModels { container.cloudBackupViewModelFactory() }
     private val dashboardViewModel: DashboardViewModel by viewModels { container.dashboardViewModelFactory() }
+    private val cycleDetailViewModel: CycleDetailViewModel by viewModels { container.cycleDetailViewModelFactory() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -67,7 +68,8 @@ class MainActivity : ComponentActivity() {
                     exportViewModel = exportViewModel,
                     importViewModel = importViewModel,
                     cloudBackupViewModel = cloudBackupViewModel,
-                    dashboardViewModel = dashboardViewModel
+                    dashboardViewModel = dashboardViewModel,
+                    cycleDetailViewModel = cycleDetailViewModel,
                 )
             }
         }
@@ -88,7 +90,8 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             exportViewModel: ExportViewModel,
             importViewModel: ImportViewModel,
             cloudBackupViewModel: CloudBackupViewModel,
-            dashboardViewModel: DashboardViewModel
+            dashboardViewModel: DashboardViewModel,
+            cycleDetailViewModel: CycleDetailViewModel,
 ) {
     val navController = rememberNavController()
     Scaffold(
@@ -110,6 +113,7 @@ fun MainApp(exerciseViewModel: ExerciseViewModel,
             importViewModel = importViewModel,
             cloudBackupViewModel = cloudBackupViewModel,
             dashboardViewModel = dashboardViewModel,
+            cycleDetailViewModel = cycleDetailViewModel,
             modifier = Modifier.padding(innerPadding)
         )
     }
@@ -132,6 +136,7 @@ fun AppNavHost(
     importViewModel: ImportViewModel,
     cloudBackupViewModel: CloudBackupViewModel,
     dashboardViewModel: DashboardViewModel,
+    cycleDetailViewModel: CycleDetailViewModel,
     modifier: Modifier = Modifier
 ) {
     val weightUnit by settingsViewModel.weightUnit.collectAsStateWithLifecycle()
@@ -247,7 +252,7 @@ fun AppNavHost(
         }
         composable(Screen.CycleDetail.route) {
             CycleDetailScreen(
-                activeCycleViewModel = activeCycleViewModel,
+                viewModel = cycleDetailViewModel,
                 navController = navController,
                 onNavigateUp = { navController.navigateUp() },
             )
