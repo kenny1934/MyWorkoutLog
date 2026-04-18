@@ -396,6 +396,7 @@ private fun WorkoutLoggerScreenContent(
                                 )
                             }
                         },
+                        lastPerformanceFor = { exerciseId -> viewModel.getLastPerformance(exerciseId) },
                         sessionContent = {
                             CompactSessionInfo(
                                 bodyweightText = bodyweightText,

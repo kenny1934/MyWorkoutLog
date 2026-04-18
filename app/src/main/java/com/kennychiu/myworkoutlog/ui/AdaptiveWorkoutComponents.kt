@@ -55,6 +55,7 @@ fun MasterDetailWorkoutView(
     // Mirrors the compact layout's top-of-LazyColumn banner so deload / target
     // RIR context is visible on the Z Fold's tablet layout too.
     contextBanner: (@Composable () -> Unit)? = null,
+    lastPerformanceFor: (String) -> String? = { null },
 ) {
     val masterWidth = workoutMasterPanelWidth()
     val spacing = workoutElementSpacing()
@@ -132,7 +133,8 @@ fun MasterDetailWorkoutView(
                         ExerciseListItem(
                             exercise = exercise,
                             isSelected = exercise.id == selectedExerciseId,
-                            onSelected = { onExerciseSelected(exercise.id) }
+                            onSelected = { onExerciseSelected(exercise.id) },
+                            lastPerformance = lastPerformanceFor(exercise.exerciseId)
                         )
                     }
                 }
@@ -162,7 +164,8 @@ fun ExerciseListItem(
     exercise: LoggedExercise,
     isSelected: Boolean,
     onSelected: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    lastPerformance: String? = null,
 ) {
     val setsCompleted = exercise.sets.count { set -> 
         (set.weight != null && set.reps != null) || set.secs != null 
@@ -205,15 +208,27 @@ fun ExerciseListItem(
                 Text(
                     text = "$setsCompleted/$totalSets",
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (isSelected) 
-                        MaterialTheme.colorScheme.onPrimaryContainer 
-                    else 
+                    color = if (isSelected)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
                         MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            
+
+            lastPerformance?.let { performance ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Last: $performance",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isSelected)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             // Progress bar
             LinearProgressIndicator(
                 progress = { completionPercentage },
