@@ -1,0 +1,100 @@
+package com.kennychiu.myworkoutlog.util
+
+import com.kennychiu.myworkoutlog.data.ProgramSessionDefinition
+import com.kennychiu.myworkoutlog.data.ProgramWeekDefinition
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class ProgramEditorHelpersTest {
+
+    private fun session(id: String, name: String = id, templateId: String = "tpl", order: Int = 1) =
+        ProgramSessionDefinition(id = id, sessionName = name, workoutTemplateId = templateId, order = order)
+
+    private fun week(
+        id: String,
+        label: String = id,
+        order: Int = 1,
+        sessions: List<ProgramSessionDefinition> = emptyList(),
+        isDeload: Boolean = false,
+        rir: String? = null
+    ) = ProgramWeekDefinition(
+        id = id,
+        weekLabel = label,
+        sessions = sessions,
+        order = order,
+        isDeloadWeek = isDeload,
+        targetRir = rir
+    )
+
+    @Test
+    fun `duplicate inserts a copy immediately after the source`() {
+        val weeks = listOf(week("a", order = 1), week("b", order = 2), week("c", order = 3))
+        val counter = IdCounter()
+        val result = duplicateWeekInto(weeks, weeks[0], counter)
+
+        assertEquals(4, result.size)
+        assertEquals("a", result[0].id)
+        assertEquals("id-1", result[1].id)
+        assertEquals("b", result[2].id)
+        assertEquals("c", result[3].id)
+    }
+
+    @Test
+    fun `duplicate renumbers order to match list position`() {
+        val weeks = listOf(week("a", order = 1), week("b", order = 2), week("c", order = 3))
+        val result = duplicateWeekInto(weeks, weeks[1], IdCounter())
+
+        assertEquals(listOf(1, 2, 3, 4), result.map { it.order })
+    }
+
+    @Test
+    fun `duplicate copies sessions with fresh ids`() {
+        val originalSessions = listOf(session("s1"), session("s2", order = 2))
+        val weeks = listOf(week("a", sessions = originalSessions))
+        val result = duplicateWeekInto(weeks, weeks[0], IdCounter())
+
+        val copy = result[1]
+        assertEquals(2, copy.sessions.size)
+        val copyIds = copy.sessions.map { it.id }
+        assertNotEquals("s1", copyIds[0])
+        assertNotEquals("s2", copyIds[1])
+        assertTrue(copyIds.all { it.startsWith("id-") })
+        assertEquals(originalSessions.map { it.sessionName }, copy.sessions.map { it.sessionName })
+        assertEquals(originalSessions.map { it.order }, copy.sessions.map { it.order })
+    }
+
+    @Test
+    fun `duplicate preserves deload flag and targetRir on the copy`() {
+        val src = week("a", isDeload = true, rir = "2-3")
+        val result = duplicateWeekInto(listOf(src), src, IdCounter())
+
+        val copy = result[1]
+        assertTrue(copy.isDeloadWeek)
+        assertEquals("2-3", copy.targetRir)
+    }
+
+    @Test
+    fun `duplicate prefixes label with 'Copy of'`() {
+        val src = week("a", label = "Week 1")
+        val result = duplicateWeekInto(listOf(src), src, IdCounter())
+
+        assertEquals("Copy of Week 1", result[1].weekLabel)
+        assertEquals("Week 1", result[0].weekLabel)
+    }
+
+    @Test
+    fun `duplicate of unknown source returns the list unchanged`() {
+        val weeks = listOf(week("a"), week("b"))
+        val orphan = week("zzz")
+        val result = duplicateWeekInto(weeks, orphan, IdCounter())
+
+        assertEquals(weeks, result)
+    }
+
+    private class IdCounter : () -> String {
+        private var n = 0
+        override fun invoke(): String = "id-${++n}"
+    }
+}

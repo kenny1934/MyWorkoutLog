@@ -103,6 +103,11 @@ fun ProgramEditorScreen(
                                     modifier = Modifier.weight(1f)
                                 )
                                 IconButton(onClick = {
+                                    editedWeeks = duplicateWeekInto(editedWeeks, week)
+                                }) {
+                                    Icon(Icons.Default.ContentCopy, contentDescription = "Duplicate Week")
+                                }
+                                IconButton(onClick = {
                                     editedWeeks = editedWeeks.filter { it.id != week.id }
                                 }) {
                                     Icon(Icons.Default.Delete, contentDescription = "Delete Week")
@@ -620,6 +625,14 @@ fun EnhancedProgramEditor(
                                 modifier = Modifier.weight(1f)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
+                            IconButton(
+                                onClick = {
+                                    editedWeeks = duplicateWeekInto(editedWeeks, week)
+                                },
+                                modifier = Modifier.size(workoutTouchTargetSize())
+                            ) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = "Duplicate Week")
+                            }
                             IconButton(
                                 onClick = {
                                     editedWeeks = editedWeeks.filter { it.id != week.id }
