@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 4 slice 11 — rename ENDED cycles from the history screen).
+Last updated: 2026-04-19 (Phase 4 slice 12 — move-session-across-weeks in program editor + slice 13 — weight-unit TODO cleanup).
 
 ## Next session — start here
 
@@ -43,6 +43,19 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 - Secondary fix on the compact WorkoutLogger `LazyColumn`: `.padding(paddingValues).padding(16.dp)` → `.padding(paddingValues)` with `contentPadding = PaddingValues(16.dp)`. This lets the last set scroll fully into view instead of being pinned inside a shrunk viewport. Same anti-pattern also exists in several other screens' `Column(.padding(paddingValues).padding(16.dp))` wrappers but isn't clipping anything visible there (Columns aren't scrollable), so left alone.
 - Dashboard compact-layout `LazyColumn`: `.padding(layoutInfo.contentPadding)` → `contentPadding = PaddingValues(layoutInfo.contentPadding)` so widgets scroll through the bottom padding instead of the whole list being pinned.
 - JVM tests still 36; no new tests (layout bug).
+
+**Phase 4 slice 13 landed 2026-04-19** (build + JVM tests green on retry, no schema change):
+- Thread `AppSettingsRepository.weightUnitFlow` through `DashboardViewModel`. New ctor param `appSettingsRepository`; new `weightUnit: StateFlow<String>` exposure (`stateIn` with default `"kg"`, parallel to `SettingsViewModel`).
+- `DashboardViewModel.saveBodyweightEntry` — `weightUnit = "kg" // TODO: …` → `weightUnit = weightUnit.value`. `BodyweightEntry.weightUnit` now reflects the user preference.
+- `EnhancedDashboardScreen` collects `dashboardViewModel.weightUnit` and passes it into `BodyweightEntryDialog(weightUnit = weightUnit)` — same TODO gone.
+- `AppContainer.dashboardViewModelFactory()` + `DashboardViewModelFactory` ctor updated to thread the repo. No other call sites existed.
+- Two of three TODOs resolved; the third one flagged at `WorkoutLoggerScreens.kt:503` is a different TODO (`lastPerformance = null // TODO: Implement based on available data`), not a weight-unit one — reclassified. No new tests needed (preference flow is VM plumbing; values are surfaced by existing `SettingsViewModel` logic).
+
+**Phase 4 slice 12 landed 2026-04-19** (build + JVM tests green on retry, no schema change):
+- New `util/ProgramEditorHelpers.kt::moveSessionToWeek(weeks, fromWeekId, sessionId, toWeekId)` — pure helper. Removes the session from its source week (renumbering remaining sessions' `order = listIndex + 1`), appends it to the target week with `order = target.sessions.size + 1`. No-op for same-week moves, missing weeks, or missing session. Session id / name / workoutTemplateId preserved.
+- `SessionCard` gains two optional params: `otherWeeks: List<ProgramWeekDefinition>` and `onMoveToWeek: ((String) -> Unit)?`. When set and `otherWeeks` is non-empty, a small `SwapHoriz` IconButton renders before the Edit button; tapping it opens a new `AlertDialog` listing other weeks' labels as tappable rows. Tapping a row calls `onMoveToWeek(targetWeekId)` and closes the dialog.
+- Both editors (`ProgramEditorScreen` compact + `EnhancedProgramEditor` master-detail) wire `otherWeeks = editedWeeks.filter { it.id != week.id }` and `onMoveToWeek = { editedWeeks = moveSessionToWeek(editedWeeks, week.id, session.id, it) }`.
+- 7 new JVM tests in `ProgramEditorHelpersTest`: appends with correct order on target; renumbers source after removal; no-op for same-week / missing source / missing target / missing session; preserves session identity fields. JVM test count 49 → 56.
 
 **Phase 4 slice 11 landed 2026-04-19** (build + JVM tests green, no schema change):
 - `RenameCycleDialog` lifted out of `CycleDetailScreen.kt` into a shared `ui/RenameCycleDialog.kt` (top-level `public` composable). `CycleDetailScreen` now calls the shared one.
@@ -184,11 +197,11 @@ These features exist in code and appear to be functional based on the screen and
 
 3. **Manual DI duplication.** `MainActivity` wires ~14 ViewModel factories with the same `(application as WorkoutApplication).database.xDao()` pattern repeated. Should be centralized in an `AppContainer`.
 
-4. **Test coverage is still thin but no longer zero.** The wizard defaults were removed 2026-04-18. There are now 49 JVM unit tests (20 ViewModel + 8 for `CycleProgress` + 8 for `CycleAggregates` + 13 for `ProgramEditorHelpers`) plus four instrumented migration tests (v21 open, v21→22, v22→23, v23→24). Coverage targets the known-fragile areas: workout timer + edit/resume, active cycle UUID flow, history cycle filtering, cycle progress derivation, and week-duplicate integrity. Everything else (dashboard widgets, PRs, import/export, cloud backup, volume, analytics) is still validated only by running the app.
+4. **Test coverage is still thin but no longer zero.** The wizard defaults were removed 2026-04-18. There are now 56 JVM unit tests (20 ViewModel + 8 for `CycleProgress` + 8 for `CycleAggregates` + 20 for `ProgramEditorHelpers`) plus four instrumented migration tests (v21 open, v21→22, v22→23, v23→24). Coverage targets the known-fragile areas: workout timer + edit/resume, active cycle UUID flow, history cycle filtering, cycle progress derivation, and week-duplicate integrity. Everything else (dashboard widgets, PRs, import/export, cloud backup, volume, analytics) is still validated only by running the app.
 
 5. **Room DAO convention was unstable.** Recent commits flipped back and forth on `suspend` modifiers for `@Query` / `@Delete`. The current convention (see `CLAUDE.md`) is: suspend for writes, non-suspend for `Flow`/`LiveData` returns, non-suspend snapshot reads only where sync call sites require them.
 
-6. **TODOs.** Three unresolved, all about reading weight unit from user preferences (`ui/DashboardScreen.kt:2608`, `viewmodel/DashboardViewModel.kt:723`, `ui/WorkoutLoggerScreens.kt:503`).
+6. **TODOs.** Two weight-unit TODOs resolved in slice 13 (`DashboardViewModel.saveBodyweightEntry` + `EnhancedDashboardScreen`'s `BodyweightEntryDialog`); both now read from `AppSettingsRepository.weightUnitFlow` via `DashboardViewModel.weightUnit`. The remaining `WorkoutLoggerScreens.kt:551` TODO is `lastPerformance = null // TODO: Implement based on available data` — unrelated to weight unit.
 
 ## Branch state
 
@@ -230,7 +243,9 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-19, slice 9): up/down reorder arrows on each week card in both program editors. Pure helper `util/ProgramEditorHelpers.kt::moveWeek` with 7 JVM tests. No schema change.
   - Done (2026-04-19, slice 10): rename the active cycle from the cycle-detail screen. Two DAO updates (`ActiveCycleDao.renameActiveCycle`, `LoggedWorkoutDao.renameLoggedWorkoutsByCycle`) + `CycleDetailViewModel.renameActiveCycle` + Edit pencil + dialog. Backfills the `userCycleName` snapshot on every workout in the cycle so history picks up the new name. No schema change.
   - Done (2026-04-19, slice 11): rename ENDED cycles from the history screen. Shared `ui/RenameCycleDialog.kt` + `HistoryViewModel.renameCompletedCycle` + Edit pencil on both `CycleCard` and `CycleCardMaster`. Reuses the slice 10 DAO method. No schema change.
-  - Further candidates: per-exercise progression scheme (linear / double / RPE — separate from the per-set `targetWeight`); true drag-reorder (currently up/down arrows only); session-level up/down is already in place for program editor, so a "move session across weeks" helper could be next.
+  - Done (2026-04-19, slice 12): move-session-across-weeks in the program editor. Pure helper `moveSessionToWeek` + 7 JVM tests + `SwapHoriz` IconButton + week-picker dialog on `SessionCard`. No schema change.
+  - Done (2026-04-19, slice 13): weight-unit TODO cleanup. `DashboardViewModel` now holds `AppSettingsRepository` and exposes `weightUnit: StateFlow<String>`. `saveBodyweightEntry` and `BodyweightEntryDialog` both read from it. No schema change.
+  - Further candidates: per-exercise progression scheme (linear / double / RPE — separate from the per-set `targetWeight`); true drag-reorder (currently up/down arrows only).
 
 ## Deleted during cleanup
 
