@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.myworkoutlog"
+    namespace = "com.kennychiu.myworkoutlog"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.myworkoutlog"
+        applicationId = "com.kennychiu.myworkoutlog"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

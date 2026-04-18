@@ -16,7 +16,7 @@ Kotlin 2.1, Jetpack Compose, Material 3, Room, DataStore, Navigation Compose, Vi
 1. **Mesocycle / program management** is ~40% done (per prior audit on the `claude/evaluate-app-rewrite-Eqoyq` branch). This is the priority when restarting feature work.
 2. **Workout session timer + edit/resume** has been patched many times and still has state-contamination edge cases.
 3. **Room DB still uses `fallbackToDestructiveMigration()`** — every schema change wipes user data. Must be replaced before further schema changes.
-4. **Flat package `com.example.myworkoutlog`** with 66 files and multi-thousand-line screen files. Structural cleanup is scheduled.
+4. **Flat package `com.kennychiu.myworkoutlog`** with ~65 files and multi-thousand-line screen files. Structural cleanup (subpackages, monolith splits) is scheduled.
 5. **No real tests.** `ExampleUnitTest.kt` and `ExampleInstrumentedTest.kt` are the Android Studio wizard defaults.
 
 ## Conventions (current codebase — follow for consistency)

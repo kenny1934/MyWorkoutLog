@@ -29,11 +29,11 @@ These features exist in code and appear to be functional based on the screen and
 
 3. **Destructive DB migration.** `WorkoutDatabase` uses `fallbackToDestructiveMigration()`. Any schema change wipes all user data. Schema is at version 21 with no `Migration` objects defined. This must be fixed before further schema changes.
 
-4. **Placeholder `applicationId`.** Still `com.example.myworkoutlog` from the Android Studio wizard default.
+4. ~~Placeholder `applicationId`.~~ Renamed from `com.example.myworkoutlog` to `com.kennychiu.myworkoutlog`.
 
 ## Structural issues (code health)
 
-1. **Flat package.** All 66 Kotlin files live directly in `com.example.myworkoutlog`. No `data/`, `ui/`, `viewmodel/` subpackages.
+1. **Flat package.** All ~65 Kotlin files live directly in `com.kennychiu.myworkoutlog`. No `data/`, `ui/`, `viewmodel/` subpackages.
 
 2. **Monolithic screen files.** `DashboardScreen.kt` is 2,612 lines, `ProgramManagementScreens.kt` 2,088, `HistoryScreens.kt` 1,805, `WorkoutLoggerScreens.kt` 1,618. Each contains many Composables that should be separate files.
 
@@ -60,7 +60,8 @@ Master is 4 commits ahead of where the app was last actually developed (2025-09)
 - **Phase 0 — Truth reset (docs).** Done. Inflated docs removed (~14K lines); README and CLAUDE.md rewritten; this file is the new single source of truth.
 - **Phase 1 — Build and DB safety.** Partially done.
   - Done: removed open-ended `fallbackToDestructiveMigration()`. `WorkoutDatabase` now declares an empty `MIGRATIONS` array, scopes destructive fallback to legacy dev versions 1–20 only, and enables schema export (`exportSchema = true` with `room.schemaLocation` via KSP). Any schema bump past v21 must add a `Migration` object.
-  - Pending user input: rename `applicationId` off `com.example.myworkoutlog` (needs the user to pick a real package name), and prune the 4 stale remote feature branches (needs confirmation since remote branch deletion is destructive to shared git state).
+  - Done: renamed `applicationId` / namespace to `com.kennychiu.myworkoutlog` and moved all source files accordingly.
+  - Pending: prune the 4 stale remote feature branches.
 - **Phase 2 — Structural cleanup.** Partially done.
   - Done: manual DI extracted into `AppContainer`. `MainActivity` dropped from ~160 lines of repeated factory wiring to 14 one-liners. `WorkoutApplication` exposes `container`; all DAO/repository/factory construction lives in one place.
   - Not started: package restructure into `data/ui/viewmodel/util` (bundled with the `applicationId` rename to avoid double-touching all 66 files); splitting the 4 monolithic screen files (`DashboardScreen.kt` etc.). Both require a working local build to verify — Android Studio on Windows is currently the only working build path.
