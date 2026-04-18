@@ -66,4 +66,17 @@ class WorkoutDatabaseMigrationTest {
             WorkoutDatabase.MIGRATION_22_23,
         ).close()
     }
+
+    // v23 → v24 added TemplateExerciseSet.targetWeight and LoggedSet.targetWeight
+    // inside their respective JSON blobs. Same no-op pattern.
+    @Test
+    fun migrate23To24() {
+        helper.createDatabase(dbName, 23).close()
+        helper.runMigrationsAndValidate(
+            dbName,
+            24,
+            true,
+            WorkoutDatabase.MIGRATION_23_24,
+        ).close()
+    }
 }

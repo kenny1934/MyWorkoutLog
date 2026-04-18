@@ -867,9 +867,11 @@ private fun TemplateCreateDialog(
 }
 
 private fun formatSetTarget(set: TemplateExerciseSet): String {
+    val weight = set.targetWeight?.takeIf { it.isNotBlank() }?.let { " @ $it" } ?: ""
     return when {
-        !set.targetReps.isNullOrBlank() -> "${set.targetReps} reps"
-        !set.targetSecs.isNullOrBlank() -> "${set.targetSecs}s"
+        !set.targetReps.isNullOrBlank() -> "${set.targetReps} reps$weight"
+        !set.targetSecs.isNullOrBlank() -> "${set.targetSecs}s$weight"
+        weight.isNotEmpty() -> "Weight$weight"
         else -> "Open set"
     }
 }
@@ -1037,6 +1039,12 @@ fun TemplateSetEditorRow(
             value = set.targetSecs ?: "",
             onValueChange = { onSetChange(set.copy(targetSecs = it, targetReps = null)) },
             label = { Text("Secs") },
+            modifier = Modifier.weight(1f)
+        )
+        OutlinedTextField(
+            value = set.targetWeight ?: "",
+            onValueChange = { onSetChange(set.copy(targetWeight = it.ifBlank { null })) },
+            label = { Text("Weight") },
             modifier = Modifier.weight(1f)
         )
         IconButton(onClick = onDelete) {

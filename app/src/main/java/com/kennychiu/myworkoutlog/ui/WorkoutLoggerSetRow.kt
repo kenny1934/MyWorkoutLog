@@ -234,6 +234,7 @@ fun LoggedSetRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Weight input field
+                val targetWeightHint = set.targetWeight?.takeIf { it.isNotBlank() }
                 OutlinedTextField(
                     value = weightText,
                     onValueChange = { newText ->
@@ -243,6 +244,9 @@ fun LoggedSetRow(
                         }
                     },
                     label = { Text("Weight ($weightUnit)") },
+                    placeholder = if (targetWeightHint != null) {
+                        { Text("→ $targetWeightHint") }
+                    } else null,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier
                         .weight(1f)

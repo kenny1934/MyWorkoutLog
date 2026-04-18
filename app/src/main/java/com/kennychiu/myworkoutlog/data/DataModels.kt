@@ -133,7 +133,10 @@ data class TemplateExerciseSet(
     val targetReps: String? = null,
     val targetSecs: String? = null,
     val targetRIR: String? = null, // Using String for simplicity for now
-    val notes: String? = null
+    val notes: String? = null,
+    // Optional prescribed load — freeform (e.g. "60", "60-65", "BW+20"). Null = no target.
+    // JSON-blob only inside workout_template_table.templateExercises, no SQL column.
+    val targetWeight: String? = null
 )
 
 // Represents an exercise within a template, linking to a master exercise
@@ -171,7 +174,8 @@ data class LoggedSet(
     val videoReference: String? = null, // Path to video file for form reference
     // ADD THESE TWO PROPERTIES TO SNAPSHOT THE TARGETS
     val targetReps: String? = null,
-    val targetSecs: String? = null
+    val targetSecs: String? = null,
+    val targetWeight: String? = null
 )
 
 data class LoggedExercise(

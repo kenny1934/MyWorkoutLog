@@ -315,7 +315,8 @@ class WorkoutLoggerViewModel(
                                 weight = null,
                                 secs = null,
                                 targetReps = templateSet.targetReps,
-                                targetSecs = templateSet.targetSecs
+                                targetSecs = templateSet.targetSecs,
+                                targetWeight = templateSet.targetWeight,
                             )
                         },
                         isSubstitute = false
