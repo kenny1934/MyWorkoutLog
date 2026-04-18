@@ -42,7 +42,10 @@ class WorkoutLoggerViewModel(
     
     // Cache for performance suggestions to avoid repeated calculations
     private val _performanceSuggestions = MutableStateFlow<Map<String, PerformanceSuggestion>>(emptyMap())
-    
+
+    // Cache for last-performance summaries keyed by exerciseId (surfaced on EnhancedExerciseCard).
+    private val _lastPerformanceSummaries = MutableStateFlow<Map<String, String>>(emptyMap())
+
     // Track if we're in edit mode for an existing workout
     private var isEditMode = false
     private var originalWorkoutId: String? = null
@@ -669,45 +672,62 @@ class WorkoutLoggerViewModel(
     fun getPerformanceSuggestion(exerciseId: String): PerformanceSuggestion? {
         return _performanceSuggestions.value[exerciseId]
     }
-    
+
+    // Get last-performance summary for a specific exercise (rendered under the exercise name).
+    fun getLastPerformance(exerciseId: String): String? {
+        return _lastPerformanceSummaries.value[exerciseId]
+    }
+
     // Calculate and cache performance suggestions for all exercises in current workout
     private fun calculatePerformanceSuggestions() {
         viewModelScope.launch(Dispatchers.IO) {
             val currentWorkout = _activeWorkoutState.value ?: return@launch
             val suggestions = mutableMapOf<String, PerformanceSuggestion>()
-            
+            val summaries = mutableMapOf<String, String>()
+
             for (exercise in currentWorkout.loggedExercises) {
-                val suggestion = calculateSuggestionForExercise(exercise.exerciseId)
-                if (suggestion != null) {
-                    suggestions[exercise.exerciseId] = suggestion
+                val recent = findRecentWorkoutForExercise(exercise.exerciseId, currentWorkout.workoutTemplateId)
+                if (recent != null) {
+                    val suggestion = buildSuggestionFromRecent(recent.workout, recent.exercise, recent.isFromSameSession)
+                    if (suggestion != null) suggestions[exercise.exerciseId] = suggestion
+
+                    val summary = summarizeLastPerformance(recent.workout, recent.exercise)
+                    if (summary != null) summaries[exercise.exerciseId] = summary
                 }
             }
-            
+
             _performanceSuggestions.value = suggestions
+            _lastPerformanceSummaries.value = summaries
         }
     }
-    
-    // Calculate performance suggestion for a single exercise
-    private suspend fun calculateSuggestionForExercise(exerciseId: String): PerformanceSuggestion? {
-        val currentWorkout = _activeWorkoutState.value ?: return null
-        val currentTemplateId = currentWorkout.workoutTemplateId ?: return null
-        
-        // First, try to find same exercise in same template (session-based matching)
-        var recentWorkout = loggedWorkoutDao.getLatestWorkoutWithExerciseInTemplate(exerciseId, currentTemplateId)
-        var isFromSameSession = true
-        
-        // Fallback to any recent workout with this exercise if no template match
-        if (recentWorkout == null) {
-            recentWorkout = loggedWorkoutDao.getLatestWorkoutWithExercise(exerciseId)
-            isFromSameSession = false
+
+    private data class RecentExerciseLookup(
+        val workout: LoggedWorkout,
+        val exercise: LoggedExercise,
+        val isFromSameSession: Boolean,
+    )
+
+    private fun findRecentWorkoutForExercise(exerciseId: String, currentTemplateId: String?): RecentExerciseLookup? {
+        var workout: LoggedWorkout? = null
+        var fromSameSession = true
+        if (currentTemplateId != null) {
+            workout = loggedWorkoutDao.getLatestWorkoutWithExerciseInTemplate(exerciseId, currentTemplateId)
         }
-        
-        if (recentWorkout == null) return null
-        
-        // Find the exercise in that workout
-        val recentExercise = recentWorkout.loggedExercises.find { it.exerciseId == exerciseId }
-            ?: return null
-        
+        if (workout == null) {
+            workout = loggedWorkoutDao.getLatestWorkoutWithExercise(exerciseId)
+            fromSameSession = false
+        }
+        val w = workout ?: return null
+        val ex = w.loggedExercises.find { it.exerciseId == exerciseId } ?: return null
+        return RecentExerciseLookup(w, ex, fromSameSession)
+    }
+    
+    // Calculate performance suggestion from an already-fetched recent workout/exercise pair.
+    private fun buildSuggestionFromRecent(
+        recentWorkout: LoggedWorkout,
+        recentExercise: LoggedExercise,
+        isFromSameSession: Boolean,
+    ): PerformanceSuggestion? {
         // Get working sets (exclude obvious warm-up sets and failed sets)
         val workingSets = recentExercise.sets
             .filter { it.reps != null && it.reps > 0 } // Only completed sets

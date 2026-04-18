@@ -547,8 +547,7 @@ private fun WorkoutLoggerScreenContent(
                     }
                     val totalSets = exercise.sets.size
 
-                    // Get last performance info (placeholder for now)
-                    val lastPerformance = null // TODO: Implement based on available data
+                    val lastPerformance = viewModel.getLastPerformance(exercise.exerciseId)
 
                     EnhancedExerciseCard(
                         exerciseName = exercise.exerciseName,
