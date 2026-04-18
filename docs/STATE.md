@@ -2,18 +2,26 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-18 (Phase 4 slice 1 landed; legacy dashboard path deleted).
+Last updated: 2026-04-18 (Phase 4 slice 2 landed; first real Room migration shipped).
 
 ## Next session — start here
 
 As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` is green, the subpackage restructure has landed, and all four monolith splits are done: `DashboardScreen.kt` 2,612 → 995, `ProgramManagementScreens.kt` 2,091 → 461, `HistoryScreens.kt` 1,808 → 481, and `WorkoutLoggerScreens.kt` 1,618 → 766 (split into `WorkoutLoggerSetRow.kt` 381, `WorkoutLoggerDialogs.kt` 363, `WorkoutLoggerTimer.kt` 163). The Phase 3 `WorkoutLoggerViewModel` tests pinned the timer/edit/resume state transitions before the split, and unit tests remain green after.
 
-**Phase 3 kick-off landed 2026-04-18:** 20 JVM unit tests across `ActiveCycleViewModel` (4), `HistoryViewModel` (5), and `WorkoutLoggerViewModel` (11) pin the fragile timer/edit/resume flows, cycle UUID generation, and history cycle filtering. A Room `MigrationTestHelper` smoke test for schema v21 is committed under `app/src/androidTest/` but requires an emulator or device to run — run it from Windows Android Studio.
+**Phase 3 kick-off landed 2026-04-18:** 20 JVM unit tests across `ActiveCycleViewModel` (4), `HistoryViewModel` (5), and `WorkoutLoggerViewModel` (11) pin the fragile timer/edit/resume flows, cycle UUID generation, and history cycle filtering. A Room `MigrationTestHelper` smoke test for schema v21 is committed under `app/src/androidTest/` and has been exercised on device via `./gradlew :app:connectedDebugAndroidTest` — it runs cleanly over adb-over-Tailscale once duplicate device entries (e.g. the mDNS discovery of the same phone) are disconnected.
 
 **Phase 4 slice 1 + cleanup landed 2026-04-18** (two commits pushed, device-verified):
 - `ee5d915` — slice 1. `util/CycleProgress.kt` adds a pure `cycleProgress(ActiveProgramCycle)` helper returning `CycleProgressInfo` (ordered weeks, current week + index, next session, completed/total session counts, start date, planned end date = `startDate + weeks.size` weeks, `isComplete` flag). 8 JVM tests in `util/CycleProgressTest.kt`. `ui/DashboardWidgetCards.kt::SimpleCycleProgressWidgetCard` consumes the helper — the live "Cycle Progress" widget now shows a "Started … · Planned end …" line and the primary button reads `Start <next session name>` with a correct cycleId/weekId/sessionId/templateId route. No schema change.
 - `c348f75` — cleanup. `LegacyDashboardScreen`, `ActiveCycleDashboard`, `NoActiveCycleDashboard`, and the whole `ui/DashboardCycleViews.kt` file were unreachable in the current `MainActivity` wiring (`dashboardViewModel` is always non-null). Deleted. `DashboardScreen` now just wraps `EnhancedDashboardScreen` and takes only the two params it actually needs. In `data/WidgetRepositorySimplified.kt`, `calculateBasicCycleProgress` / `calculateCycleProgressText` duplicated the helper's logic — replaced with one `cycleProgress(activeCycle)` call, preserved the existing widget text format, deleted both private functions. Net -310 LOC, no behavior change.
-- Unit test total is 28.
+
+**Phase 4 slice 2 landed 2026-04-18** (device-verified):
+- `ProgramWeekDefinition` gains `isDeloadWeek: Boolean = false` (last field, defaulted). The field lives inside the JSON blob stored in `program_template_table.weeks` (and inside the `cycleProgram` snapshot on `active_program_cycle_table`), so no SQL column was added. Gson instantiates via `Unsafe`, which sets missing primitive booleans to `false` — matching the Kotlin default — so old stored cycles read cleanly.
+- **First real Room migration.** DB version bumped 21 → 22. `WorkoutDatabase.MIGRATION_21_22` is a no-op `Migration` (schema unchanged apart from a user_version bump) registered via the existing `MIGRATIONS` array. Legacy destructive fallback is still scoped to v1–20 only. Schema JSON exported at `app/schemas/com.kennychiu.myworkoutlog.data.WorkoutDatabase/22.json` — byte-identical to `21.json` except the version field.
+- **Migration test extended.** `WorkoutDatabaseMigrationTest.migrate21To22()` calls `runMigrationsAndValidate(dbName, 22, true, MIGRATION_21_22)`. Both that test and the pre-existing `canOpenSchemaAtVersion21` pass on device via `./gradlew :app:connectedDebugAndroidTest`.
+- **Packaging gotcha.** `app/build.gradle.kts` now excludes `META-INF/LICENSE.md` and `META-INF/LICENSE-notice.md` from packaging. Without this, six JUnit5 jars (pulled in transitively by `mockk-android`) collided and broke the androidTest APK build. Pre-existing landmine; surfaced when the instrumented test suite was first actually packaged.
+- **Program editor UI.** A "Deload week" `FilterChip` sits under the week label in both `ProgramEditorScreen` and `EnhancedProgramEditor` week cards. Tap to toggle; persists on Save.
+- **Dashboard widget UI.** `SimpleCycleProgressWidgetCard` shows a "Deload" badge next to the "Cycle Progress" title when `cycleProgress(cycle).currentWeek?.isDeloadWeek == true`. Uses `tertiaryContainer` / `onTertiaryContainer` theming.
+- JVM test count unchanged at 28; instrumented test count now 2.
 
 The SDK setup section below is kept as a reference for reinstalling on a fresh machine.
 
@@ -86,7 +94,7 @@ These features exist in code and appear to be functional based on the screen and
 
 2. **Workout session timer + edit/resume.** The recent commit chain has repeatedly patched symptoms: negative timer values, frozen timer after editing, duplicate workout creation on edit-then-resume. Edge cases remain in state transitions between in-progress → edit → save → resume.
 
-3. **Destructive DB migration.** `WorkoutDatabase` uses `fallbackToDestructiveMigration()`. Any schema change wipes all user data. Schema is at version 21 with no `Migration` objects defined. This must be fixed before further schema changes.
+3. ~~**Destructive DB migration.**~~ Resolved. Schema is at v22; destructive fallback is scoped to legacy dev versions 1–20 only via `fallbackToDestructiveMigrationFrom(*LEGACY_DEV_VERSIONS)`. `MIGRATION_21_22` is the first real migration. Further schema changes must add a new `Migration` object and extend `WorkoutDatabaseMigrationTest`.
 
 4. ~~Placeholder `applicationId`.~~ Renamed from `com.example.myworkoutlog` to `com.kennychiu.myworkoutlog`.
 
@@ -132,8 +140,8 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-18): `WorkoutDatabaseMigrationTest` at `app/src/androidTest/.../data/` uses `MigrationTestHelper` to confirm the v21 schema opens cleanly. It does not run under `./gradlew test` — it's an instrumented test. Run from Android Studio with a connected device/emulator. When the first real `Migration` is added, extend this file with a `runMigrationsAndValidate` case.
   - Not started: tests for other ViewModels (dashboard, PRs, analytics, export/import). Not gating.
 - **Phase 4 — Resume feature work.** Complete mesocycle / program management UX.
-  - Done (2026-04-18, slice 1 + follow-up cleanup): current week / next session / planned end date live on the dashboard widget via the shared `cycleProgress()` helper. Legacy dashboard path deleted; cycle-progress calculations deduped. See the two commits above.
-  - Next slice (not started): **deload-week flag** on `ProgramWeekDefinition`. This will be the first real `Migration` object (v21 → v22) — `fallbackToDestructiveMigration` is scoped to legacy v1–20 only. Extend `WorkoutDatabaseMigrationTest` with a `runMigrationsAndValidate(21, 22, …)` case at that point, add a toggle on each week card in the program editor, and surface the flag in the dashboard widget when `cycleProgress(cycle).currentWeek?.isDeloadWeek == true`.
+  - Done (2026-04-18, slice 1 + follow-up cleanup): current week / next session / planned end date live on the dashboard widget via the shared `cycleProgress()` helper. Legacy dashboard path deleted; cycle-progress calculations deduped.
+  - Done (2026-04-18, slice 2): deload-week flag on `ProgramWeekDefinition`, first real `Migration(21, 22)`, program-editor toggle, dashboard widget "Deload" badge, instrumented migration test. See the slice 2 section above.
   - Further candidates: per-exercise progression metadata on `TemplateExercise` (RIR/RPE ranges, rep/weight targets per week); dedicated cycle-detail screen (week-by-week breakdown, PRs hit, volume/duration aggregates).
 
 ## Deleted during cleanup
