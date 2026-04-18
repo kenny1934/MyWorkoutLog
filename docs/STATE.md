@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Bottom-padding / nested-Scaffold inset fix applied across all 11 nested Scaffolds in AppNavHost screens).
+Last updated: 2026-04-19 (Phase 4 slice 8 — bulk-copy-week action in the program editor).
 
 ## Next session — start here
 
@@ -43,6 +43,12 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 - Secondary fix on the compact WorkoutLogger `LazyColumn`: `.padding(paddingValues).padding(16.dp)` → `.padding(paddingValues)` with `contentPadding = PaddingValues(16.dp)`. This lets the last set scroll fully into view instead of being pinned inside a shrunk viewport. Same anti-pattern also exists in several other screens' `Column(.padding(paddingValues).padding(16.dp))` wrappers but isn't clipping anything visible there (Columns aren't scrollable), so left alone.
 - Dashboard compact-layout `LazyColumn`: `.padding(layoutInfo.contentPadding)` → `contentPadding = PaddingValues(layoutInfo.contentPadding)` so widgets scroll through the bottom padding instead of the whole list being pinned.
 - JVM tests still 36; no new tests (layout bug).
+
+**Phase 4 slice 8 landed 2026-04-19** (build + JVM tests green, no schema change):
+- New `util/ProgramEditorHelpers.kt::duplicateWeekInto(weeks, source, idGenerator)` — pure helper. Finds the source week by id, builds a copy with a fresh UUID (via injected generator, defaults to `UUID.randomUUID`), fresh UUIDs on every nested `ProgramSessionDefinition`, label prefixed with "Copy of ", inserts it immediately after the source in the list, and renumbers every week's `order` to match list position. If the source id is absent, returns the list unchanged.
+- Both editors (`ProgramEditorScreen` compact + `EnhancedProgramEditor` master-detail) gain a `ContentCopy` IconButton between the Week Label field and the Delete button. Tapping duplicates the week. Existing delete behaviour is unchanged.
+- 6 new JVM tests in `util/ProgramEditorHelpersTest.kt`: copy is inserted in the right position; `order` gets renumbered across the whole list; nested sessions get fresh ids but preserve names/order; deload flag and `targetRir` carry through; label gets the "Copy of " prefix; unknown source id leaves the list unchanged. JVM test count 36 → 42.
+- Session `order` inside a week is preserved as-is on the copy (sessions already sorted by their own `order` field; see `CycleProgress.kt`, `CycleDetailScreen.kt`, `WidgetRepositorySimplified.kt`). No renumber needed there.
 
 **Phase 4 slice 7 landed 2026-04-19** (build + JVM tests green, no schema change):
 - `MasterDetailWorkoutView` in `ui/AdaptiveWorkoutComponents.kt` gains an optional `contextBanner: (@Composable () -> Unit)? = null` slot. When non-null, it renders full-width above the master + detail Row, inside the content column (right of the navigation rail, inside the same padding). Layout rearranged from `Row { rail; Row { masterCard; detailCard } }` to `Row { rail; Column { banner?; Row(weight=1f) { masterCard; detailCard } } }` so the banner and panels share horizontal space without the panels collapsing.
@@ -159,7 +165,7 @@ These features exist in code and appear to be functional based on the screen and
 
 3. **Manual DI duplication.** `MainActivity` wires ~14 ViewModel factories with the same `(application as WorkoutApplication).database.xDao()` pattern repeated. Should be centralized in an `AppContainer`.
 
-4. **Test coverage is still thin but no longer zero.** The wizard defaults were removed 2026-04-18. There are now 36 JVM unit tests (20 ViewModel + 8 for `CycleProgress` + 8 for `CycleAggregates`) plus three instrumented migration tests (v21 open, v21→22, v22→23). Coverage targets the known-fragile areas: workout timer + edit/resume, active cycle UUID flow, history cycle filtering, and cycle progress derivation. Everything else (dashboard widgets, PRs, import/export, cloud backup, volume, analytics) is still validated only by running the app.
+4. **Test coverage is still thin but no longer zero.** The wizard defaults were removed 2026-04-18. There are now 42 JVM unit tests (20 ViewModel + 8 for `CycleProgress` + 8 for `CycleAggregates` + 6 for `ProgramEditorHelpers`) plus four instrumented migration tests (v21 open, v21→22, v22→23, v23→24). Coverage targets the known-fragile areas: workout timer + edit/resume, active cycle UUID flow, history cycle filtering, cycle progress derivation, and week-duplicate integrity. Everything else (dashboard widgets, PRs, import/export, cloud backup, volume, analytics) is still validated only by running the app.
 
 5. **Room DAO convention was unstable.** Recent commits flipped back and forth on `suspend` modifiers for `@Query` / `@Delete`. The current convention (see `CLAUDE.md`) is: suspend for writes, non-suspend for `Flow`/`LiveData` returns, non-suspend snapshot reads only where sync call sites require them.
 
@@ -201,7 +207,8 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-18, slice 5b): per-week aggregates (sets / volume / duration) + PRs-hit-this-cycle card on the cycle-detail screen. New `CycleDetailViewModel` combines cycle + logged workouts + PRs. Pure `util/CycleAggregates.kt` with 8 JVM tests.
   - Done (2026-04-19, slice 6): per-set `targetWeight` on `TemplateExerciseSet` + `LoggedSet`. Third real Room migration (v23 → v24, no-op). Template editor gets a Weight field per set; workout logger shows it as a placeholder hint on the Weight input.
   - Done (2026-04-19, slice 7): cycle-context banner mirrored into the master-detail logger layout so the Z Fold's tablet layout shows the same deload/RIR context as the compact layout. Banner slot added to `MasterDetailWorkoutView`.
-  - Further candidates: per-exercise progression scheme (linear / double / RPE — separate from the per-set `targetWeight`); history-session rename when user-cycle name changes; program editor drag-reorder / bulk-copy week.
+  - Done (2026-04-19, slice 8): bulk-copy-week action on each week card in both the compact and master-detail program editors. Pure helper `util/ProgramEditorHelpers.kt::duplicateWeekInto` with 6 JVM tests. No schema change.
+  - Further candidates: per-exercise progression scheme (linear / double / RPE — separate from the per-set `targetWeight`); history-session rename when user-cycle name changes; program editor drag-reorder (separate from bulk-copy).
 
 ## Deleted during cleanup
 
