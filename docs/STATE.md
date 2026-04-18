@@ -43,6 +43,9 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 - New `Screen.CycleDetail` route (no args) wired in `AppNavigation.kt`. `MainActivity` composable entry calls `CycleDetailScreen(activeCycleViewModel, onNavigateUp)`.
 - Dashboard widget `SimpleCycleProgressWidgetCard` is now clickable — tapping anywhere on the card navigates to `Screen.CycleDetail`. The existing "Start <next session>" button still works since it lives in its own onClick.
 - Sub-slice 5b (PRs hit during cycle + per-week volume/duration aggregates) deferred — current data flow already supports this via `personalRecordDao` + `loggedWorkoutDao.getByCycleId`, but the UI wiring is its own slice.
+- Two follow-up fixes shipped on top (`e2b6bad`, `7d0311b`):
+  - Session rows are tappable. Completed → `Screen.HistoryDetail(workoutId)`; pending → `Screen.TemplateDetail(templateId)` (review-only, does NOT start a workout — "Start next session" on the dashboard widget remains the single entry point to actually begin one).
+  - Nested Scaffold was reserving the bottom system-nav inset that `MainActivity`'s outer Scaffold already consumes via its bottom nav bar, leaving a blank strip above the nav. Fixed with `contentWindowInsets = WindowInsets(0)` on the inner Scaffold. This is the canonical fix pattern for any inner Scaffold added inside `AppNavHost` screens.
 
 The SDK setup section below is kept as a reference for reinstalling on a fresh machine.
 
