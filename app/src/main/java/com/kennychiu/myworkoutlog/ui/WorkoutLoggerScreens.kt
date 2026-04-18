@@ -221,6 +221,20 @@ private fun WorkoutLoggerScreenContent(
     val activeWorkout by viewModel.activeWorkoutState.collectAsStateWithLifecycle()
     val activeCycle by activeCycleViewModel.activeCycle.collectAsStateWithLifecycle()
 
+    // Match this workout's week against the cycle snapshot so we can surface the
+    // week's target RIR and deload flag at the top of the logger.
+    val currentCycleWeek: ProgramWeekDefinition? = remember(
+        activeWorkout?.programWeekDefinitionId,
+        activeWorkout?.activeProgramCycleId,
+        activeCycle?.cycleUuid,
+    ) {
+        val weekId = activeWorkout?.programWeekDefinitionId ?: return@remember null
+        val workoutCycleId = activeWorkout?.activeProgramCycleId ?: return@remember null
+        val cycle = activeCycle ?: return@remember null
+        if (cycle.cycleUuid != workoutCycleId) return@remember null
+        cycle.cycleProgram.weeks.firstOrNull { it.id == weekId }
+    }
+
     // Get the timer state from the ViewModel
     val timerIsRunning by viewModel.timerIsRunning.collectAsStateWithLifecycle()
     val timerValue by viewModel.timerValueSeconds.collectAsStateWithLifecycle()
@@ -420,6 +434,20 @@ private fun WorkoutLoggerScreenContent(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
+                // Cycle context banner (deload / target RIR) — only when this workout
+                // belongs to an active cycle whose week has one of those fields set.
+                currentCycleWeek?.let { week ->
+                    val rir = week.targetRir?.takeIf { it.isNotBlank() }
+                    if (week.isDeloadWeek || rir != null) {
+                        item {
+                            CycleContextBanner(
+                                weekLabel = week.weekLabel,
+                                isDeloadWeek = week.isDeloadWeek,
+                                targetRir = rir,
+                            )
+                        }
+                    }
+                }
                 // Enhanced bodyweight input section
                 item {
                     Card(
@@ -763,4 +791,62 @@ private fun WorkoutLoggerScreenContent(
             showDurationEditDialog = false
         }
     )
+}
+
+@Composable
+private fun CycleContextBanner(
+    weekLabel: String,
+    isDeloadWeek: Boolean,
+    targetRir: String?,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = weekLabel,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            if (isDeloadWeek) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                ) {
+                    Text(
+                        text = "Deload",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
+            }
+            if (targetRir != null) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                ) {
+                    Text(
+                        text = "RIR $targetRir",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
+            }
+        }
+    }
 }
