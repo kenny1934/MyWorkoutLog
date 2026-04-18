@@ -425,6 +425,22 @@ fun SimpleCycleProgressWidgetCard(
                         )
                     }
                 }
+                val targetRir = info.currentWeek?.targetRir?.takeIf { it.isNotBlank() }
+                if (targetRir != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Text(
+                            text = "RIR $targetRir",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
+                }
             }
             Spacer(modifier = Modifier.height(16.dp))
 

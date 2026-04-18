@@ -222,7 +222,10 @@ data class ProgramWeekDefinition(
     val order: Int,
     // Stored inside the JSON blob for ProgramTemplate.weeks (no SQL column).
     // Gson instantiates via Unsafe, so missing-from-JSON deserializes to false.
-    val isDeloadWeek: Boolean = false
+    val isDeloadWeek: Boolean = false,
+    // Optional weekly RIR/RPE target, freeform (e.g. "3", "2-3", "RPE 7-8").
+    // Null = no target prescribed. Also JSON-blob only, no SQL column.
+    val targetRir: String? = null
 )
 
 // This is the main database table for our program blueprints

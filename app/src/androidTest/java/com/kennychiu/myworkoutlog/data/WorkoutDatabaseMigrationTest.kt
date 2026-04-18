@@ -52,4 +52,18 @@ class WorkoutDatabaseMigrationTest {
             WorkoutDatabase.MIGRATION_21_22,
         ).close()
     }
+
+    // v22 → v23 added ProgramWeekDefinition.targetRir inside the same JSON blob.
+    // Another no-op migration — validates that the chained MIGRATIONS array lands
+    // a v21 database cleanly on v23.
+    @Test
+    fun migrate22To23() {
+        helper.createDatabase(dbName, 22).close()
+        helper.runMigrationsAndValidate(
+            dbName,
+            23,
+            true,
+            WorkoutDatabase.MIGRATION_22_23,
+        ).close()
+    }
 }

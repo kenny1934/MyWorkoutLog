@@ -108,18 +108,32 @@ fun ProgramEditorScreen(
                                 }
                             }
                             Spacer(Modifier.height(4.dp))
-                            FilterChip(
-                                selected = week.isDeloadWeek,
-                                onClick = {
-                                    editedWeeks = editedWeeks.map {
-                                        if (it.id == week.id) it.copy(isDeloadWeek = !it.isDeloadWeek) else it
-                                    }
-                                },
-                                label = { Text("Deload week") },
-                                leadingIcon = if (week.isDeloadWeek) {
-                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                } else null
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                FilterChip(
+                                    selected = week.isDeloadWeek,
+                                    onClick = {
+                                        editedWeeks = editedWeeks.map {
+                                            if (it.id == week.id) it.copy(isDeloadWeek = !it.isDeloadWeek) else it
+                                        }
+                                    },
+                                    label = { Text("Deload week") },
+                                    leadingIcon = if (week.isDeloadWeek) {
+                                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                    } else null
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                OutlinedTextField(
+                                    value = week.targetRir.orEmpty(),
+                                    onValueChange = { newValue ->
+                                        editedWeeks = editedWeeks.map {
+                                            if (it.id == week.id) it.copy(targetRir = newValue.takeIf { s -> s.isNotBlank() }) else it
+                                        }
+                                    },
+                                    label = { Text("Target RIR") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                             Spacer(Modifier.height(8.dp))
                             // Simple session cards with arrow button reordering
                             val sortedSessions = week.sessions.sortedBy { it.order }
@@ -617,18 +631,32 @@ fun EnhancedProgramEditor(
 
                         Spacer(Modifier.height(8.dp))
 
-                        FilterChip(
-                            selected = week.isDeloadWeek,
-                            onClick = {
-                                editedWeeks = editedWeeks.map {
-                                    if (it.id == week.id) it.copy(isDeloadWeek = !it.isDeloadWeek) else it
-                                }
-                            },
-                            label = { Text("Deload week") },
-                            leadingIcon = if (week.isDeloadWeek) {
-                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                            } else null
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            FilterChip(
+                                selected = week.isDeloadWeek,
+                                onClick = {
+                                    editedWeeks = editedWeeks.map {
+                                        if (it.id == week.id) it.copy(isDeloadWeek = !it.isDeloadWeek) else it
+                                    }
+                                },
+                                label = { Text("Deload week") },
+                                leadingIcon = if (week.isDeloadWeek) {
+                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                } else null
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            OutlinedTextField(
+                                value = week.targetRir.orEmpty(),
+                                onValueChange = { newValue ->
+                                    editedWeeks = editedWeeks.map {
+                                        if (it.id == week.id) it.copy(targetRir = newValue.takeIf { s -> s.isNotBlank() }) else it
+                                    }
+                                },
+                                label = { Text("Target RIR") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
 
                         Spacer(Modifier.height(12.dp))
 
