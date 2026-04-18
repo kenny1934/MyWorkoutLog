@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 4 slice 19 — scheme-aware smart-pre-fill chip).
+Last updated: 2026-04-19 (Phase 4 slice 20 — true drag-reorder for weeks and sessions).
 
 ## Next session — start here
 
@@ -43,6 +43,14 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 - Secondary fix on the compact WorkoutLogger `LazyColumn`: `.padding(paddingValues).padding(16.dp)` → `.padding(paddingValues)` with `contentPadding = PaddingValues(16.dp)`. This lets the last set scroll fully into view instead of being pinned inside a shrunk viewport. Same anti-pattern also exists in several other screens' `Column(.padding(paddingValues).padding(16.dp))` wrappers but isn't clipping anything visible there (Columns aren't scrollable), so left alone.
 - Dashboard compact-layout `LazyColumn`: `.padding(layoutInfo.contentPadding)` → `contentPadding = PaddingValues(layoutInfo.contentPadding)` so widgets scroll through the bottom padding instead of the whole list being pinned.
 - JVM tests still 36; no new tests (layout bug).
+
+**Phase 4 slice 20 landed 2026-04-19** (build + JVM tests green; no schema change):
+- Added `sh.calvin.reorderable:reorderable:3.0.0` in `gradle/libs.versions.toml` and `app/build.gradle.kts`.
+- `ui/ProgramEditorScreen.kt` — both editors (`ProgramEditorScreen` compact + `EnhancedProgramEditor` master-detail) now use `rememberReorderableLazyListState` around the week `LazyColumn`. Each week card lives inside a `ReorderableItem(reorderState, key = week.id)`. A new `DragHandle` `IconButton` sits above the existing up/down arrows in the leading column and carries `Modifier.draggableHandle()` from the `ReorderableCollectionItemScope`. Keys on `itemsIndexed` switched to `{ _, w -> w.id }` so item identity survives reorders.
+- Sessions inside each week card migrated from a plain `Column { forEachIndexed }` to `ReorderableColumn(list = sortedSessions, onSettle = { from, to -> editedWeeks = moveSessionWithinWeek(editedWeeks, week.id, from, to) })`. Each session is wrapped in `key(session.id) { ReorderableItem { ... } }` and the drag handle is passed into `SessionCard` via a new optional `dragHandle` slot.
+- `SessionCard` gains `dragHandle: (@Composable () -> Unit)? = null`. When non-null, it renders above the existing up/down arrows in the leading column — same 24.dp touch target, primary-tinted 16.dp icon. All other call sites default `dragHandle` to null, so the arrow + "Move to Week" dialog affordances remain unchanged.
+- The arrow-button callbacks on `SessionCard` were consolidated to call `moveSessionWithinWeek(editedWeeks, week.id, index, index ± 1)` instead of the previous inline swap + renumber. Identical output, less duplication.
+- New pure helper `util/ProgramEditorHelpers.kt::moveSessionWithinWeek(weeks, weekId, fromIndex, toIndex)` — indexes into `week.sessions.sortedBy { order }`, moves the entry, renumbers `order` to match list position, no-ops for equal indices / missing week / out-of-bounds. 6 new JVM tests; JVM count 97 → 103.
 
 **Phase 4 slice 19 landed 2026-04-19** (build + JVM tests green on retry; no schema change):
 - `util/ProgressionChip.kt::suggestForScheme` — pure helper that returns a `ChipSuggestion(weight, reps, rir, label)` given the exercise's progression scheme, its params, and the representative last-session set. Scheme rules: LINEAR adds `progressionIncrement` (null falls back to maintain); DOUBLE bumps reps when `lastReps < maxReps`, else bumps weight by `progressionIncrement` (default 2.5) and resets to `minReps`; RPE keeps last weight/reps and derives RIR from the target (ranges like "7-8" use the lower bound); TOP_SET set 1 adds `progressionIncrement` (default 2.5), backoff sets copy last. Labels include a scheme-specific suffix: `(next)`, `(top)`, `(backoff)`, or `@ RPE X`. 18 JVM tests; count 79 → 97.
@@ -243,7 +251,7 @@ These features exist in code and appear to be functional based on the screen and
 
 3. **Manual DI duplication.** `MainActivity` wires ~14 ViewModel factories with the same `(application as WorkoutApplication).database.xDao()` pattern repeated. Should be centralized in an `AppContainer`.
 
-4. **Test coverage is still thin but no longer zero.** The wizard defaults were removed 2026-04-18. There are now 97 JVM unit tests (20 ViewModel + 8 for `CycleProgress` + 8 for `CycleAggregates` + 20 for `ProgramEditorHelpers` + 8 for `LastPerformance` + 15 for `ProgressionHint` + 18 for `ProgressionChip`) plus five instrumented migration tests (v21 open, v21→22, v22→23, v23→24, v24→25). Coverage targets the known-fragile areas: workout timer + edit/resume, active cycle UUID flow, history cycle filtering, cycle progress derivation, week-duplicate integrity, last-performance summary formatting, progression-hint formatting, and scheme-aware chip suggestions. Everything else (dashboard widgets, PRs, import/export, cloud backup, volume, analytics) is still validated only by running the app.
+4. **Test coverage is still thin but no longer zero.** The wizard defaults were removed 2026-04-18. There are now 103 JVM unit tests (20 ViewModel + 8 for `CycleProgress` + 8 for `CycleAggregates` + 26 for `ProgramEditorHelpers` + 8 for `LastPerformance` + 15 for `ProgressionHint` + 18 for `ProgressionChip`) plus five instrumented migration tests (v21 open, v21→22, v22→23, v23→24, v24→25). Coverage targets the known-fragile areas: workout timer + edit/resume, active cycle UUID flow, history cycle filtering, cycle progress derivation, week-duplicate + session-reorder integrity, last-performance summary formatting, progression-hint formatting, and scheme-aware chip suggestions. Everything else (dashboard widgets, PRs, import/export, cloud backup, volume, analytics) is still validated only by running the app.
 
 5. **Room DAO convention was unstable.** Recent commits flipped back and forth on `suspend` modifiers for `@Query` / `@Delete`. The current convention (see `CLAUDE.md`) is: suspend for writes, non-suspend for `Flow`/`LiveData` returns, non-suspend snapshot reads only where sync call sites require them.
 
@@ -297,7 +305,8 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-19, slice 17): `lastPerformance` in the master-detail logger's master panel. `ExerciseListItem` gains an optional `lastPerformance: String?` param; `MasterDetailWorkoutView` exposes a `lastPerformanceFor` lambda the `WorkoutLoggerScreens` call site fills from `viewModel.getLastPerformance`. Same VM accessor as the compact layout — no new plumbing, no schema change.
   - Done (2026-04-19, slice 18): per-exercise progression scheme (LINEAR/DOUBLE/RPE/TOP_SET/NONE) + optional per-scheme params on `TemplateExercise`. Fourth real Room migration (v24 → v25, no-op). Template editor picker, template preview hint, and workout logger passive hint on both layouts. Pure `util/ProgressionHint.kt::formatProgressionHint` with 15 JVM tests. Smart-pre-fill chip stays scheme-agnostic in this slice; slice 19 makes it scheme-aware.
   - Done (2026-04-19, slice 19): scheme-aware smart-pre-fill chip. Pure `util/ProgressionChip.kt::suggestForScheme` with 18 JVM tests. `PerformanceSuggestion` gains an optional `suggestionLabel`; `WorkoutLoggerViewModel` caches per-exercise `TemplateExercise` + representative recent set and exposes `getChipSuggestion(exerciseId, setNumber)` that runs the helper and falls back to legacy. Template editor gains "Weight bump at max" input for DOUBLE and "Top-set bump" input for TOP_SET.
-  - Further candidates: true drag-reorder (currently up/down arrows only); AnalyticsViewModel `@OptIn(ExperimentalCoroutinesApi)` cleanup.
+  - Done (2026-04-19, slice 20): true drag-reorder via `sh.calvin.reorderable:3.0.0`. `ReorderableLazyColumn` for weeks, `ReorderableColumn` for sessions in both program editors. Drag handle renders above the existing arrow buttons; move-to-week dialog and AlertDialog stay as fallbacks. New `SessionCard.dragHandle` slot + new `util/ProgramEditorHelpers.kt::moveSessionWithinWeek` helper with 6 JVM tests (97 → 103).
+  - Further candidates: AnalyticsViewModel `@OptIn(ExperimentalCoroutinesApi)` cleanup.
 
 ## Deleted during cleanup
 
