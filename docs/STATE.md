@@ -8,6 +8,8 @@ Last updated: 2026-04-18 (during cleanup from 7-month stall).
 
 As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` is green, the subpackage restructure has landed, and three of the four monolith splits are done: `DashboardScreen.kt` 2,612 → 995, `ProgramManagementScreens.kt` 2,091 → 461, and `HistoryScreens.kt` 1,808 → 481. One monolith split remains: `WorkoutLoggerScreens.kt` (1,618 lines) — handle with extra care because it touches the known-broken timer state.
 
+**Phase 3 kick-off landed 2026-04-18:** 20 JVM unit tests across `ActiveCycleViewModel` (4), `HistoryViewModel` (5), and `WorkoutLoggerViewModel` (11) pin the fragile timer/edit/resume flows, cycle UUID generation, and history cycle filtering. A Room `MigrationTestHelper` smoke test for schema v21 is committed under `app/src/androidTest/` but requires an emulator or device to run — run it from Windows Android Studio.
+
 The SDK setup section below is kept as a reference for reinstalling on a fresh machine.
 
 ### 1. Install Linux-side Android SDK (reference — already done on this machine)
@@ -91,7 +93,7 @@ These features exist in code and appear to be functional based on the screen and
 
 3. **Manual DI duplication.** `MainActivity` wires ~14 ViewModel factories with the same `(application as WorkoutApplication).database.xDao()` pattern repeated. Should be centralized in an `AppContainer`.
 
-4. **No real tests.** `ExampleUnitTest.kt` and `ExampleInstrumentedTest.kt` are the wizard defaults. The codebase has no coverage — the recent history of "fix Room compilation" commits is visible symptomatic evidence that changes are being validated by running the app and hitting errors.
+4. **Test coverage is still thin but no longer zero.** The wizard defaults were removed 2026-04-18. There are now 20 ViewModel unit tests plus a Room v21 migration smoke test. Coverage targets the known-fragile areas: workout timer + edit/resume, active cycle UUID flow, and history cycle filtering. Everything else (dashboard, PRs, import/export, cloud backup, volume, analytics) is still validated only by running the app.
 
 5. **Room DAO convention was unstable.** Recent commits flipped back and forth on `suspend` modifiers for `@Query` / `@Delete`. The current convention (see `CLAUDE.md`) is: suspend for writes, non-suspend for `Flow`/`LiveData` returns, non-suspend snapshot reads only where sync call sites require them.
 
@@ -119,7 +121,11 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-18): split `ProgramManagementScreens.kt` (2,091 → 461) into `ProgramListScreen.kt`, `ProgramEditorScreen.kt`, `ProgramDetailViews.kt`, `ProgramCardsAndDialogs.kt`. Bumped 7 private composables to package-level so callers across files can reach them. Build verified green.
   - Done (2026-04-18): split `HistoryScreens.kt` (1,808 → 481) into `HistoryComponents.kt`, `HistoryCycleViews.kt`, `HistoryDetailScreen.kt`. Bumped `WorkoutSummaryCard`, `ProgramContextCard`, `formatTimestampToTime`, `formatHistoryWeight` from private to package-level; other helpers kept file-scoped with their only callers. Build verified green.
   - Not started: splitting the remaining monolithic screen file `WorkoutLoggerScreens.kt`.
-- **Phase 3 — Tests for broken areas.** Not started. Room migration tests; ViewModel unit tests for workout logger timer, active cycle, history cycle filtering.
+- **Phase 3 — Tests for broken areas.** In progress.
+  - Done (2026-04-18): test infra added (`kotlinx-coroutines-test`, `turbine`, `mockk`, `androidx.arch.core:core-testing`, `androidx.room:room-testing`). `MainDispatcherRule` helper under `app/src/test/`.
+  - Done (2026-04-18): 20 JVM unit tests. `ActiveCycleViewModelTest` (4) covers the cycle UUID generation and start/end DAO flow. `HistoryViewModelTest` (5) pins that `activeCycleWorkouts` only emits workouts whose `activeProgramCycleId` matches the active cycle, that `completedCycles` groups and sorts correctly, and that orphaned-workouts semantics mean "no cycle id" rather than "from ended cycle". `WorkoutLoggerViewModelTest` (11) covers init cleanup, template-based fresh start, resume-existing-in-progress, force-fresh cleanup, edit mode load, edit-finish preserves id + startTimestamp + resets edit flags, new-workout finish flips `isInProgress=false` and clears state, cycle `completedSessions` gets `weekId_sessionId` → workoutId, cancel on new workout marks completed, cancel in edit mode does NOT mark completed, and `updateSet` only mutates the target set. Tests use real `Dispatchers.IO` with mockk `verify(timeout = …)` and a local `waitUntil` helper (the VM doesn't abstract dispatchers, so advancing a `TestScheduler` isn't enough).
+  - Done (2026-04-18): `WorkoutDatabaseMigrationTest` at `app/src/androidTest/.../data/` uses `MigrationTestHelper` to confirm the v21 schema opens cleanly. It does not run under `./gradlew test` — it's an instrumented test. Run from Android Studio with a connected device/emulator. When the first real `Migration` is added, extend this file with a `runMigrationsAndValidate` case.
+  - Not started: tests for other ViewModels (dashboard, PRs, analytics, export/import). Not gating.
 - **Phase 4 — Resume feature work.** Complete mesocycle / program management UX.
 
 ## Deleted during cleanup
