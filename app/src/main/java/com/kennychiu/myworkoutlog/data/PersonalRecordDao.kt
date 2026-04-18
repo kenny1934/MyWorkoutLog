@@ -1,0 +1,27 @@
+package com.kennychiu.myworkoutlog.data
+
+import com.kennychiu.myworkoutlog.ui.*
+import com.kennychiu.myworkoutlog.viewmodel.*
+import com.kennychiu.myworkoutlog.util.*
+import androidx.room.*
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface PersonalRecordDao {
+    // We use "upsert" (update or insert) because when you set a new PR,
+    // it should replace the old one of the same type for that exercise.
+    @Upsert
+    fun upsert(pr: PersonalRecord)
+
+    @Query("SELECT * FROM personal_record_table WHERE exerciseId = :exerciseId")
+    fun getPRsForExercise(exerciseId: String): List<PersonalRecord>
+
+    @Query("SELECT * FROM personal_record_table WHERE exerciseId = :exerciseId")
+    fun getPRsForExerciseFlow(exerciseId: String): Flow<List<PersonalRecord>>
+
+    @Query("SELECT * FROM personal_record_table ORDER BY date DESC")
+    fun getAllPRs(): Flow<List<PersonalRecord>>
+    
+    @Query("SELECT * FROM personal_record_table ORDER BY date DESC LIMIT :limit")
+    fun recentPersonalRecords(limit: Int): List<PersonalRecord>
+}
