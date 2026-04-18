@@ -13,3 +13,20 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Machine-specific JDK symlink
+/jbr
+
+# Node artifacts (not an Android concern)
+package-lock.json
+node_modules/
+
+# Build artifacts
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# Kotlin
+.kotlin/

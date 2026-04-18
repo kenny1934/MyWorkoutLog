@@ -1,126 +1,42 @@
-# MyWorkoutLog - Native Android App
+# MyWorkoutLog
 
-A comprehensive native Android workout logger application built in Kotlin using Jetpack Compose. This production-ready app provides a complete offline-first experience for tracking structured workout programs with advanced analytics, video form references, and modern UI components.
+A personal Android app for logging workouts and tracking training programs. Single-user, offline-first, local SQLite storage with optional Google Drive backup.
 
-## 🏆 Current State: Production-Ready
+This is a hobby project, not a commercial product.
 
-The application is feature-complete with enterprise-level functionality including advanced analytics, cloud backup, customizable dashboards, video form references, and intelligent navigation.
+## Stack
 
-## ✅ Core Features
+- Kotlin 2.1, Jetpack Compose, Material 3
+- Room (SQLite), DataStore
+- Navigation Compose, Vico charts
+- Google Drive API for optional backup
+- Manual DI via ViewModel factories
+- minSdk 26, targetSdk/compileSdk 35
 
-### **Comprehensive Planning & Execution**
-- **Custom Exercise Library**: Detailed exercise management with muscle group tagging and bodyweight properties
-- **Reusable Templates**: Multi-set workout templates for consistent training
-- **Program Blueprints**: Complex multi-week programs with structured session assignments
-- **Active Cycle Management**: Dynamic dashboard with current week/session progress
-- **Enhanced Workout Logger**: Modern UI with complete set tracking (reps, weight, duration, RIR, bands, notes, video references)
-- **Video Form References**: Attach videos to workout sets for form analysis and technique tracking
-- **Rest Time Tracking**: Timer association with specific sets and actual rest time recording
-- **Precision Tracking**: Unit-aware weight and bodyweight system with decimal precision
-- **Integrated Timers**: Rest timer with pause/resume/add-time + total session stopwatch
+## Building
 
-### **Advanced Analytics & Insights**
-- **Complete Workout History**: Clickable history with detailed session timings
-- **Automatic PR Detection**: Max weight/reps with e1RM calculation for bodyweight exercises
-- **Volume Analysis**: Interactive charts tracking training volume per muscle group
-- **Performance Trends**: Clear weight display with bodyweight breakdown
-- **Smart Insights Engine**: Priority-based insight cards with dismissal functionality
-- **Enhanced Filtering**: Exercise, cycle, and muscle group filters with clear indicators
+Requires Android Studio or JDK 17+ with Android SDK.
 
-### **Professional Dashboard Experience**
-- **Galaxy Z Fold 6 Optimized**: Adaptive layout system for large screens with proper space utilization
-- **Customizable Widgets**: Edit mode with drag-and-drop reordering
-- **Widget Management**: Show/hide toggles with hidden widget recovery
-- **Quick Actions**: Contextual shortcuts with scroll indicators
-- **Enhanced Navigation**: Direct exercise navigation with auto-selection
-- **Persistent Preferences**: SharedPreferences-based customization storage
-- **Responsive Design**: Seamless experience across compact, medium, and expanded screen sizes
+```bash
+./gradlew assembleDebug        # build debug APK
+./gradlew installDebug         # install on connected device
+./gradlew test                 # unit tests (currently ~none)
+./gradlew lint                 # lint
+```
 
-### **Enterprise Data Management**
-- **Import/Export**: Complete backup and restore functionality
-- **Cloud Integration**: Seamless data synchronization capabilities
-- **Thread-Safe Operations**: Proper coroutine handling with loading states
-- **Type Safety**: Comprehensive error handling and validation
+## Repo layout
 
-## 🎯 Latest Enhancements
+```
+app/src/main/java/com/example/myworkoutlog/   # all Kotlin source (flat package, to be restructured)
+app/src/main/res/                              # resources
+docs/STATE.md                                  # honest status: works / broken / unfinished
+samples/                                       # sample data for manual testing
+```
 
-### **Large Screen Workout Logging Optimization**
-- Master-detail layout for exercise management on large screens (≥600dp)
-- Adaptive touch targets (56dp) optimized for gym usage and large screen interaction
-- WorkoutNavigationRail with quick actions: Add Exercise, Rest Timer, Finish Workout
-- Persistent session panel with bodyweight tracking and notes always visible
-- Enhanced input components with 20dp spacing and larger field heights for better usability
-- Smart layout distribution: 40% exercise list, 60% detailed exercise view for optimal workflow
+## Status
 
-### **Galaxy Z Fold 6 Adaptive Layout System**
-- Complete large-screen optimization for Galaxy Z Fold 6's 7.6" inner display
-- Responsive multi-column widget grids (1/2/3 columns) that scale with screen real estate
-- Adaptive layout detection with Material 3 breakpoints (600dp/840dp)
-- Consistent dashboard experience between folded and unfolded modes
-- Fixed Activity Heatmap timeframe overflow with scrollable selection
-- Complete insights and quick actions support in large screen mode
+See `docs/STATE.md` for an honest accounting of what works, what's broken, and what's unfinished. The short version: core logging works, mesocycle/program management is incomplete, the workout session timer has been patched repeatedly and still has edge cases, and there are effectively no automated tests.
 
-### **Video Reference System**
-- VideoReferenceSelector component with Android Photo Picker integration
-- Secure video storage in app's private directory with proper file management
-- Enhanced set row integration in expandable "Additional Options" section
-- Visual indicators for attached videos with add/remove functionality
-- Complete data model and ViewModel integration for persistent video references
+## License
 
-### **Enhanced Workout UI Components**
-- Professional component library with Material 3 styling and animations
-- Advanced input types with stepper controls and visual RIR scales
-- Haptic feedback and smooth focus animations for premium experience
-- Improved layout structure with better visual hierarchy
-- Modern enhanced set rows with expandable options for bands, notes, and video references
-
-### **Complete Cycle Safety Features**
-- Confirmation dialog prevents accidental cycle completion
-- Clear warning messages with confirm/cancel options
-- Selective confirmation (only for destructive actions)
-- Enhanced user protection for important operations
-
-### **Analytics Filter System**
-- Enhanced refresh button clears all filter selections
-- Visual filter indicators with dedicated clear buttons
-- Time range preservation during filter resets
-- Dual reset options for user convenience
-
-### **Precision Bodyweight Tracking**
-- Accurate decimal precision (68.5kg) across all screens
-- Smart edit mode pre-filling with existing workout data
-- Intelligent formatting showing decimals only when needed
-- Resolved type safety with overloaded formatting functions
-
-### **Intelligent Navigation**
-- Parameterized routes with exercise/tab/cycle pre-selection
-- Direct exercise navigation from performance entries
-- Smart context awareness in analytics screens
-- Eliminated 2-3 manual navigation steps throughout app
-
-## 🔧 Tech Stack
-
-* **Language:** Kotlin
-* **UI:** Jetpack Compose & Material 3
-* **Architecture:** MVVM (Model-View-ViewModel)
-* **Asynchronicity:** Kotlin Coroutines & Flow
-* **Database:** Room Persistence Library
-* **User Preferences:** Jetpack DataStore
-* **Charting:** Vico Charting Library
-* **Dependency Injection:** Manual (via ViewModel Factories)
-
-## 🚀 App Highlights
-
-- **Production-Ready**: Comprehensive feature set with enterprise-level functionality
-- **Large Screen Optimized**: Master-detail workout logging with adaptive touch targets for Galaxy Z Fold 6
-- **Video Form References**: Attach and manage workout videos for technique analysis
-- **Enhanced Workout Logger**: Modern UI with rest time tracking and advanced input components
-- **Offline-First**: Complete functionality without internet dependency
-- **Intelligent UX**: Contextual navigation with smart auto-selection and master-detail layouts
-- **Precision Tracking**: Accurate decimal bodyweight tracking system
-- **Professional Polish**: Material 3 design with smooth interactions and haptic feedback
-- **Advanced Analytics**: Real-time calculations with thread-safe operations
-
----
-
-*This app represents a complete fitness tracking solution with professional-grade features and user experience. Last updated: July 2025.*
+MIT (see `LICENSE`).
