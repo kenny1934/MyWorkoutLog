@@ -6,9 +6,11 @@ Last updated: 2026-04-18 (during cleanup from 7-month stall).
 
 ## Next session — start here
 
-Local `master` is 4 commits ahead of `origin/master` and not pushed. They compile in the editor but have not been verified by a real build. The WSL environment cannot build from the Windows-side SDK (`.exe` binaries), so a Linux-side Android SDK needs to be installed before the next working session. This is a one-time setup.
+As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` is green, and the 6 cleanup commits (through `d3f6f20`) are pushed to `origin/master`. The next work is Phase 2: split the 4 monolithic screen files and introduce a `data/ui/viewmodel/util` subpackage structure.
 
-### 1. Install Linux-side Android SDK
+The SDK setup section below is kept as a reference for reinstalling on a fresh machine.
+
+### 1. Install Linux-side Android SDK (reference — already done on this machine)
 
 ```bash
 sudo apt-get update && sudo apt-get install -y unzip
