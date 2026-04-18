@@ -199,9 +199,17 @@ class WidgetRepositorySimplified(
             recentPRs = recentPRs
         ))
         
-        // Cycle progress
-        val progress = calculateBasicCycleProgress(activeCycle)
-        val (weekProgress, sessionProgress) = calculateCycleProgressText(activeCycle)
+        // Cycle progress — single source of truth via util/CycleProgress.kt
+        val info = cycleProgress(activeCycle)
+        val totalWeeks = info.orderedWeeks.size
+        val currentWeekLabel = info.currentWeek?.weekLabel?.split(":")?.firstOrNull()?.trim()
+            ?: info.currentWeek?.let { "Week ${it.order + 1}" }
+            ?: "Week $totalWeeks"
+        val progress = if (info.totalSessionCount > 0) {
+            info.completedSessionCount.toFloat() / info.totalSessionCount.toFloat()
+        } else 0f
+        val weekProgress = "$currentWeekLabel of $totalWeeks"
+        val sessionProgress = "${info.completedSessionCount} of ${info.totalSessionCount} sessions completed"
         widgets.add(DashboardWidget.CycleProgressWidget(
             cycle = activeCycle,
             completionPercentage = progress,
@@ -371,19 +379,6 @@ class WidgetRepositorySimplified(
         }
     }
     
-    private fun calculateBasicCycleProgress(activeCycle: ActiveProgramCycle): Float {
-        // Calculate actual progress based on completed sessions vs total sessions
-        // Return value between 0.0 and 1.0 for CircularProgressIndicator
-        val totalSessions = activeCycle.cycleProgram.weeks.sumOf { it.sessions.size }
-        val completedSessions = activeCycle.completedSessions.size
-        
-        return if (totalSessions > 0) {
-            completedSessions.toFloat() / totalSessions.toFloat()
-        } else {
-            0f
-        }
-    }
-    
     private fun getBasicQuickActions(activeCycle: ActiveProgramCycle?): List<QuickAction> {
         val actions = mutableListOf<QuickAction>()
         
@@ -467,34 +462,6 @@ class WidgetRepositorySimplified(
         } catch (e: Exception) {
             null
         }
-    }
-    
-    private fun calculateCycleProgressText(activeCycle: ActiveProgramCycle): Pair<String, String> {
-        val totalWeeks = activeCycle.cycleProgram.weeks.size
-        val totalSessions = activeCycle.cycleProgram.weeks.sumOf { it.sessions.size }
-        val completedSessionsCount = activeCycle.completedSessions.size
-        
-        // Use the same logic as Next Session widget to find current week
-        val completedSessionIds = activeCycle.completedSessions.keys.toSet()
-        var currentWeekLabel = "Week $totalWeeks" // Default to last week
-        
-        // Find the first week with incomplete sessions (same logic as Next Session widget)
-        for (week in activeCycle.cycleProgram.weeks.sortedBy { it.order }) {
-            val hasIncompleteSession = week.sessions.any { session ->
-                session.id !in completedSessionIds
-            }
-            
-            if (hasIncompleteSession) {
-                // Extract week number from weekLabel (e.g., "Week 1: RIR 3" -> "Week 1")
-                currentWeekLabel = week.weekLabel.split(":").firstOrNull()?.trim() ?: "Week ${week.order + 1}"
-                break
-            }
-        }
-        
-        val weekProgress = "$currentWeekLabel of $totalWeeks"
-        val sessionProgress = "$completedSessionsCount of $totalSessions sessions completed"
-        
-        return Pair(weekProgress, sessionProgress)
     }
     
     private fun isCycleCompleted(activeCycle: ActiveProgramCycle): Boolean {

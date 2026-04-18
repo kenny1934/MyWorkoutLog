@@ -30,52 +30,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 
 @Composable
-fun LegacyDashboardScreen(
-    historyViewModel: HistoryViewModel,
-    activeCycleViewModel: ActiveCycleViewModel,
-    programViewModel: ProgramViewModel,
+fun DashboardScreen(
+    dashboardViewModel: DashboardViewModel,
     navController: NavHostController
 ) {
-    val activeCycle by activeCycleViewModel.activeCycle.collectAsStateWithLifecycle()
-
-    if (activeCycle == null) {
-        NoActiveCycleDashboard(
-            historyViewModel = historyViewModel,
-            onNavigate = { route -> navController.navigate(route) }
-        )
-    } else {
-        ActiveCycleDashboard(
-            activeCycle = activeCycle!!,
-            programViewModel = programViewModel,
-            activeCycleViewModel = activeCycleViewModel,
-            navController = navController
-        )
-    }
-}
-
-@Composable
-fun DashboardScreen(
-    historyViewModel: HistoryViewModel,
-    activeCycleViewModel: ActiveCycleViewModel,
-    programViewModel: ProgramViewModel,
-    navController: NavHostController,
-    dashboardViewModel: DashboardViewModel? = null
-) {
-    // Use enhanced dashboard if available, fallback to legacy
-    if (dashboardViewModel != null) {
-        EnhancedDashboardScreen(
-            dashboardViewModel = dashboardViewModel,
-            navController = navController
-        )
-    } else {
-        // Legacy dashboard implementation
-        LegacyDashboardScreen(
-            historyViewModel = historyViewModel,
-            activeCycleViewModel = activeCycleViewModel,
-            programViewModel = programViewModel,
-            navController = navController
-        )
-    }
+    EnhancedDashboardScreen(
+        dashboardViewModel = dashboardViewModel,
+        navController = navController
+    )
 }
 
 

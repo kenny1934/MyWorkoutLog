@@ -143,11 +143,8 @@ fun AppNavHost(
     ) {
         composable(Screen.Dashboard.route) {
             DashboardScreen(
-                historyViewModel = historyViewModel,
-                activeCycleViewModel = activeCycleViewModel,
-                programViewModel = programViewModel,
-                navController = navController,
-                dashboardViewModel = dashboardViewModel
+                dashboardViewModel = dashboardViewModel,
+                navController = navController
             )
         }
         composable(Screen.History.route) {
