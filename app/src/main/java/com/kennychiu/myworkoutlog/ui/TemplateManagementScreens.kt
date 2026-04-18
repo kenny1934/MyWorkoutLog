@@ -919,7 +919,9 @@ private fun ProgressionSchemePicker(
                                 exercise.copy(
                                     progressionScheme = scheme,
                                     progressionIncrement = exercise.progressionIncrement?.takeIf {
-                                        scheme == ProgressionScheme.LINEAR
+                                        scheme == ProgressionScheme.LINEAR ||
+                                            scheme == ProgressionScheme.DOUBLE ||
+                                            scheme == ProgressionScheme.TOP_SET
                                     },
                                     progressionMinReps = exercise.progressionMinReps?.takeIf {
                                         scheme == ProgressionScheme.DOUBLE
@@ -976,6 +978,16 @@ private fun ProgressionSchemePicker(
                         modifier = Modifier.weight(1f),
                     )
                 }
+                OutlinedTextField(
+                    value = exercise.progressionIncrement?.let { formatSchemeDouble(it) } ?: "",
+                    onValueChange = { newText ->
+                        onChange(exercise.copy(progressionIncrement = newText.toDoubleOrNull()))
+                    },
+                    label = { Text("Weight bump at max") },
+                    placeholder = { Text("e.g. 2.5") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
             ProgressionScheme.RPE -> {
                 OutlinedTextField(
@@ -989,7 +1001,19 @@ private fun ProgressionSchemePicker(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            ProgressionScheme.TOP_SET, ProgressionScheme.NONE -> Unit
+            ProgressionScheme.TOP_SET -> {
+                OutlinedTextField(
+                    value = exercise.progressionIncrement?.let { formatSchemeDouble(it) } ?: "",
+                    onValueChange = { newText ->
+                        onChange(exercise.copy(progressionIncrement = newText.toDoubleOrNull()))
+                    },
+                    label = { Text("Top-set bump") },
+                    placeholder = { Text("e.g. 2.5") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            ProgressionScheme.NONE -> Unit
         }
     }
 }

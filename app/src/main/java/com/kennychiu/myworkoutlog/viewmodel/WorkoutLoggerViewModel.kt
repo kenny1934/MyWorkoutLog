@@ -52,6 +52,17 @@ class WorkoutLoggerViewModel(
     // without a template or when no exercise in the template has a scheme configured.
     private val _progressionHints = MutableStateFlow<Map<String, String>>(emptyMap())
 
+    // Cache of the TemplateExercise entries keyed by the underlying exerciseId. Mirrors
+    // _progressionHints (same template lookup, same refresh points) but keeps the raw
+    // params around so the scheme-aware chip can re-run suggestForScheme per set number
+    // without re-parsing the JSON blob.
+    private val _templateExercisesByExerciseId = MutableStateFlow<Map<String, TemplateExercise>>(emptyMap())
+
+    // Representative last-session set per exerciseId plus the daysAgo tag. Populated in
+    // the same loop as _performanceSuggestions; reads feed the scheme-aware chip so it
+    // can build a fresh suggestion per set number without redoing the DB lookup.
+    private val _recentRepresentatives = MutableStateFlow<Map<String, RecentRepresentative>>(emptyMap())
+
     // Track if we're in edit mode for an existing workout
     private var isEditMode = false
     private var originalWorkoutId: String? = null
@@ -690,12 +701,17 @@ class WorkoutLoggerViewModel(
             val currentWorkout = _activeWorkoutState.value ?: return@launch
             val suggestions = mutableMapOf<String, PerformanceSuggestion>()
             val summaries = mutableMapOf<String, String>()
+            val representatives = mutableMapOf<String, RecentRepresentative>()
 
             for (exercise in currentWorkout.loggedExercises) {
                 val recent = findRecentWorkoutForExercise(exercise.exerciseId, currentWorkout.workoutTemplateId)
                 if (recent != null) {
-                    val suggestion = buildSuggestionFromRecent(recent.workout, recent.exercise, recent.isFromSameSession)
-                    if (suggestion != null) suggestions[exercise.exerciseId] = suggestion
+                    val representative = pickRecentRepresentative(recent.workout, recent.exercise)
+                    if (representative != null) {
+                        representatives[exercise.exerciseId] = representative
+                        val suggestion = buildSuggestionFromRepresentative(representative, recent.isFromSameSession)
+                        suggestions[exercise.exerciseId] = suggestion
+                    }
 
                     val summary = summarizeLastPerformance(recent.workout, recent.exercise)
                     if (summary != null) summaries[exercise.exerciseId] = summary
@@ -704,6 +720,7 @@ class WorkoutLoggerViewModel(
 
             _performanceSuggestions.value = suggestions
             _lastPerformanceSummaries.value = summaries
+            _recentRepresentatives.value = representatives
         }
     }
 
@@ -711,6 +728,15 @@ class WorkoutLoggerViewModel(
         val workout: LoggedWorkout,
         val exercise: LoggedExercise,
         val isFromSameSession: Boolean,
+    )
+
+    // The representative set from a recent session, plus the working-set count and
+    // calendar-days gap. Feeds both the legacy progression suggestion and the scheme-
+    // aware chip — caching it avoids redoing the picker at render time.
+    private data class RecentRepresentative(
+        val set: LoggedSet,
+        val workingSetCount: Int,
+        val daysAgo: Int,
     )
 
     private fun findRecentWorkoutForExercise(exerciseId: String, currentTemplateId: String?): RecentExerciseLookup? {
@@ -728,62 +754,62 @@ class WorkoutLoggerViewModel(
         return RecentExerciseLookup(w, ex, fromSameSession)
     }
     
-    // Calculate performance suggestion from an already-fetched recent workout/exercise pair.
-    private fun buildSuggestionFromRecent(
+    // Pick the representative working set from a recent workout/exercise pair. Filters
+    // obvious warm-ups (weight < 80% of max) and very-high-rep bodyweight sets, then
+    // picks the most-frequently-used weight (or heaviest as a fallback). Shared by the
+    // legacy PerformanceSuggestion path and the scheme-aware chip.
+    private fun pickRecentRepresentative(
         recentWorkout: LoggedWorkout,
         recentExercise: LoggedExercise,
-        isFromSameSession: Boolean,
-    ): PerformanceSuggestion? {
-        // Get working sets (exclude obvious warm-up sets and failed sets)
+    ): RecentRepresentative? {
         val workingSets = recentExercise.sets
-            .filter { it.reps != null && it.reps > 0 } // Only completed sets
-            .filter { set -> 
-                // Exclude obvious warm-up sets (very light weight or very high reps)
+            .filter { it.reps != null && it.reps > 0 }
+            .filter { set ->
                 when {
                     set.weight != null && set.weight > 0 -> {
                         val maxWeight = recentExercise.sets.mapNotNull { it.weight }.maxOrNull() ?: 0.0
-                        set.weight >= maxWeight * 0.8 // Only sets within 80% of max weight
+                        set.weight >= maxWeight * 0.8
                     }
-                    else -> (set.reps ?: 0) <= 20 // For bodyweight, exclude very high rep sets
+                    else -> (set.reps ?: 0) <= 20
                 }
             }
-        
         if (workingSets.isEmpty()) return null
-        
-        // Use the most representative working set (highest weight OR most common weight)
+
         val representativeSet = workingSets
             .groupBy { it.weight }
-            .maxByOrNull { (_, sets) -> sets.size }?.value?.first() // Most frequently used weight
-            ?: workingSets.maxByOrNull { it.weight ?: 0.0 } // Fallback to heaviest
+            .maxByOrNull { (_, sets) -> sets.size }?.value?.first()
+            ?: workingSets.maxByOrNull { it.weight ?: 0.0 }
             ?: return null
-        
-        // Calculate days since last workout
-        val daysAgo = calculateDaysSince(recentWorkout.date)
-        
-        // Get current cycle context for better RIR interpretation
+
+        return RecentRepresentative(
+            set = representativeSet,
+            workingSetCount = workingSets.size,
+            daysAgo = calculateDaysSince(recentWorkout.date),
+        )
+    }
+
+    // Wrap a representative set in the legacy "maintain / increase / decrease" suggestion.
+    private fun buildSuggestionFromRepresentative(
+        rep: RecentRepresentative,
+        isFromSameSession: Boolean,
+    ): PerformanceSuggestion {
         val currentCycleWeek = getCurrentCycleWeek()
-        
-        // Determine progression type based on session context and performance
         val progressionType = determineProgressionTypeImproved(
-            daysAgo, representativeSet, isFromSameSession, currentCycleWeek
+            rep.daysAgo, rep.set, isFromSameSession, currentCycleWeek
         )
-        
-        // Calculate suggested values with realistic increments
         val (suggestedWeight, suggestedReps, suggestedRir) = calculateProgressedValuesImproved(
-            representativeSet, progressionType
+            rep.set, progressionType
         )
-        
-        // Calculate confidence based on session context
-        val confidence = calculateConfidenceImproved(daysAgo, workingSets.size, isFromSameSession)
-        
+        val confidence = calculateConfidenceImproved(rep.daysAgo, rep.workingSetCount, isFromSameSession)
+
         return PerformanceSuggestion(
             suggestedWeight = suggestedWeight,
             suggestedReps = suggestedReps,
             suggestedRir = suggestedRir,
             confidence = confidence,
             basedonLastWorkout = true,
-            daysAgo = daysAgo,
-            progressionType = progressionType
+            daysAgo = rep.daysAgo,
+            progressionType = progressionType,
         )
     }
     
@@ -1006,6 +1032,42 @@ class WorkoutLoggerViewModel(
     // when no scheme is configured for this exercise in the active workout's template.
     fun getProgressionHint(exerciseId: String): String? = _progressionHints.value[exerciseId]
 
+    // Scheme-aware chip suggestion. When the exercise's template entry has a progression
+    // scheme, run the pure helper over the cached representative set and return the
+    // scheme-derived PerformanceSuggestion (with suggestionLabel set so the chip renders
+    // the scheme-specific suffix instead of "Xd ago"). When no scheme is configured, or
+    // the helper has nothing to offer, fall through to the legacy cached suggestion.
+    fun getChipSuggestion(exerciseId: String, setNumber: Int): PerformanceSuggestion? {
+        val templateExercise = _templateExercisesByExerciseId.value[exerciseId]
+        val representative = _recentRepresentatives.value[exerciseId]
+        val scheme = templateExercise?.progressionScheme
+        if (scheme != null && scheme != ProgressionScheme.NONE && representative != null) {
+            val chip = suggestForScheme(
+                scheme = scheme,
+                setNumber = setNumber,
+                lastWeight = representative.set.weight,
+                lastReps = representative.set.reps,
+                lastRir = representative.set.rir,
+                increment = templateExercise.progressionIncrement,
+                minReps = templateExercise.progressionMinReps,
+                maxReps = templateExercise.progressionMaxReps,
+                targetRpe = templateExercise.progressionTargetRpe,
+            )
+            if (chip != null) {
+                return PerformanceSuggestion(
+                    suggestedWeight = chip.weight,
+                    suggestedReps = chip.reps,
+                    suggestedRir = chip.rir,
+                    confidence = 1f,
+                    basedonLastWorkout = true,
+                    daysAgo = representative.daysAgo,
+                    suggestionLabel = chip.label,
+                )
+            }
+        }
+        return _performanceSuggestions.value[exerciseId]
+    }
+
     // Fetches the active workout's template and recomputes the exerciseId → hint map.
     // Called from every workout-load entry point via initializePerformanceSuggestions.
     private fun refreshProgressionHints() {
@@ -1013,6 +1075,7 @@ class WorkoutLoggerViewModel(
         val templateId = workout?.workoutTemplateId
         if (templateId == null) {
             _progressionHints.value = emptyMap()
+            _templateExercisesByExerciseId.value = emptyMap()
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
@@ -1023,14 +1086,18 @@ class WorkoutLoggerViewModel(
             }
             if (template == null) {
                 _progressionHints.value = emptyMap()
+                _templateExercisesByExerciseId.value = emptyMap()
                 return@launch
             }
             val hints = mutableMapOf<String, String>()
+            val byId = mutableMapOf<String, TemplateExercise>()
             template.templateExercises.forEach { ex ->
+                byId[ex.exerciseId] = ex
                 val hint = formatProgressionHint(ex)
                 if (hint != null) hints[ex.exerciseId] = hint
             }
             _progressionHints.value = hints
+            _templateExercisesByExerciseId.value = byId
         }
     }
     

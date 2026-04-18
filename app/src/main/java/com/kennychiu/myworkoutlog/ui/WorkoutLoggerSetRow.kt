@@ -40,8 +40,9 @@ fun LoggedSetRow(
     val showWeightReps = !set.targetReps.isNullOrBlank()
     val showSecs = !set.targetSecs.isNullOrBlank()
 
-    // Get performance suggestion for this exercise
-    val performanceSuggestion = viewModel.getPerformanceSuggestion(exerciseId)
+    // Get performance suggestion for this exercise (scheme-aware when the template has
+    // a progression scheme configured; falls back to legacy "maintain last" otherwise).
+    val performanceSuggestion = viewModel.getChipSuggestion(exerciseId, setNumber)
 
     // Local state holds the text as the user types it.
     var weightText by remember { mutableStateOf(set.weight?.toString() ?: "") }
@@ -178,8 +179,8 @@ fun LoggedSetRow(
                     },
                     label = {
                         Text(
-                            text = buildString {
-                                performanceSuggestion.suggestedWeight?.let { append("${it}kg ") }
+                            text = performanceSuggestion.suggestionLabel ?: buildString {
+                                performanceSuggestion.suggestedWeight?.let { append("${it}$weightUnit ") }
                                 performanceSuggestion.suggestedReps?.let { append("${it}r ") }
                                 performanceSuggestion.daysAgo?.let {
                                     append("(${it}d ago)")

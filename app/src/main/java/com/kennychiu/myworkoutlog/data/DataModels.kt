@@ -332,7 +332,11 @@ data class PerformanceSuggestion(
     val confidence: Float = 0f, // 0.0 to 1.0 confidence level
     val basedonLastWorkout: Boolean = false,
     val daysAgo: Int? = null,
-    val progressionType: ProgressionType = ProgressionType.MAINTAIN
+    val progressionType: ProgressionType = ProgressionType.MAINTAIN,
+    // When non-null, the chip renders this label verbatim instead of the legacy
+    // "Wkg Nr (Xd ago)" format. Set by scheme-aware suggestions so the suffix
+    // ("next", "top", "backoff", etc.) can replace the days-ago tag.
+    val suggestionLabel: String? = null,
 )
 
 enum class ProgressionType {
