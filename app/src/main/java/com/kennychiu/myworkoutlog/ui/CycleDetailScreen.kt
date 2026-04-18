@@ -5,6 +5,7 @@ import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,7 +44,11 @@ fun CycleDetailScreen(
                     }
                 },
             )
-        }
+        },
+        // The outer MainActivity Scaffold already consumes the bottom system-nav-bar
+        // inset via its bottomBar. Without zeroing insets here, this nested Scaffold
+        // reserves that space again and leaves a blank strip above the nav bar.
+        contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         val cycle = activeCycle
         if (cycle == null) {
@@ -84,14 +89,7 @@ fun CycleDetailScreen(
                         if (completedWorkoutId != null) {
                             navController.navigate(Screen.HistoryDetail.createRoute(completedWorkoutId))
                         } else {
-                            navController.navigate(
-                                Screen.WorkoutLogger.createRoute(
-                                    templateId = session.workoutTemplateId,
-                                    cycleId = cycle.cycleUuid,
-                                    weekId = week.id,
-                                    sessionId = session.id,
-                                )
-                            )
+                            navController.navigate(Screen.TemplateDetail.createRoute(session.workoutTemplateId))
                         }
                     },
                 )
