@@ -139,6 +139,17 @@ data class TemplateExerciseSet(
     val targetWeight: String? = null
 )
 
+// Progression scheme — the rule this exercise follows to get stronger week-to-week.
+// Stored as the enum name string inside the JSON blob in workout_template_table.templateExercises.
+// Null = not configured (treated as "no hint" in the UI, same surface as NONE).
+enum class ProgressionScheme {
+    LINEAR,     // Add a bit of weight each week (progressionIncrement).
+    DOUBLE,     // Climb reps within [min, max]; hit max → add increment and reset to min.
+    RPE,        // Target an effort level (progressionTargetRpe), weight floats by feel.
+    TOP_SET,    // One heavy top set, lighter backoff sets after.
+    NONE,       // No prescription, log freeform.
+}
+
 // Represents an exercise within a template, linking to a master exercise
 data class TemplateExercise(
     val id: String,
@@ -148,7 +159,16 @@ data class TemplateExercise(
     val equipment: List<Equipment>,
     val sets: List<TemplateExerciseSet>,
     val order: Int,
-    val notes: String? = null
+    val notes: String? = null,
+    // Progression scheme + its optional params. All default null — old templates read back
+    // with no scheme configured, same as an explicit NONE. Different schemes consume
+    // different params; irrelevant ones stay null (e.g. LINEAR uses only increment).
+    // JSON-blob only inside workout_template_table.templateExercises; no SQL column.
+    val progressionScheme: ProgressionScheme? = null,
+    val progressionIncrement: Double? = null,
+    val progressionMinReps: Int? = null,
+    val progressionMaxReps: Int? = null,
+    val progressionTargetRpe: String? = null,
 )
 
 // This is the main database table for our workout templates

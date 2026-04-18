@@ -21,7 +21,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PersonalRecord::class,
         BodyweightEntry::class,
     ],
-    version = 24,
+    version = 25,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -64,6 +64,15 @@ abstract class WorkoutDatabase : RoomDatabase() {
             }
         }
 
+        // v24 → v25: added TemplateExercise.progressionScheme (+ per-scheme params).
+        // Same JSON-blob-only story as v23→v24 — Gson leaves missing fields null, so
+        // old templates open cleanly with no scheme configured.
+        val MIGRATION_24_25: Migration = object : Migration(24, 25) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // No-op: schema unchanged; only the JSON shape inside an existing TEXT column.
+            }
+        }
+
         // Migrations from v21 onwards MUST be added here. No new schema changes are
         // allowed without a Migration object — prior dev history wiped user data on
         // every schema bump and that is not acceptable going forward.
@@ -71,6 +80,7 @@ abstract class WorkoutDatabase : RoomDatabase() {
             MIGRATION_21_22,
             MIGRATION_22_23,
             MIGRATION_23_24,
+            MIGRATION_24_25,
         )
 
         // Versions 1–20 were only ever opened under fallbackToDestructiveMigration.

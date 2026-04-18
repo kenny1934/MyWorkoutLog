@@ -46,6 +46,12 @@ class WorkoutLoggerViewModel(
     // Cache for last-performance summaries keyed by exerciseId (surfaced on EnhancedExerciseCard).
     private val _lastPerformanceSummaries = MutableStateFlow<Map<String, String>>(emptyMap())
 
+    // Cache for progression hints keyed by exerciseId (surfaced under the exercise name
+    // in both compact and master-detail logger layouts). Populated from the workout's
+    // template whenever the workout is loaded or resumed; stays empty for ad-hoc workouts
+    // without a template or when no exercise in the template has a scheme configured.
+    private val _progressionHints = MutableStateFlow<Map<String, String>>(emptyMap())
+
     // Track if we're in edit mode for an existing workout
     private var isEditMode = false
     private var originalWorkoutId: String? = null
@@ -993,6 +999,39 @@ class WorkoutLoggerViewModel(
     // Call this when starting a workout to pre-calculate suggestions
     private fun initializePerformanceSuggestions() {
         calculatePerformanceSuggestions()
+        refreshProgressionHints()
+    }
+
+    // Public getter mirrors getPerformanceSuggestion / getLastPerformance. Returns null
+    // when no scheme is configured for this exercise in the active workout's template.
+    fun getProgressionHint(exerciseId: String): String? = _progressionHints.value[exerciseId]
+
+    // Fetches the active workout's template and recomputes the exerciseId → hint map.
+    // Called from every workout-load entry point via initializePerformanceSuggestions.
+    private fun refreshProgressionHints() {
+        val workout = _activeWorkoutState.value
+        val templateId = workout?.workoutTemplateId
+        if (templateId == null) {
+            _progressionHints.value = emptyMap()
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val template = try {
+                templateDao.getTemplateByIdSnapshot(templateId)
+            } catch (e: Exception) {
+                null
+            }
+            if (template == null) {
+                _progressionHints.value = emptyMap()
+                return@launch
+            }
+            val hints = mutableMapOf<String, String>()
+            template.templateExercises.forEach { ex ->
+                val hint = formatProgressionHint(ex)
+                if (hint != null) hints[ex.exerciseId] = hint
+            }
+            _progressionHints.value = hints
+        }
     }
     
     // PHASE 4: Load an existing in-progress workout (must be called from IO context)

@@ -397,6 +397,7 @@ private fun WorkoutLoggerScreenContent(
                             }
                         },
                         lastPerformanceFor = { exerciseId -> viewModel.getLastPerformance(exerciseId) },
+                        progressionHintFor = { exerciseId -> viewModel.getProgressionHint(exerciseId) },
                         sessionContent = {
                             CompactSessionInfo(
                                 bodyweightText = bodyweightText,
@@ -549,6 +550,7 @@ private fun WorkoutLoggerScreenContent(
                     val totalSets = exercise.sets.size
 
                     val lastPerformance = viewModel.getLastPerformance(exercise.exerciseId)
+                    val progressionHint = viewModel.getProgressionHint(exercise.exerciseId)
 
                     EnhancedExerciseCard(
                         exerciseName = exercise.exerciseName,
@@ -556,6 +558,7 @@ private fun WorkoutLoggerScreenContent(
                         setsCompleted = setsCompleted,
                         totalSets = totalSets,
                         lastPerformance = lastPerformance,
+                        progressionHint = progressionHint,
                         onAddSet = { viewModel.addSetToExercise(exercise.id) },
                         onLongClick = {
                             selectedExerciseForMenu = exercise

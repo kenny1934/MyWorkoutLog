@@ -56,6 +56,7 @@ fun MasterDetailWorkoutView(
     // RIR context is visible on the Z Fold's tablet layout too.
     contextBanner: (@Composable () -> Unit)? = null,
     lastPerformanceFor: (String) -> String? = { null },
+    progressionHintFor: (String) -> String? = { null },
 ) {
     val masterWidth = workoutMasterPanelWidth()
     val spacing = workoutElementSpacing()
@@ -134,7 +135,8 @@ fun MasterDetailWorkoutView(
                             exercise = exercise,
                             isSelected = exercise.id == selectedExerciseId,
                             onSelected = { onExerciseSelected(exercise.id) },
-                            lastPerformance = lastPerformanceFor(exercise.exerciseId)
+                            lastPerformance = lastPerformanceFor(exercise.exerciseId),
+                            progressionHint = progressionHintFor(exercise.exerciseId),
                         )
                     }
                 }
@@ -166,6 +168,7 @@ fun ExerciseListItem(
     onSelected: () -> Unit,
     modifier: Modifier = Modifier,
     lastPerformance: String? = null,
+    progressionHint: String? = null,
 ) {
     val setsCompleted = exercise.sets.count { set -> 
         (set.weight != null && set.reps != null) || set.secs != null 
@@ -224,6 +227,18 @@ fun ExerciseListItem(
                         MaterialTheme.colorScheme.onPrimaryContainer
                     else
                         MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            progressionHint?.let { hint ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = hint,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isSelected)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.primary
                 )
             }
 

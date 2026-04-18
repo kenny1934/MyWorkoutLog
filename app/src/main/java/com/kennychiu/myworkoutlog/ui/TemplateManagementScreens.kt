@@ -804,10 +804,20 @@ private fun TemplateExerciseCard(
                 )
             }
             
+            formatProgressionHint(exercise)?.let { hint ->
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = hint,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+
             // Sets breakdown
             if (exercise.sets.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
-                
+
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -865,6 +875,143 @@ private fun TemplateCreateDialog(
             }
         }
     )
+}
+
+// Progression scheme picker used inside each exercise card in the template editor.
+// Null or NONE means "no rule configured" — UI reads both the same way; storing NONE
+// explicitly lets the user clear a previously configured scheme without losing the
+// distinction in the data (new templates stay null; cleared ones become NONE).
+@Composable
+private fun ProgressionSchemePicker(
+    exercise: TemplateExercise,
+    onChange: (TemplateExercise) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val currentScheme = exercise.progressionScheme ?: ProgressionScheme.NONE
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded },
+        ) {
+            OutlinedTextField(
+                value = progressionSchemeLabel(currentScheme),
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Progression") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                modifier = Modifier
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    .fillMaxWidth(),
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+            ) {
+                ProgressionScheme.values().forEach { scheme ->
+                    DropdownMenuItem(
+                        text = { Text(progressionSchemeMenuLabel(scheme)) },
+                        onClick = {
+                            // When the scheme changes, clear params that don't apply — keeps
+                            // the stored JSON honest and prevents stale values from a previous
+                            // scheme leaking back in if the user toggles.
+                            onChange(
+                                exercise.copy(
+                                    progressionScheme = scheme,
+                                    progressionIncrement = exercise.progressionIncrement?.takeIf {
+                                        scheme == ProgressionScheme.LINEAR
+                                    },
+                                    progressionMinReps = exercise.progressionMinReps?.takeIf {
+                                        scheme == ProgressionScheme.DOUBLE
+                                    },
+                                    progressionMaxReps = exercise.progressionMaxReps?.takeIf {
+                                        scheme == ProgressionScheme.DOUBLE
+                                    },
+                                    progressionTargetRpe = exercise.progressionTargetRpe?.takeIf {
+                                        scheme == ProgressionScheme.RPE
+                                    },
+                                )
+                            )
+                            expanded = false
+                        },
+                    )
+                }
+            }
+        }
+
+        when (currentScheme) {
+            ProgressionScheme.LINEAR -> {
+                OutlinedTextField(
+                    value = exercise.progressionIncrement?.let { formatSchemeDouble(it) } ?: "",
+                    onValueChange = { newText ->
+                        val parsed = newText.toDoubleOrNull()
+                        onChange(exercise.copy(progressionIncrement = parsed))
+                    },
+                    label = { Text("Weekly increment") },
+                    placeholder = { Text("e.g. 2.5") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            ProgressionScheme.DOUBLE -> {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = exercise.progressionMinReps?.toString() ?: "",
+                        onValueChange = { newText ->
+                            onChange(exercise.copy(progressionMinReps = newText.toIntOrNull()))
+                        },
+                        label = { Text("Min reps") },
+                        placeholder = { Text("8") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = exercise.progressionMaxReps?.toString() ?: "",
+                        onValueChange = { newText ->
+                            onChange(exercise.copy(progressionMaxReps = newText.toIntOrNull()))
+                        },
+                        label = { Text("Max reps") },
+                        placeholder = { Text("12") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+            ProgressionScheme.RPE -> {
+                OutlinedTextField(
+                    value = exercise.progressionTargetRpe.orEmpty(),
+                    onValueChange = { newText ->
+                        onChange(exercise.copy(progressionTargetRpe = newText.ifBlank { null }))
+                    },
+                    label = { Text("Target RPE") },
+                    placeholder = { Text("e.g. 8 or 7-8") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            ProgressionScheme.TOP_SET, ProgressionScheme.NONE -> Unit
+        }
+    }
+}
+
+private fun progressionSchemeLabel(scheme: ProgressionScheme): String = when (scheme) {
+    ProgressionScheme.LINEAR -> "Linear"
+    ProgressionScheme.DOUBLE -> "Double progression"
+    ProgressionScheme.RPE -> "RPE target"
+    ProgressionScheme.TOP_SET -> "Top set + backoffs"
+    ProgressionScheme.NONE -> "None"
+}
+
+private fun progressionSchemeMenuLabel(scheme: ProgressionScheme): String = when (scheme) {
+    ProgressionScheme.LINEAR -> "Linear — add weight each week"
+    ProgressionScheme.DOUBLE -> "Double — climb reps, then weight"
+    ProgressionScheme.RPE -> "RPE target"
+    ProgressionScheme.TOP_SET -> "Top set + backoffs"
+    ProgressionScheme.NONE -> "None"
+}
+
+private fun formatSchemeDouble(value: Double): String {
+    return if (value % 1.0 == 0.0) value.toInt().toString() else value.toString()
 }
 
 private fun formatSetTarget(set: TemplateExerciseSet): String {
@@ -947,6 +1094,16 @@ fun TemplateDetailScreen(
                     Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(templateExercise.exerciseName, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                            ProgressionSchemePicker(
+                                exercise = templateExercise,
+                                onChange = { updated ->
+                                    editedExercises = editedExercises.map {
+                                        if (it.id == updated.id) updated else it
+                                    }
+                                },
+                            )
                             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                             // Loop through each set and make its targets editable

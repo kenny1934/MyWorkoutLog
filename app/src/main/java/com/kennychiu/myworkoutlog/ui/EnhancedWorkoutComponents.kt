@@ -440,6 +440,7 @@ fun EnhancedExerciseCard(
     setsCompleted: Int = 0,
     totalSets: Int = 0,
     lastPerformance: String? = null,
+    progressionHint: String? = null,
     modifier: Modifier = Modifier,
     onAddSet: () -> Unit = {},
     onLongClick: () -> Unit = {},
@@ -593,6 +594,17 @@ fun EnhancedExerciseCard(
                             text = "Last: $performance",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    // Progression scheme hint (Linear +2.5kg/wk, Double 8–12 reps, …)
+                    progressionHint?.let { hint ->
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = hint,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium
                         )
                     }

@@ -79,4 +79,17 @@ class WorkoutDatabaseMigrationTest {
             WorkoutDatabase.MIGRATION_23_24,
         ).close()
     }
+
+    // v24 → v25 added TemplateExercise.progressionScheme + its per-scheme params
+    // inside the JSON blob in workout_template_table.templateExercises. Same no-op pattern.
+    @Test
+    fun migrate24To25() {
+        helper.createDatabase(dbName, 24).close()
+        helper.runMigrationsAndValidate(
+            dbName,
+            25,
+            true,
+            WorkoutDatabase.MIGRATION_24_25,
+        ).close()
+    }
 }
