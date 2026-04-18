@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-18 (Phase 4 slice 2 landed; first real Room migration shipped).
+Last updated: 2026-04-18 (Phase 4 slice 3 landed; per-week `targetRir` + second chained migration).
 
 ## Next session — start here
 
@@ -22,6 +22,14 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 - **Program editor UI.** A "Deload week" `FilterChip` sits under the week label in both `ProgramEditorScreen` and `EnhancedProgramEditor` week cards. Tap to toggle; persists on Save.
 - **Dashboard widget UI.** `SimpleCycleProgressWidgetCard` shows a "Deload" badge next to the "Cycle Progress" title when `cycleProgress(cycle).currentWeek?.isDeloadWeek == true`. Uses `tertiaryContainer` / `onTertiaryContainer` theming.
 - JVM test count unchanged at 28; instrumented test count now 2.
+
+**Phase 4 slice 3 landed 2026-04-18** (device-verified):
+- `ProgramWeekDefinition` gains `targetRir: String? = null` (last field, defaulted). Freeform string — accepts "3", "2-3", "RPE 7-8", etc. Like `isDeloadWeek`, it lives inside the JSON blob in `program_template_table.weeks` and the `cycleProgram` snapshot on `active_program_cycle_table`, so no SQL column was added. Old stored cycles read back as `targetRir = null`.
+- **Second real Room migration.** DB version bumped 22 → 23. `MIGRATION_22_23` is another no-op (schema unchanged apart from `user_version`) added to the `MIGRATIONS` array. Schema exported at `app/schemas/com.kennychiu.myworkoutlog.data.WorkoutDatabase/23.json`, byte-identical to `22.json` except the version field.
+- **Migration test extended.** `WorkoutDatabaseMigrationTest.migrate22To23()` calls `runMigrationsAndValidate(dbName, 23, true, MIGRATION_22_23)`. All three instrumented tests (`canOpenSchemaAtVersion21`, `migrate21To22`, `migrate22To23`) pass on device.
+- **Program editor UI.** Each week card now has a `Row` with the "Deload week" `FilterChip` on the left and a "Target RIR" `OutlinedTextField` taking the remaining width. Blank input persists as `null`. Implemented in both `ProgramEditorScreen` and `EnhancedProgramEditor` in `ui/ProgramEditorScreen.kt`.
+- **Dashboard widget UI.** `ui/DashboardWidgetCards.kt::SimpleCycleProgressWidgetCard` shows an "RIR X" badge (secondaryContainer / onSecondaryContainer) next to the "Cycle Progress" title when `info.currentWeek?.targetRir` is non-blank. Renders alongside the existing Deload badge when both are set.
+- JVM test count unchanged at 28; instrumented test count 2 → 3.
 
 The SDK setup section below is kept as a reference for reinstalling on a fresh machine.
 
@@ -142,7 +150,8 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
 - **Phase 4 — Resume feature work.** Complete mesocycle / program management UX.
   - Done (2026-04-18, slice 1 + follow-up cleanup): current week / next session / planned end date live on the dashboard widget via the shared `cycleProgress()` helper. Legacy dashboard path deleted; cycle-progress calculations deduped.
   - Done (2026-04-18, slice 2): deload-week flag on `ProgramWeekDefinition`, first real `Migration(21, 22)`, program-editor toggle, dashboard widget "Deload" badge, instrumented migration test. See the slice 2 section above.
-  - Further candidates: per-exercise progression metadata on `TemplateExercise` (RIR/RPE ranges, rep/weight targets per week); dedicated cycle-detail screen (week-by-week breakdown, PRs hit, volume/duration aggregates).
+  - Done (2026-04-18, slice 3): per-week `targetRir` on `ProgramWeekDefinition`, second real `Migration(22, 23)`, program-editor TextField, dashboard widget "RIR X" badge, instrumented migration test extended. See the slice 3 section above.
+  - Further candidates: dedicated cycle-detail screen (week-by-week breakdown, PRs hit, volume/duration aggregates); surface `targetRir` in the workout logger when a session is started from an active cycle; per-set/per-exercise progression targets (separate from the per-week flag added here).
 
 ## Deleted during cleanup
 
