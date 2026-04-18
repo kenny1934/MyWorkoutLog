@@ -114,6 +114,8 @@ dependencies {
     }
     // --- Work Manager for Background Sync ---
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+    // --- Drag-reorder primitives ---
+    implementation(libs.reorderable)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)

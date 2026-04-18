@@ -10,11 +10,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +25,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import sh.calvin.reorderable.ReorderableColumn
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.util.*
 
 @Composable
@@ -88,167 +93,176 @@ fun ProgramEditorScreen(
                 label = { Text("Program Name") },
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
             )
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                itemsIndexed(editedWeeks) { index, week ->
-                    val canMoveUp = index > 0
-                    val canMoveDown = index < editedWeeks.size - 1
-                    Card(elevation = CardDefaults.cardElevation(2.dp)) {
-                        Column(Modifier.padding(16.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Column {
-                                    IconButton(
-                                        onClick = { editedWeeks = moveWeek(editedWeeks, index, index - 1) },
-                                        enabled = canMoveUp,
-                                        modifier = Modifier.size(24.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.KeyboardArrowUp,
-                                            contentDescription = "Move week up",
-                                            tint = if (canMoveUp) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                            modifier = Modifier.size(16.dp)
-                                        )
+            val lazyListState = rememberLazyListState()
+            val reorderState = rememberReorderableLazyListState(lazyListState) { from, to ->
+                editedWeeks = moveWeek(editedWeeks, from.index, to.index)
+            }
+            LazyColumn(
+                state = lazyListState,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                itemsIndexed(editedWeeks, key = { _, w -> w.id }) { index, week ->
+                    ReorderableItem(reorderState, key = week.id) { _ ->
+                        val canMoveUp = index > 0
+                        val canMoveDown = index < editedWeeks.size - 1
+                        Card(elevation = CardDefaults.cardElevation(2.dp)) {
+                            Column(Modifier.padding(16.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Column {
+                                        IconButton(
+                                            onClick = {},
+                                            modifier = Modifier.size(24.dp).draggableHandle()
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.DragHandle,
+                                                contentDescription = "Drag to reorder week",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = { editedWeeks = moveWeek(editedWeeks, index, index - 1) },
+                                            enabled = canMoveUp,
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.KeyboardArrowUp,
+                                                contentDescription = "Move week up",
+                                                tint = if (canMoveUp) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = { editedWeeks = moveWeek(editedWeeks, index, index + 1) },
+                                            enabled = canMoveDown,
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.KeyboardArrowDown,
+                                                contentDescription = "Move week down",
+                                                tint = if (canMoveDown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
                                     }
-                                    IconButton(
-                                        onClick = { editedWeeks = moveWeek(editedWeeks, index, index + 1) },
-                                        enabled = canMoveDown,
-                                        modifier = Modifier.size(24.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.KeyboardArrowDown,
-                                            contentDescription = "Move week down",
-                                            tint = if (canMoveDown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
-                                Spacer(Modifier.width(8.dp))
-                                OutlinedTextField(
-                                    value = week.weekLabel,
-                                    onValueChange = { newLabel ->
-                                        editedWeeks = editedWeeks.map {
-                                            if (it.id == week.id) it.copy(weekLabel = newLabel) else it
-                                        }
-                                    },
-                                    label = { Text("Week Label") },
-                                    modifier = Modifier.weight(1f)
-                                )
-                                IconButton(onClick = {
-                                    editedWeeks = duplicateWeekInto(editedWeeks, week)
-                                }) {
-                                    Icon(Icons.Default.ContentCopy, contentDescription = "Duplicate Week")
-                                }
-                                IconButton(onClick = {
-                                    editedWeeks = editedWeeks.filter { it.id != week.id }
-                                }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete Week")
-                                }
-                            }
-                            Spacer(Modifier.height(4.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                FilterChip(
-                                    selected = week.isDeloadWeek,
-                                    onClick = {
-                                        editedWeeks = editedWeeks.map {
-                                            if (it.id == week.id) it.copy(isDeloadWeek = !it.isDeloadWeek) else it
-                                        }
-                                    },
-                                    label = { Text("Deload week") },
-                                    leadingIcon = if (week.isDeloadWeek) {
-                                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                    } else null
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                OutlinedTextField(
-                                    value = week.targetRir.orEmpty(),
-                                    onValueChange = { newValue ->
-                                        editedWeeks = editedWeeks.map {
-                                            if (it.id == week.id) it.copy(targetRir = newValue.takeIf { s -> s.isNotBlank() }) else it
-                                        }
-                                    },
-                                    label = { Text("Target RIR") },
-                                    singleLine = true,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                            Spacer(Modifier.height(8.dp))
-                            // Simple session cards with arrow button reordering
-                            val sortedSessions = week.sessions.sortedBy { it.order }
-
-                            Column {
-                                sortedSessions.forEachIndexed { index, session ->
-                                    SessionCard(
-                                        session = session,
-                                        template = allWorkoutTemplates.find { it.id == session.workoutTemplateId },
-                                        allTemplates = allWorkoutTemplates,
-                                        canMoveUp = index > 0,
-                                        canMoveDown = index < sortedSessions.size - 1,
-                                        onMoveUp = {
-                                            // Move session up in the order
-                                            val reorderedSessions = sortedSessions.toMutableList()
-                                            val temp = reorderedSessions[index]
-                                            reorderedSessions[index] = reorderedSessions[index - 1]
-                                            reorderedSessions[index - 1] = temp
-
-                                            // Update orders
-                                            val updatedSessions = reorderedSessions.mapIndexed { idx, s ->
-                                                s.copy(order = idx + 1)
-                                            }
-
-                                            editedWeeks = editedWeeks.map { w ->
-                                                if (w.id == week.id) {
-                                                    w.copy(sessions = updatedSessions)
-                                                } else w
+                                    Spacer(Modifier.width(8.dp))
+                                    OutlinedTextField(
+                                        value = week.weekLabel,
+                                        onValueChange = { newLabel ->
+                                            editedWeeks = editedWeeks.map {
+                                                if (it.id == week.id) it.copy(weekLabel = newLabel) else it
                                             }
                                         },
-                                        onMoveDown = {
-                                            // Move session down in the order
-                                            val reorderedSessions = sortedSessions.toMutableList()
-                                            val temp = reorderedSessions[index]
-                                            reorderedSessions[index] = reorderedSessions[index + 1]
-                                            reorderedSessions[index + 1] = temp
-
-                                            // Update orders
-                                            val updatedSessions = reorderedSessions.mapIndexed { idx, s ->
-                                                s.copy(order = idx + 1)
-                                            }
-
-                                            editedWeeks = editedWeeks.map { w ->
-                                                if (w.id == week.id) {
-                                                    w.copy(sessions = updatedSessions)
-                                                } else w
-                                            }
-                                        },
-                                        onSessionUpdated = { updatedSession ->
-                                            editedWeeks = editedWeeks.map { w ->
-                                                if (w.id == week.id) {
-                                                    w.copy(sessions = w.sessions.map { s ->
-                                                        if (s.id == session.id) updatedSession else s
-                                                    })
-                                                } else w
-                                            }
-                                        },
-                                        onSessionDeleted = { sessionToDelete ->
-                                            editedWeeks = editedWeeks.map { w ->
-                                                if (w.id == week.id) {
-                                                    // Remove session and reorder remaining sessions
-                                                    val remainingSessions = w.sessions.filter { s -> s.id != sessionToDelete.id }
-                                                    val reorderedSessions = remainingSessions.mapIndexed { idx, s ->
-                                                        s.copy(order = idx + 1)
-                                                    }
-                                                    w.copy(sessions = reorderedSessions)
-                                                } else w
-                                            }
-                                        },
-                                        otherWeeks = editedWeeks.filter { it.id != week.id },
-                                        onMoveToWeek = { targetWeekId ->
-                                            editedWeeks = moveSessionToWeek(editedWeeks, week.id, session.id, targetWeekId)
-                                        }
+                                        label = { Text("Week Label") },
+                                        modifier = Modifier.weight(1f)
                                     )
-                                    Spacer(Modifier.height(8.dp))
+                                    IconButton(onClick = {
+                                        editedWeeks = duplicateWeekInto(editedWeeks, week)
+                                    }) {
+                                        Icon(Icons.Default.ContentCopy, contentDescription = "Duplicate Week")
+                                    }
+                                    IconButton(onClick = {
+                                        editedWeeks = editedWeeks.filter { it.id != week.id }
+                                    }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete Week")
+                                    }
                                 }
-                            }
-                            TextButton(onClick = { showAddSessionDialog = week.id }) {
-                                Text("Add Session to Week")
+                                Spacer(Modifier.height(4.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    FilterChip(
+                                        selected = week.isDeloadWeek,
+                                        onClick = {
+                                            editedWeeks = editedWeeks.map {
+                                                if (it.id == week.id) it.copy(isDeloadWeek = !it.isDeloadWeek) else it
+                                            }
+                                        },
+                                        label = { Text("Deload week") },
+                                        leadingIcon = if (week.isDeloadWeek) {
+                                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                        } else null
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    OutlinedTextField(
+                                        value = week.targetRir.orEmpty(),
+                                        onValueChange = { newValue ->
+                                            editedWeeks = editedWeeks.map {
+                                                if (it.id == week.id) it.copy(targetRir = newValue.takeIf { s -> s.isNotBlank() }) else it
+                                            }
+                                        },
+                                        label = { Text("Target RIR") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                Spacer(Modifier.height(8.dp))
+                                val sortedSessions = week.sessions.sortedBy { it.order }
+
+                                ReorderableColumn(
+                                    list = sortedSessions,
+                                    onSettle = { fromIndex, toIndex ->
+                                        editedWeeks = moveSessionWithinWeek(editedWeeks, week.id, fromIndex, toIndex)
+                                    },
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) { sIndex, session, _ ->
+                                    key(session.id) {
+                                        ReorderableItem {
+                                            val sessionDragHandle: @Composable () -> Unit = {
+                                                IconButton(
+                                                    onClick = {},
+                                                    modifier = Modifier.size(24.dp).draggableHandle()
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.DragHandle,
+                                                        contentDescription = "Drag to reorder session",
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+                                            }
+                                            SessionCard(
+                                                session = session,
+                                                template = allWorkoutTemplates.find { it.id == session.workoutTemplateId },
+                                                allTemplates = allWorkoutTemplates,
+                                                canMoveUp = sIndex > 0,
+                                                canMoveDown = sIndex < sortedSessions.size - 1,
+                                                onMoveUp = {
+                                                    editedWeeks = moveSessionWithinWeek(editedWeeks, week.id, sIndex, sIndex - 1)
+                                                },
+                                                onMoveDown = {
+                                                    editedWeeks = moveSessionWithinWeek(editedWeeks, week.id, sIndex, sIndex + 1)
+                                                },
+                                                onSessionUpdated = { updatedSession ->
+                                                    editedWeeks = editedWeeks.map { w ->
+                                                        if (w.id == week.id) {
+                                                            w.copy(sessions = w.sessions.map { s ->
+                                                                if (s.id == session.id) updatedSession else s
+                                                            })
+                                                        } else w
+                                                    }
+                                                },
+                                                onSessionDeleted = { sessionToDelete ->
+                                                    editedWeeks = editedWeeks.map { w ->
+                                                        if (w.id == week.id) {
+                                                            val remainingSessions = w.sessions.filter { s -> s.id != sessionToDelete.id }
+                                                            val reorderedSessions = remainingSessions.mapIndexed { idx, s ->
+                                                                s.copy(order = idx + 1)
+                                                            }
+                                                            w.copy(sessions = reorderedSessions)
+                                                        } else w
+                                                    }
+                                                },
+                                                otherWeeks = editedWeeks.filter { it.id != week.id },
+                                                onMoveToWeek = { targetWeekId ->
+                                                    editedWeeks = moveSessionToWeek(editedWeeks, week.id, session.id, targetWeekId)
+                                                },
+                                                dragHandle = sessionDragHandle
+                                            )
+                                        }
+                                    }
+                                }
+                                TextButton(onClick = { showAddSessionDialog = week.id }) {
+                                    Text("Add Session to Week")
+                                }
                             }
                         }
                     }
@@ -319,7 +333,8 @@ fun SessionCard(
     onMoveUp: (() -> Unit)? = null,
     onMoveDown: (() -> Unit)? = null,
     otherWeeks: List<ProgramWeekDefinition> = emptyList(),
-    onMoveToWeek: ((targetWeekId: String) -> Unit)? = null
+    onMoveToWeek: ((targetWeekId: String) -> Unit)? = null,
+    dragHandle: (@Composable () -> Unit)? = null
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
@@ -339,8 +354,11 @@ fun SessionCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Arrow reordering buttons
+            // Arrow + drag reordering
             Column {
+                if (dragHandle != null) {
+                    dragHandle()
+                }
                 IconButton(
                     onClick = { onMoveUp?.invoke() },
                     enabled = canMoveUp,
@@ -690,186 +708,194 @@ fun EnhancedProgramEditor(
         )
 
         // Weeks Editor - reusing existing SessionCard logic
+        val enhancedLazyListState = rememberLazyListState()
+        val enhancedReorderState = rememberReorderableLazyListState(enhancedLazyListState) { from, to ->
+            editedWeeks = moveWeek(editedWeeks, from.index, to.index)
+        }
         LazyColumn(
+            state = enhancedLazyListState,
             verticalArrangement = Arrangement.spacedBy(workoutElementSpacing()),
             modifier = Modifier.weight(1f)
         ) {
-            itemsIndexed(editedWeeks) { index, week ->
-                val canMoveUp = index > 0
-                val canMoveDown = index < editedWeeks.size - 1
-                Card(elevation = CardDefaults.cardElevation(2.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column {
+            itemsIndexed(editedWeeks, key = { _, w -> w.id }) { index, week ->
+                ReorderableItem(enhancedReorderState, key = week.id) { _ ->
+                    val canMoveUp = index > 0
+                    val canMoveDown = index < editedWeeks.size - 1
+                    Card(elevation = CardDefaults.cardElevation(2.dp)) {
+                        Column(Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column {
+                                    IconButton(
+                                        onClick = {},
+                                        modifier = Modifier.size(24.dp).draggableHandle()
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.DragHandle,
+                                            contentDescription = "Drag to reorder week",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { editedWeeks = moveWeek(editedWeeks, index, index - 1) },
+                                        enabled = canMoveUp,
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.KeyboardArrowUp,
+                                            contentDescription = "Move week up",
+                                            tint = if (canMoveUp) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { editedWeeks = moveWeek(editedWeeks, index, index + 1) },
+                                        enabled = canMoveDown,
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.KeyboardArrowDown,
+                                            contentDescription = "Move week down",
+                                            tint = if (canMoveDown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                OutlinedTextField(
+                                    value = week.weekLabel,
+                                    onValueChange = { newLabel ->
+                                        editedWeeks = editedWeeks.map {
+                                            if (it.id == week.id) it.copy(weekLabel = newLabel) else it
+                                        }
+                                    },
+                                    label = { Text("Week Label") },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
                                 IconButton(
-                                    onClick = { editedWeeks = moveWeek(editedWeeks, index, index - 1) },
-                                    enabled = canMoveUp,
-                                    modifier = Modifier.size(24.dp)
+                                    onClick = {
+                                        editedWeeks = duplicateWeekInto(editedWeeks, week)
+                                    },
+                                    modifier = Modifier.size(workoutTouchTargetSize())
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.KeyboardArrowUp,
-                                        contentDescription = "Move week up",
-                                        tint = if (canMoveUp) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                        modifier = Modifier.size(16.dp)
-                                    )
+                                    Icon(Icons.Default.ContentCopy, contentDescription = "Duplicate Week")
                                 }
                                 IconButton(
-                                    onClick = { editedWeeks = moveWeek(editedWeeks, index, index + 1) },
-                                    enabled = canMoveDown,
-                                    modifier = Modifier.size(24.dp)
+                                    onClick = {
+                                        editedWeeks = editedWeeks.filter { it.id != week.id }
+                                    },
+                                    modifier = Modifier.size(workoutTouchTargetSize())
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.KeyboardArrowDown,
-                                        contentDescription = "Move week down",
-                                        tint = if (canMoveDown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                        modifier = Modifier.size(16.dp)
-                                    )
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete Week")
                                 }
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            OutlinedTextField(
-                                value = week.weekLabel,
-                                onValueChange = { newLabel ->
-                                    editedWeeks = editedWeeks.map {
-                                        if (it.id == week.id) it.copy(weekLabel = newLabel) else it
-                                    }
-                                },
-                                label = { Text("Week Label") },
-                                modifier = Modifier.weight(1f)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            IconButton(
-                                onClick = {
-                                    editedWeeks = duplicateWeekInto(editedWeeks, week)
-                                },
-                                modifier = Modifier.size(workoutTouchTargetSize())
-                            ) {
-                                Icon(Icons.Default.ContentCopy, contentDescription = "Duplicate Week")
-                            }
-                            IconButton(
-                                onClick = {
-                                    editedWeeks = editedWeeks.filter { it.id != week.id }
-                                },
-                                modifier = Modifier.size(workoutTouchTargetSize())
-                            ) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete Week")
-                            }
-                        }
 
-                        Spacer(Modifier.height(8.dp))
+                            Spacer(Modifier.height(8.dp))
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            FilterChip(
-                                selected = week.isDeloadWeek,
-                                onClick = {
-                                    editedWeeks = editedWeeks.map {
-                                        if (it.id == week.id) it.copy(isDeloadWeek = !it.isDeloadWeek) else it
-                                    }
-                                },
-                                label = { Text("Deload week") },
-                                leadingIcon = if (week.isDeloadWeek) {
-                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                } else null
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            OutlinedTextField(
-                                value = week.targetRir.orEmpty(),
-                                onValueChange = { newValue ->
-                                    editedWeeks = editedWeeks.map {
-                                        if (it.id == week.id) it.copy(targetRir = newValue.takeIf { s -> s.isNotBlank() }) else it
-                                    }
-                                },
-                                label = { Text("Target RIR") },
-                                singleLine = true,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-
-                        Spacer(Modifier.height(12.dp))
-
-                        // Enhanced session cards with better spacing
-                        val sortedSessions = week.sessions.sortedBy { it.order }
-
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            sortedSessions.forEachIndexed { index, session ->
-                                SessionCard(
-                                    session = session,
-                                    template = allTemplates.find { it.id == session.workoutTemplateId },
-                                    allTemplates = allTemplates,
-                                    canMoveUp = index > 0,
-                                    canMoveDown = index < sortedSessions.size - 1,
-                                    onMoveUp = {
-                                        // Move session up in the order
-                                        val reorderedSessions = sortedSessions.toMutableList()
-                                        val temp = reorderedSessions[index]
-                                        reorderedSessions[index] = reorderedSessions[index - 1]
-                                        reorderedSessions[index - 1] = temp
-
-                                        // Update orders
-                                        val updatedSessions = reorderedSessions.mapIndexed { idx, s ->
-                                            s.copy(order = idx + 1)
-                                        }
-
-                                        editedWeeks = editedWeeks.map { w ->
-                                            if (w.id == week.id) {
-                                                w.copy(sessions = updatedSessions)
-                                            } else w
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                FilterChip(
+                                    selected = week.isDeloadWeek,
+                                    onClick = {
+                                        editedWeeks = editedWeeks.map {
+                                            if (it.id == week.id) it.copy(isDeloadWeek = !it.isDeloadWeek) else it
                                         }
                                     },
-                                    onMoveDown = {
-                                        // Move session down in the order
-                                        val reorderedSessions = sortedSessions.toMutableList()
-                                        val temp = reorderedSessions[index]
-                                        reorderedSessions[index] = reorderedSessions[index + 1]
-                                        reorderedSessions[index + 1] = temp
-
-                                        // Update orders
-                                        val updatedSessions = reorderedSessions.mapIndexed { idx, s ->
-                                            s.copy(order = idx + 1)
-                                        }
-
-                                        editedWeeks = editedWeeks.map { w ->
-                                            if (w.id == week.id) {
-                                                w.copy(sessions = updatedSessions)
-                                            } else w
+                                    label = { Text("Deload week") },
+                                    leadingIcon = if (week.isDeloadWeek) {
+                                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                    } else null
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                OutlinedTextField(
+                                    value = week.targetRir.orEmpty(),
+                                    onValueChange = { newValue ->
+                                        editedWeeks = editedWeeks.map {
+                                            if (it.id == week.id) it.copy(targetRir = newValue.takeIf { s -> s.isNotBlank() }) else it
                                         }
                                     },
-                                    onSessionUpdated = { updatedSession ->
-                                        editedWeeks = editedWeeks.map { w ->
-                                            if (w.id == week.id) {
-                                                w.copy(sessions = w.sessions.map { s ->
-                                                    if (s.id == session.id) updatedSession else s
-                                                })
-                                            } else w
-                                        }
-                                    },
-                                    onSessionDeleted = { sessionToDelete ->
-                                        editedWeeks = editedWeeks.map { w ->
-                                            if (w.id == week.id) {
-                                                // Remove session and reorder remaining sessions
-                                                val remainingSessions = w.sessions.filter { s -> s.id != sessionToDelete.id }
-                                                val reorderedSessions = remainingSessions.mapIndexed { idx, s ->
-                                                    s.copy(order = idx + 1)
-                                                }
-                                                w.copy(sessions = reorderedSessions)
-                                            } else w
-                                        }
-                                    },
-                                    otherWeeks = editedWeeks.filter { it.id != week.id },
-                                    onMoveToWeek = { targetWeekId ->
-                                        editedWeeks = moveSessionToWeek(editedWeeks, week.id, session.id, targetWeekId)
-                                    }
+                                    label = { Text("Target RIR") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
                                 )
                             }
-                        }
 
-                        TextButton(
-                            onClick = { showAddSessionDialog = week.id },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Outlined.Add, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Add Session to Week")
+                            Spacer(Modifier.height(12.dp))
+
+                            val sortedSessions = week.sessions.sortedBy { it.order }
+
+                            ReorderableColumn(
+                                list = sortedSessions,
+                                onSettle = { fromIndex, toIndex ->
+                                    editedWeeks = moveSessionWithinWeek(editedWeeks, week.id, fromIndex, toIndex)
+                                },
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) { sIndex, session, _ ->
+                                key(session.id) {
+                                    ReorderableItem {
+                                        val sessionDragHandle: @Composable () -> Unit = {
+                                            IconButton(
+                                                onClick = {},
+                                                modifier = Modifier.size(24.dp).draggableHandle()
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.DragHandle,
+                                                    contentDescription = "Drag to reorder session",
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                        SessionCard(
+                                            session = session,
+                                            template = allTemplates.find { it.id == session.workoutTemplateId },
+                                            allTemplates = allTemplates,
+                                            canMoveUp = sIndex > 0,
+                                            canMoveDown = sIndex < sortedSessions.size - 1,
+                                            onMoveUp = {
+                                                editedWeeks = moveSessionWithinWeek(editedWeeks, week.id, sIndex, sIndex - 1)
+                                            },
+                                            onMoveDown = {
+                                                editedWeeks = moveSessionWithinWeek(editedWeeks, week.id, sIndex, sIndex + 1)
+                                            },
+                                            onSessionUpdated = { updatedSession ->
+                                                editedWeeks = editedWeeks.map { w ->
+                                                    if (w.id == week.id) {
+                                                        w.copy(sessions = w.sessions.map { s ->
+                                                            if (s.id == session.id) updatedSession else s
+                                                        })
+                                                    } else w
+                                                }
+                                            },
+                                            onSessionDeleted = { sessionToDelete ->
+                                                editedWeeks = editedWeeks.map { w ->
+                                                    if (w.id == week.id) {
+                                                        val remainingSessions = w.sessions.filter { s -> s.id != sessionToDelete.id }
+                                                        val reorderedSessions = remainingSessions.mapIndexed { idx, s ->
+                                                            s.copy(order = idx + 1)
+                                                        }
+                                                        w.copy(sessions = reorderedSessions)
+                                                    } else w
+                                                }
+                                            },
+                                            otherWeeks = editedWeeks.filter { it.id != week.id },
+                                            onMoveToWeek = { targetWeekId ->
+                                                editedWeeks = moveSessionToWeek(editedWeeks, week.id, session.id, targetWeekId)
+                                            },
+                                            dragHandle = sessionDragHandle
+                                        )
+                                    }
+                                }
+                            }
+
+                            TextButton(
+                                onClick = { showAddSessionDialog = week.id },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Outlined.Add, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Add Session to Week")
+                            }
                         }
                     }
                 }

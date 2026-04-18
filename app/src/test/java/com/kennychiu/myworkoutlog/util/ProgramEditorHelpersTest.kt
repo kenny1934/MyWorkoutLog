@@ -211,6 +211,70 @@ class ProgramEditorHelpersTest {
     }
 
     @Test
+    fun `moveSessionWithinWeek reorders a session upward by sorted index and renumbers order`() {
+        val weeks = listOf(
+            week("w1", sessions = listOf(
+                session("s1", order = 1),
+                session("s2", order = 2),
+                session("s3", order = 3)
+            ))
+        )
+        val result = moveSessionWithinWeek(weeks, weekId = "w1", fromIndex = 2, toIndex = 0)
+
+        val sessions = result.first { it.id == "w1" }.sessions
+        assertEquals(listOf("s3", "s1", "s2"), sessions.map { it.id })
+        assertEquals(listOf(1, 2, 3), sessions.map { it.order })
+    }
+
+    @Test
+    fun `moveSessionWithinWeek sorts by order first so storage order doesn't matter`() {
+        val weeks = listOf(
+            week("w1", sessions = listOf(
+                session("s3", order = 3),
+                session("s1", order = 1),
+                session("s2", order = 2)
+            ))
+        )
+        val result = moveSessionWithinWeek(weeks, weekId = "w1", fromIndex = 0, toIndex = 2)
+
+        val sessions = result.first { it.id == "w1" }.sessions
+        assertEquals(listOf("s2", "s3", "s1"), sessions.map { it.id })
+        assertEquals(listOf(1, 2, 3), sessions.map { it.order })
+    }
+
+    @Test
+    fun `moveSessionWithinWeek is a no-op when indices are equal`() {
+        val weeks = listOf(week("w1", sessions = listOf(session("s1"), session("s2", order = 2))))
+        assertEquals(weeks, moveSessionWithinWeek(weeks, weekId = "w1", fromIndex = 0, toIndex = 0))
+    }
+
+    @Test
+    fun `moveSessionWithinWeek is a no-op when the week is missing`() {
+        val weeks = listOf(week("w1", sessions = listOf(session("s1"), session("s2", order = 2))))
+        assertEquals(weeks, moveSessionWithinWeek(weeks, weekId = "missing", fromIndex = 0, toIndex = 1))
+    }
+
+    @Test
+    fun `moveSessionWithinWeek is a no-op when an index is out of bounds`() {
+        val weeks = listOf(week("w1", sessions = listOf(session("s1"), session("s2", order = 2))))
+        assertEquals(weeks, moveSessionWithinWeek(weeks, weekId = "w1", fromIndex = -1, toIndex = 1))
+        assertEquals(weeks, moveSessionWithinWeek(weeks, weekId = "w1", fromIndex = 0, toIndex = 5))
+    }
+
+    @Test
+    fun `moveSessionWithinWeek leaves other weeks untouched`() {
+        val weeks = listOf(
+            week("w1", sessions = listOf(session("s1"), session("s2", order = 2))),
+            week("w2", sessions = listOf(session("t1"), session("t2", order = 2)))
+        )
+        val result = moveSessionWithinWeek(weeks, weekId = "w1", fromIndex = 0, toIndex = 1)
+
+        val w2 = result.first { it.id == "w2" }
+        assertEquals(listOf("t1", "t2"), w2.sessions.map { it.id })
+        assertEquals(listOf(1, 2), w2.sessions.map { it.order })
+    }
+
+    @Test
     fun `moveWeek preserves sessions and ids of the moved week`() {
         val sessions = listOf(session("s1"), session("s2", order = 2))
         val weeks = listOf(
