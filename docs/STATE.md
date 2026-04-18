@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 4 slice 10 — active-cycle rename from the cycle-detail screen).
+Last updated: 2026-04-19 (Phase 4 slice 11 — rename ENDED cycles from the history screen).
 
 ## Next session — start here
 
@@ -43,6 +43,12 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 - Secondary fix on the compact WorkoutLogger `LazyColumn`: `.padding(paddingValues).padding(16.dp)` → `.padding(paddingValues)` with `contentPadding = PaddingValues(16.dp)`. This lets the last set scroll fully into view instead of being pinned inside a shrunk viewport. Same anti-pattern also exists in several other screens' `Column(.padding(paddingValues).padding(16.dp))` wrappers but isn't clipping anything visible there (Columns aren't scrollable), so left alone.
 - Dashboard compact-layout `LazyColumn`: `.padding(layoutInfo.contentPadding)` → `contentPadding = PaddingValues(layoutInfo.contentPadding)` so widgets scroll through the bottom padding instead of the whole list being pinned.
 - JVM tests still 36; no new tests (layout bug).
+
+**Phase 4 slice 11 landed 2026-04-19** (build + JVM tests green, no schema change):
+- `RenameCycleDialog` lifted out of `CycleDetailScreen.kt` into a shared `ui/RenameCycleDialog.kt` (top-level `public` composable). `CycleDetailScreen` now calls the shared one.
+- `HistoryViewModel.renameCompletedCycle(cycleId, newName)` — trims input, early-return on blank; dispatches on `Dispatchers.IO` and calls `LoggedWorkoutDao.renameLoggedWorkoutsByCycle` (DAO method already landed in slice 10). Ended cycles don't have a row in `active_program_cycle_table`, so only the logged-workout snapshots need updating.
+- `ui/HistoryCycleViews.kt::CycleCard` and `CycleCardMaster` each get an optional `onRenameClick: () -> Unit = {}` parameter and an `Icons.Filled.Edit` IconButton on the right side of the cycle-name Row. `MesocycleHistoryView` and `MesocycleHistoryMasterView` each hold a `renameTarget: CycleWithWorkouts?` state — the Edit pencil sets it, and the shared `RenameCycleDialog` is rendered below the `LazyColumn` when non-null.
+- Coverage: any ended cycle in the "Completed Cycles" section on the history screen can now be renamed. The DAO UPDATE also fires for workouts of the active cycle if a caller passes its cycleUuid, but the UI never does so from the history screen (the active cycle lives in its own section and isn't rendered as a `CycleCard`). No schema change; no new tests. JVM test count stays 49.
 
 **Phase 4 slice 10 landed 2026-04-19** (build + JVM tests green, no schema change):
 - `ActiveCycleDao.renameActiveCycle(newName)` — single-row UPDATE on the active cycle (`WHERE id = 1`).
@@ -223,7 +229,8 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-19, slice 8): bulk-copy-week action on each week card in both the compact and master-detail program editors. Pure helper `util/ProgramEditorHelpers.kt::duplicateWeekInto` with 6 JVM tests. No schema change.
   - Done (2026-04-19, slice 9): up/down reorder arrows on each week card in both program editors. Pure helper `util/ProgramEditorHelpers.kt::moveWeek` with 7 JVM tests. No schema change.
   - Done (2026-04-19, slice 10): rename the active cycle from the cycle-detail screen. Two DAO updates (`ActiveCycleDao.renameActiveCycle`, `LoggedWorkoutDao.renameLoggedWorkoutsByCycle`) + `CycleDetailViewModel.renameActiveCycle` + Edit pencil + dialog. Backfills the `userCycleName` snapshot on every workout in the cycle so history picks up the new name. No schema change.
-  - Further candidates: per-exercise progression scheme (linear / double / RPE — separate from the per-set `targetWeight`); rename UX for ended cycles (surface via HistoryCycleViews); true drag-reorder (currently up/down arrows only).
+  - Done (2026-04-19, slice 11): rename ENDED cycles from the history screen. Shared `ui/RenameCycleDialog.kt` + `HistoryViewModel.renameCompletedCycle` + Edit pencil on both `CycleCard` and `CycleCardMaster`. Reuses the slice 10 DAO method. No schema change.
+  - Further candidates: per-exercise progression scheme (linear / double / RPE — separate from the per-set `targetWeight`); true drag-reorder (currently up/down arrows only); session-level up/down is already in place for program editor, so a "move session across weeks" helper could be next.
 
 ## Deleted during cleanup
 
