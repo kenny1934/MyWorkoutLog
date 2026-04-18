@@ -4,6 +4,56 @@ This is the single source of truth for what works, what is known-broken, and wha
 
 Last updated: 2026-04-18 (during cleanup from 7-month stall).
 
+## Next session — start here
+
+Local `master` is 4 commits ahead of `origin/master` and not pushed. They compile in the editor but have not been verified by a real build. The WSL environment cannot build from the Windows-side SDK (`.exe` binaries), so a Linux-side Android SDK needs to be installed before the next working session. This is a one-time setup.
+
+### 1. Install Linux-side Android SDK
+
+```bash
+sudo apt-get update && sudo apt-get install -y unzip
+mkdir -p ~/android-sdk/cmdline-tools && cd ~/android-sdk/cmdline-tools
+wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+unzip commandlinetools-linux-11076708_latest.zip
+mv cmdline-tools latest
+cd ~
+
+# Persist env (idempotent)
+grep -q ANDROID_HOME ~/.bashrc || cat >> ~/.bashrc <<'EOF'
+export ANDROID_HOME=$HOME/android-sdk
+export ANDROID_SDK_ROOT=$ANDROID_HOME
+export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+EOF
+source ~/.bashrc
+
+# Install the exact versions app/build.gradle.kts declares
+yes | sdkmanager --licenses
+sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+```
+
+JDK 21 is already installed (`/usr/lib/jvm/java-21-openjdk-amd64`) and works with Gradle 8.13. No additional JDK needed.
+
+### 2. Verify the 4 unpushed commits build
+
+```bash
+cd /home/kenny/projects/MyWorkoutLog
+./gradlew assembleDebug
+```
+
+If green: `git push origin master`. If not: fix the failures before continuing. Expected potential issues:
+- Missed reference to the old `com.example.myworkoutlog` package somewhere not caught by the sed pass (shouldn't happen, but possible).
+- Room schema JSON generation for v21 will write to `app/schemas/com.kennychiu.myworkoutlog.WorkoutDatabase/21.json` on first compile — commit that file afterwards.
+
+### 3. Deploying to device (once build works)
+
+USB device via `usbipd-win` on Windows is usually easier than emulator-in-WSL. Or enable wireless debugging on the device and `adb connect <ip>:<port>` from WSL. The canonical gym-use setup here is a real device, so this only needs to work enough to run the app manually and watch `adb logcat`.
+
+### 4. Resume the cleanup plan
+
+See the **Cleanup plan** section below. The next items in order are: Phase 2 monolith splits, Phase 2 subpackage restructure, Phase 3 tests, Phase 4 mesocycle UX (the actual unfinished feature).
+
+---
+
 ## What works
 
 These features exist in code and appear to be functional based on the screen and ViewModel implementations. They have not been re-verified by running the app during this cleanup pass.
