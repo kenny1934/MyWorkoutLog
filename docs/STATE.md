@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-18 (Phase 4 slice 5b landed; PRs + per-week aggregates on cycle-detail screen).
+Last updated: 2026-04-19 (Phase 4 slice 6 landed; per-set target weight on TemplateExerciseSet / LoggedSet, v23 → v24).
 
 ## Next session — start here
 
@@ -36,6 +36,16 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 - New private `CycleContextBanner` composable at the bottom of `ui/WorkoutLoggerScreens.kt`. Renders as the first `LazyColumn` item in the compact layout when the current week has `isDeloadWeek == true` or a non-blank `targetRir`. Shows the week label plus "Deload" (`tertiaryContainer`) and/or "RIR X" (`secondaryContainer`) badges — same theming as the dashboard widget so the two surfaces agree visually.
 - Skipped for the master-detail (`shouldUseWorkoutMasterDetail()`) layout for now — phone usage is the primary gym flow.
 - No data/schema change; reads existing fields added in slices 2/3. JVM tests still 28.
+
+**Phase 4 slice 6 landed 2026-04-19** (build + JVM tests green; third real Room migration):
+- `TemplateExerciseSet` gains `targetWeight: String? = null` as its last field. Freeform (e.g. "60", "60-65", "BW+20"). Null = no prescribed load. Lives inside the JSON blob in `workout_template_table.templateExercises` — no SQL column.
+- `LoggedSet` gains a matching `targetWeight: String? = null` for set-level snapshotting, consistent with the existing `targetReps` / `targetSecs` snapshot pattern. Lives inside the JSON blob in `logged_workout_table.loggedExercises`.
+- **Third real Room migration.** DB version 23 → 24. `WorkoutDatabase.MIGRATION_23_24` is another no-op (only the JSON shape changed), registered in the `MIGRATIONS` array. Schema exported at `app/schemas/com.kennychiu.myworkoutlog.data.WorkoutDatabase/24.json` — byte-identical to `23.json` except the version field.
+- **Migration test extended.** `WorkoutDatabaseMigrationTest.migrate23To24()` calls `runMigrationsAndValidate(dbName, 24, true, MIGRATION_23_24)`. All four instrumented tests (`canOpenSchemaAtVersion21`, `migrate21To22`, `migrate22To23`, `migrate23To24`) wire through the chained `MIGRATIONS` array.
+- **Template editor UI.** `TemplateSetEditorRow` in `ui/TemplateManagementScreens.kt` now has three fields per row: Reps / Secs / Weight. Entering text in Weight no longer nulls the Reps/Secs fields (unlike Reps/Secs which are mutually exclusive). Blank input persists as `null`. `formatSetTarget` now suffixes " @ XXkg" to the per-set summary line in the template detail card when a target weight is set.
+- **Workout logger UI.** `LoggedSetRow` in `ui/WorkoutLoggerSetRow.kt` shows the target weight as a placeholder (`"→ 60"`) on the Weight `OutlinedTextField` when `set.targetWeight` is non-blank. Placeholder disappears once the user starts typing — doesn't interfere with the existing smart-pre-fill chip or the debounced auto-save.
+- **Snapshot.** `WorkoutLoggerViewModel` copies `templateSet.targetWeight` into the newly-created `LoggedSet` at template load (line ~317). The ad-hoc "add exercise" and "add set" sites default to `null` (freeform string, no meaningful default).
+- JVM test count unchanged at 36; instrumented test count 3 → 4.
 
 **Phase 4 slice 5b landed 2026-04-18** (build + JVM tests green, no schema change):
 - New `util/CycleAggregates.kt` — pure helper taking `ActiveProgramCycle`, `List<LoggedWorkout>`, and `List<PersonalRecord>`, returning per-week totals (workout count, set count, total volume, total duration in ms), PRs attached to their `programWeekDefinitionId`, and the most-common `performedWeightUnit` across the cycle's workouts. Volume convention matches `AnalyticsRepository.calculateTotalWorkoutVolume` — sum `(weight ?: 0.0) * (reps ?: 0)` across every logged set, ignoring unit. Mixed-unit cycles are a fluke in practice but the per-cycle `weightUnit` is surfaced so the UI picks a sensible label.
@@ -176,7 +186,8 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-18, slice 4): cycle context banner at the top of the workout logger (compact layout). Surfaces deload flag + target RIR from the current cycle week.
   - Done (2026-04-18, slice 5a): read-only cycle-detail screen with week-by-week breakdown and session completion state. Tappable from the dashboard widget.
   - Done (2026-04-18, slice 5b): per-week aggregates (sets / volume / duration) + PRs-hit-this-cycle card on the cycle-detail screen. New `CycleDetailViewModel` combines cycle + logged workouts + PRs. Pure `util/CycleAggregates.kt` with 8 JVM tests.
-  - Further candidates: mirror the slice 4 banner into the master-detail logger layout; per-set/per-exercise progression targets (separate from the per-week flag).
+  - Done (2026-04-19, slice 6): per-set `targetWeight` on `TemplateExerciseSet` + `LoggedSet`. Third real Room migration (v23 → v24, no-op). Template editor gets a Weight field per set; workout logger shows it as a placeholder hint on the Weight input.
+  - Further candidates: mirror the slice 4 banner into the master-detail logger layout; per-exercise progression scheme (linear / double / RPE-based — separate from the per-set target).
 
 ## Deleted during cleanup
 
