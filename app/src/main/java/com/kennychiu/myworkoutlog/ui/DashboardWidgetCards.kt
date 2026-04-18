@@ -9,6 +9,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingFlat
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -210,7 +213,7 @@ fun SimpleQuickStatsWidgetCard(widget: DashboardWidget.QuickStatsWidget) {
                             value = widget.recentPRs.size.toString(),
                             label = "PRs",
                             color = MaterialTheme.colorScheme.secondary,
-                            icon = Icons.Default.TrendingUp,
+                            icon = Icons.AutoMirrored.Filled.TrendingUp,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -241,7 +244,7 @@ fun SimpleQuickStatsWidgetCard(widget: DashboardWidget.QuickStatsWidget) {
                             value = widget.recentPRs.size.toString(),
                             label = "PRs",
                             color = MaterialTheme.colorScheme.secondary,
-                            icon = Icons.Default.TrendingUp,
+                            icon = Icons.AutoMirrored.Filled.TrendingUp,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -456,7 +459,7 @@ fun SimpleCycleProgressWidgetCard(
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(
-                        progress = widget.completionPercentage,
+                        progress = { widget.completionPercentage },
                         modifier = Modifier.fillMaxSize(),
                         strokeWidth = 8.dp,
                         color = MaterialTheme.colorScheme.primary,
@@ -818,9 +821,9 @@ fun SimplePerformanceTrendWidgetCard(
                         // Mini trend indicator
                         Icon(
                             imageVector = when {
-                                topExercise.improvementPercentage > 5 -> Icons.Default.TrendingUp
-                                topExercise.improvementPercentage < -5 -> Icons.Default.TrendingDown
-                                else -> Icons.Default.TrendingFlat
+                                topExercise.improvementPercentage > 5 -> Icons.AutoMirrored.Filled.TrendingUp
+                                topExercise.improvementPercentage < -5 -> Icons.AutoMirrored.Filled.TrendingDown
+                                else -> Icons.AutoMirrored.Filled.TrendingFlat
                             },
                             contentDescription = "Trend",
                             tint = when {
@@ -1099,9 +1102,9 @@ fun SimpleVolumeProgressWidgetCard(
                         // Mini volume trend indicator
                         Icon(
                             imageVector = when {
-                                volumeChange > 5f -> Icons.Default.TrendingUp
-                                volumeChange < -5f -> Icons.Default.TrendingDown
-                                else -> Icons.Default.TrendingFlat
+                                volumeChange > 5f -> Icons.AutoMirrored.Filled.TrendingUp
+                                volumeChange < -5f -> Icons.AutoMirrored.Filled.TrendingDown
+                                else -> Icons.AutoMirrored.Filled.TrendingFlat
                             },
                             contentDescription = "Volume Trend",
                             tint = when {

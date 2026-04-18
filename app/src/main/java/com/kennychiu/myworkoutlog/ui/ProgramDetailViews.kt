@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -169,7 +170,7 @@ private fun ProgramOverviewStats(program: ProgramTemplate) {
         OverviewStatCard(
             label = "Templates",
             value = uniqueTemplates.toString(),
-            icon = Icons.Outlined.Assignment
+            icon = Icons.AutoMirrored.Outlined.Assignment
         )
     }
 }

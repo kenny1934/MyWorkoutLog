@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Launch
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -177,7 +178,7 @@ fun EnhancedInsightCard(
                                 "View Progress", "View Analytics" -> Icons.Default.Analytics
                                 "View Schedule", "Browse Programs" -> Icons.Default.Schedule
                                 "Start Workout", "Start First Workout" -> Icons.Default.PlayArrow
-                                else -> Icons.Default.Launch
+                                else -> Icons.AutoMirrored.Filled.Launch
                             },
                             contentDescription = null,
                             modifier = Modifier.size(16.dp)

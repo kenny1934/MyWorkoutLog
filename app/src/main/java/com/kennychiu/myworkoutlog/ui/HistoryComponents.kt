@@ -9,6 +9,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -294,7 +295,7 @@ fun WorkoutSummaryCard(workout: LoggedWorkout) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Filled.List,
+                            imageVector = Icons.AutoMirrored.Filled.List,
                             contentDescription = "Exercises",
                             modifier = Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.secondary

@@ -216,7 +216,7 @@ fun ExerciseListItem(
             
             // Progress bar
             LinearProgressIndicator(
-                progress = completionPercentage,
+                progress = { completionPercentage },
                 modifier = Modifier.fillMaxWidth(),
                 color = if (isSelected) 
                     MaterialTheme.colorScheme.primary 

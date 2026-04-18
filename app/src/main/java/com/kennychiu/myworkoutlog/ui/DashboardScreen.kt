@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -745,7 +746,7 @@ fun EnhancedDashboardScreen(
                                         }
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Icon(
-                                            imageVector = Icons.Default.ArrowForward,
+                                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                             contentDescription = "Swipe for more actions",
                                             modifier = Modifier.size(16.dp),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)

@@ -6,6 +6,9 @@ import com.kennychiu.myworkoutlog.util.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingFlat
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -158,9 +161,9 @@ fun ExercisePerformanceCard(
 
                 Icon(
                     imageVector = when {
-                        exercise.improvementPercentage > 5 -> Icons.Default.TrendingUp
-                        exercise.improvementPercentage < -5 -> Icons.Default.TrendingDown
-                        else -> Icons.Default.TrendingFlat
+                        exercise.improvementPercentage > 5 -> Icons.AutoMirrored.Filled.TrendingUp
+                        exercise.improvementPercentage < -5 -> Icons.AutoMirrored.Filled.TrendingDown
+                        else -> Icons.AutoMirrored.Filled.TrendingFlat
                     },
                     contentDescription = "Trend",
                     tint = when {

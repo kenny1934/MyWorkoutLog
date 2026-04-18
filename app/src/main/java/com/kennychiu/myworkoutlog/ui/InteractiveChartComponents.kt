@@ -17,6 +17,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingFlat
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -177,9 +180,9 @@ fun EnhancedInteractivePerformanceChart(
                             )
                             Icon(
                                 imageVector = if (gain.improvementPercentage >= 0) 
-                                    Icons.Default.TrendingUp 
+                                    Icons.AutoMirrored.Filled.TrendingUp 
                                 else 
-                                    Icons.Default.TrendingDown,
+                                    Icons.AutoMirrored.Filled.TrendingDown,
                                 contentDescription = null,
                                 tint = if (gain.improvementPercentage >= 0) 
                                     MaterialTheme.colorScheme.primary 
@@ -526,7 +529,7 @@ private fun EnhancedVolumeDetailCard(
             if (onDrillDown != null) {
                 IconButton(onClick = onDrillDown) {
                     Icon(
-                        imageVector = Icons.Default.TrendingUp,
+                        imageVector = Icons.AutoMirrored.Filled.TrendingUp,
                         contentDescription = "View volume analysis",
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -597,9 +600,9 @@ private fun VolumeComparisonCard(
             
             Icon(
                 imageVector = when {
-                    weeklyChange > 5 -> Icons.Default.TrendingUp
-                    weeklyChange < -5 -> Icons.Default.TrendingDown
-                    else -> Icons.Default.TrendingFlat
+                    weeklyChange > 5 -> Icons.AutoMirrored.Filled.TrendingUp
+                    weeklyChange < -5 -> Icons.AutoMirrored.Filled.TrendingDown
+                    else -> Icons.AutoMirrored.Filled.TrendingFlat
                 },
                 contentDescription = "Weekly trend",
                 tint = when {
@@ -1135,9 +1138,9 @@ fun TrendIndicator(
     size: Dp = 16.dp
 ) {
     val (icon, color) = when {
-        value > 5f -> Icons.Default.TrendingUp to MaterialTheme.colorScheme.primary
-        value < -5f -> Icons.Default.TrendingDown to MaterialTheme.colorScheme.error
-        else -> Icons.Default.TrendingFlat to MaterialTheme.colorScheme.onSurfaceVariant
+        value > 5f -> Icons.AutoMirrored.Filled.TrendingUp to MaterialTheme.colorScheme.primary
+        value < -5f -> Icons.AutoMirrored.Filled.TrendingDown to MaterialTheme.colorScheme.error
+        else -> Icons.AutoMirrored.Filled.TrendingFlat to MaterialTheme.colorScheme.onSurfaceVariant
     }
     
     Row(

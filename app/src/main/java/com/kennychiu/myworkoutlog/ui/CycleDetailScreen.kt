@@ -180,7 +180,7 @@ private fun CycleHeaderCard(
             val pct = if (total > 0) done.toFloat() / total else 0f
             Row(verticalAlignment = Alignment.CenterVertically) {
                 LinearProgressIndicator(
-                    progress = pct,
+                    progress = { pct },
                     modifier = Modifier
                         .weight(1f)
                         .height(8.dp),

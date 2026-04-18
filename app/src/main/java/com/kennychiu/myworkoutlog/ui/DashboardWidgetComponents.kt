@@ -18,6 +18,11 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.filled.ShowChart
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingFlat
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -248,12 +253,12 @@ fun TrendIndicator(
     showPercentage: Boolean = true
 ) {
     val (icon, color) = when (trend.direction) {
-        TrendDirection.STRONGLY_IMPROVING, TrendDirection.SLIGHTLY_IMPROVING -> 
-            Icons.Default.TrendingUp to Color(0xFF4CAF50)
-        TrendDirection.STRONGLY_DECLINING, TrendDirection.SLIGHTLY_DECLINING -> 
-            Icons.Default.TrendingDown to Color(0xFFF44336)
-        TrendDirection.STABLE -> Icons.Default.TrendingFlat to MaterialTheme.colorScheme.onSurfaceVariant
-        TrendDirection.INSUFFICIENT_DATA -> Icons.Default.ShowChart to Color(0xFFFF9800)
+        TrendDirection.STRONGLY_IMPROVING, TrendDirection.SLIGHTLY_IMPROVING ->
+            Icons.AutoMirrored.Filled.TrendingUp to Color(0xFF4CAF50)
+        TrendDirection.STRONGLY_DECLINING, TrendDirection.SLIGHTLY_DECLINING ->
+            Icons.AutoMirrored.Filled.TrendingDown to Color(0xFFF44336)
+        TrendDirection.STABLE -> Icons.AutoMirrored.Filled.TrendingFlat to MaterialTheme.colorScheme.onSurfaceVariant
+        TrendDirection.INSUFFICIENT_DATA -> Icons.AutoMirrored.Filled.ShowChart to Color(0xFFFF9800)
     }
     
     Row(
@@ -780,7 +785,7 @@ fun MilestoneCard(
             Spacer(modifier = Modifier.height(8.dp))
             
             LinearProgressIndicator(
-                progress = milestone.progress,
+                progress = { milestone.progress },
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
@@ -986,10 +991,10 @@ private fun getMuscleGroupIcon(muscleGroup: MuscleGroup): ImageVector {
         MuscleGroup.SHOULDERS -> Icons.Default.FitnessCenter
         MuscleGroup.BICEPS -> Icons.Default.FitnessCenter
         MuscleGroup.TRICEPS -> Icons.Default.FitnessCenter
-        MuscleGroup.QUADS -> Icons.Default.DirectionsRun
-        MuscleGroup.HAMSTRINGS -> Icons.Default.DirectionsRun
-        MuscleGroup.GLUTES -> Icons.Default.DirectionsRun
-        MuscleGroup.CALVES -> Icons.Default.DirectionsRun
+        MuscleGroup.QUADS -> Icons.AutoMirrored.Filled.DirectionsRun
+        MuscleGroup.HAMSTRINGS -> Icons.AutoMirrored.Filled.DirectionsRun
+        MuscleGroup.GLUTES -> Icons.AutoMirrored.Filled.DirectionsRun
+        MuscleGroup.CALVES -> Icons.AutoMirrored.Filled.DirectionsRun
         MuscleGroup.ABS -> Icons.Default.FitnessCenter
         MuscleGroup.FOREARMS -> Icons.Default.FitnessCenter
         MuscleGroup.TRAPS -> Icons.Default.FitnessCenter

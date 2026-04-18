@@ -503,7 +503,7 @@ fun SessionCard(
                                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = showTemplateDropdown)
                             },
                             modifier = Modifier
-                                .menuAnchor()
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                                 .fillMaxWidth()
                         )
                         ExposedDropdownMenu(
