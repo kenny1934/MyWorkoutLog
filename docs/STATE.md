@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-18 (Phase 4 slice 5a landed; read-only cycle-detail screen).
+Last updated: 2026-04-18 (Phase 4 slice 5b landed; PRs + per-week aggregates on cycle-detail screen).
 
 ## Next session — start here
 
@@ -36,6 +36,12 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 - New private `CycleContextBanner` composable at the bottom of `ui/WorkoutLoggerScreens.kt`. Renders as the first `LazyColumn` item in the compact layout when the current week has `isDeloadWeek == true` or a non-blank `targetRir`. Shows the week label plus "Deload" (`tertiaryContainer`) and/or "RIR X" (`secondaryContainer`) badges — same theming as the dashboard widget so the two surfaces agree visually.
 - Skipped for the master-detail (`shouldUseWorkoutMasterDetail()`) layout for now — phone usage is the primary gym flow.
 - No data/schema change; reads existing fields added in slices 2/3. JVM tests still 28.
+
+**Phase 4 slice 5b landed 2026-04-18** (build + JVM tests green, no schema change):
+- New `util/CycleAggregates.kt` — pure helper taking `ActiveProgramCycle`, `List<LoggedWorkout>`, and `List<PersonalRecord>`, returning per-week totals (workout count, set count, total volume, total duration in ms), PRs attached to their `programWeekDefinitionId`, and the most-common `performedWeightUnit` across the cycle's workouts. Volume convention matches `AnalyticsRepository.calculateTotalWorkoutVolume` — sum `(weight ?: 0.0) * (reps ?: 0)` across every logged set, ignoring unit. Mixed-unit cycles are a fluke in practice but the per-cycle `weightUnit` is surfaced so the UI picks a sensible label.
+- New `viewmodel/CycleDetailViewModel.kt` — combines `activeCycleDao.getActiveCycle()` with `loggedWorkoutDao.getWorkoutsByCycle(cycleUuid)` and `personalRecordDao.getAllPRs()` via `flatMapLatest` + `combine`, exposes a single `StateFlow<CycleDetailUiState>`. Registered in `AppContainer.cycleDetailViewModelFactory()`, held by `MainActivity`, threaded through `MainApp` / `AppNavHost` and the `Screen.CycleDetail` composable.
+- `ui/CycleDetailScreen.kt` swapped off `ActiveCycleViewModel` — now takes `CycleDetailViewModel`. Each week card renders a 3-up row of chips (Sets / Volume / Time) under the week label when the cycle has logged workouts for that week; time shows `Xh Ym` or `Ym`. A new "PRs this cycle" card renders above the week list when there are any, with a count badge and clickable rows that route to `Screen.HistoryDetail(loggedWorkoutId)`. Nothing changes about the existing session-row routing (completed → HistoryDetail, pending → TemplateDetail).
+- 8 new JVM tests in `util/CycleAggregatesTest.kt`: empty list; workouts outside the cycle filtered by `cycleUuid`; per-week totals sum correctly; missing `programWeekDefinitionId` drops a workout from aggregates; null / zero-width timestamps contribute no duration; PRs attached to their week and sorted by date desc; most-common `weightUnit` wins; all-null weight units yield `null`. JVM test count 28 → 36.
 
 **Phase 4 slice 5a landed 2026-04-18** (build-verified, no schema change):
 - New `ui/CycleDetailScreen.kt`: read-only detail view of the currently active program cycle. Scaffold + back nav, header card (user cycle name, program name, start/planned-end, linear progress bar with "done / total" label, "Cycle complete" chip when finished), and a `LazyColumn` of week cards ordered by `week.order`.
@@ -130,7 +136,7 @@ These features exist in code and appear to be functional based on the screen and
 
 3. **Manual DI duplication.** `MainActivity` wires ~14 ViewModel factories with the same `(application as WorkoutApplication).database.xDao()` pattern repeated. Should be centralized in an `AppContainer`.
 
-4. **Test coverage is still thin but no longer zero.** The wizard defaults were removed 2026-04-18. There are now 28 JVM unit tests (20 ViewModel + 8 for `CycleProgress`) plus a Room v21 migration smoke test. Coverage targets the known-fragile areas: workout timer + edit/resume, active cycle UUID flow, history cycle filtering, and cycle progress derivation. Everything else (dashboard widgets, PRs, import/export, cloud backup, volume, analytics) is still validated only by running the app.
+4. **Test coverage is still thin but no longer zero.** The wizard defaults were removed 2026-04-18. There are now 36 JVM unit tests (20 ViewModel + 8 for `CycleProgress` + 8 for `CycleAggregates`) plus three instrumented migration tests (v21 open, v21→22, v22→23). Coverage targets the known-fragile areas: workout timer + edit/resume, active cycle UUID flow, history cycle filtering, and cycle progress derivation. Everything else (dashboard widgets, PRs, import/export, cloud backup, volume, analytics) is still validated only by running the app.
 
 5. **Room DAO convention was unstable.** Recent commits flipped back and forth on `suspend` modifiers for `@Query` / `@Delete`. The current convention (see `CLAUDE.md`) is: suspend for writes, non-suspend for `Flow`/`LiveData` returns, non-suspend snapshot reads only where sync call sites require them.
 
@@ -169,7 +175,8 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-18, slice 3): per-week `targetRir` on `ProgramWeekDefinition`, second real `Migration(22, 23)`, program-editor TextField, dashboard widget "RIR X" badge, instrumented migration test extended. See the slice 3 section above.
   - Done (2026-04-18, slice 4): cycle context banner at the top of the workout logger (compact layout). Surfaces deload flag + target RIR from the current cycle week.
   - Done (2026-04-18, slice 5a): read-only cycle-detail screen with week-by-week breakdown and session completion state. Tappable from the dashboard widget.
-  - Further candidates: slice 5b (PRs hit during cycle + per-week volume/duration aggregates on the detail screen); mirror the slice 4 banner into the master-detail logger layout; per-set/per-exercise progression targets (separate from the per-week flag).
+  - Done (2026-04-18, slice 5b): per-week aggregates (sets / volume / duration) + PRs-hit-this-cycle card on the cycle-detail screen. New `CycleDetailViewModel` combines cycle + logged workouts + PRs. Pure `util/CycleAggregates.kt` with 8 JVM tests.
+  - Further candidates: mirror the slice 4 banner into the master-detail logger layout; per-set/per-exercise progression targets (separate from the per-week flag).
 
 ## Deleted during cleanup
 
