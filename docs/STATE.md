@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-18 (Phase 4 slice 3 landed; per-week `targetRir` + second chained migration).
+Last updated: 2026-04-18 (Phase 4 slice 4 landed; cycle context banner on workout logger).
 
 ## Next session — start here
 
@@ -30,6 +30,12 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 - **Program editor UI.** Each week card now has a `Row` with the "Deload week" `FilterChip` on the left and a "Target RIR" `OutlinedTextField` taking the remaining width. Blank input persists as `null`. Implemented in both `ProgramEditorScreen` and `EnhancedProgramEditor` in `ui/ProgramEditorScreen.kt`.
 - **Dashboard widget UI.** `ui/DashboardWidgetCards.kt::SimpleCycleProgressWidgetCard` shows an "RIR X" badge (secondaryContainer / onSecondaryContainer) next to the "Cycle Progress" title when `info.currentWeek?.targetRir` is non-blank. Renders alongside the existing Deload badge when both are set.
 - JVM test count unchanged at 28; instrumented test count 2 → 3.
+
+**Phase 4 slice 4 landed 2026-04-18** (build-verified, no schema change):
+- `WorkoutLoggerScreen` now matches the active workout's `programWeekDefinitionId` against `activeCycle.cycleProgram.weeks` (gated on `cycleUuid == activeProgramCycleId`) and exposes the resulting `ProgramWeekDefinition` as `currentCycleWeek`.
+- New private `CycleContextBanner` composable at the bottom of `ui/WorkoutLoggerScreens.kt`. Renders as the first `LazyColumn` item in the compact layout when the current week has `isDeloadWeek == true` or a non-blank `targetRir`. Shows the week label plus "Deload" (`tertiaryContainer`) and/or "RIR X" (`secondaryContainer`) badges — same theming as the dashboard widget so the two surfaces agree visually.
+- Skipped for the master-detail (`shouldUseWorkoutMasterDetail()`) layout for now — phone usage is the primary gym flow.
+- No data/schema change; reads existing fields added in slices 2/3. JVM tests still 28.
 
 The SDK setup section below is kept as a reference for reinstalling on a fresh machine.
 
@@ -151,7 +157,8 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-18, slice 1 + follow-up cleanup): current week / next session / planned end date live on the dashboard widget via the shared `cycleProgress()` helper. Legacy dashboard path deleted; cycle-progress calculations deduped.
   - Done (2026-04-18, slice 2): deload-week flag on `ProgramWeekDefinition`, first real `Migration(21, 22)`, program-editor toggle, dashboard widget "Deload" badge, instrumented migration test. See the slice 2 section above.
   - Done (2026-04-18, slice 3): per-week `targetRir` on `ProgramWeekDefinition`, second real `Migration(22, 23)`, program-editor TextField, dashboard widget "RIR X" badge, instrumented migration test extended. See the slice 3 section above.
-  - Further candidates: dedicated cycle-detail screen (week-by-week breakdown, PRs hit, volume/duration aggregates); surface `targetRir` in the workout logger when a session is started from an active cycle; per-set/per-exercise progression targets (separate from the per-week flag added here).
+  - Done (2026-04-18, slice 4): cycle context banner at the top of the workout logger (compact layout). Surfaces deload flag + target RIR from the current cycle week.
+  - Further candidates: dedicated cycle-detail screen (week-by-week breakdown, PRs hit, volume/duration aggregates); mirror the cycle context banner into the master-detail logger layout; per-set/per-exercise progression targets (separate from the per-week flag).
 
 ## Deleted during cleanup
 
