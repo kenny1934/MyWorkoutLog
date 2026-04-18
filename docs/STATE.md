@@ -2,13 +2,19 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-18 (during cleanup from 7-month stall).
+Last updated: 2026-04-18 (Phase 4 slice 1 landed).
 
 ## Next session — start here
 
 As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` is green, the subpackage restructure has landed, and all four monolith splits are done: `DashboardScreen.kt` 2,612 → 995, `ProgramManagementScreens.kt` 2,091 → 461, `HistoryScreens.kt` 1,808 → 481, and `WorkoutLoggerScreens.kt` 1,618 → 766 (split into `WorkoutLoggerSetRow.kt` 381, `WorkoutLoggerDialogs.kt` 363, `WorkoutLoggerTimer.kt` 163). The Phase 3 `WorkoutLoggerViewModel` tests pinned the timer/edit/resume state transitions before the split, and unit tests remain green after.
 
 **Phase 3 kick-off landed 2026-04-18:** 20 JVM unit tests across `ActiveCycleViewModel` (4), `HistoryViewModel` (5), and `WorkoutLoggerViewModel` (11) pin the fragile timer/edit/resume flows, cycle UUID generation, and history cycle filtering. A Room `MigrationTestHelper` smoke test for schema v21 is committed under `app/src/androidTest/` but requires an emulator or device to run — run it from Windows Android Studio.
+
+**Phase 4 slice 1 landed 2026-04-18** (verified on device):
+- `util/CycleProgress.kt` adds a pure `cycleProgress(ActiveProgramCycle)` helper returning `CycleProgressInfo` (ordered weeks, current week + index, next session, completed/total session counts, start date, planned end date = `startDate + weeks.size` weeks, `isComplete` flag). 8 JVM tests in `util/CycleProgressTest.kt` cover fresh/mid/complete cycles, out-of-order weeks, malformed start date, and empty program. Unit test total is now 28.
+- `ui/DashboardWidgetCards.kt::SimpleCycleProgressWidgetCard` consumes the helper. The live dashboard's "Cycle Progress" widget now shows a "Started … · Planned end …" line below the session progress, and the primary button reads `Start <next session name>` and navigates with the correct `cycleId/weekId/sessionId/templateId` (previously `nextSession` was hardcoded to `null` in `WidgetRepositorySimplified.kt:210`, so the button fell through to an "Analytics" fallback and never actually opened the next session).
+- `ui/DashboardCycleViews.kt` (the `LegacyDashboardScreen` path) also got parallel treatment — header summary card, current-week highlight, "Up next" badge. That path is only reachable when `dashboardViewModel == null`, which in the current `MainActivity` wiring never happens. Kept for consistency; easy to delete if we ever prune the legacy screen.
+- No schema change. `calculateBasicCycleProgress` / `calculateCycleProgressText` in `WidgetRepositorySimplified.kt` still exist and populate the widget's legacy fields; they can be folded into the helper later.
 
 The SDK setup section below is kept as a reference for reinstalling on a fresh machine.
 
@@ -93,7 +99,7 @@ These features exist in code and appear to be functional based on the screen and
 
 3. **Manual DI duplication.** `MainActivity` wires ~14 ViewModel factories with the same `(application as WorkoutApplication).database.xDao()` pattern repeated. Should be centralized in an `AppContainer`.
 
-4. **Test coverage is still thin but no longer zero.** The wizard defaults were removed 2026-04-18. There are now 20 ViewModel unit tests plus a Room v21 migration smoke test. Coverage targets the known-fragile areas: workout timer + edit/resume, active cycle UUID flow, and history cycle filtering. Everything else (dashboard, PRs, import/export, cloud backup, volume, analytics) is still validated only by running the app.
+4. **Test coverage is still thin but no longer zero.** The wizard defaults were removed 2026-04-18. There are now 28 JVM unit tests (20 ViewModel + 8 for `CycleProgress`) plus a Room v21 migration smoke test. Coverage targets the known-fragile areas: workout timer + edit/resume, active cycle UUID flow, history cycle filtering, and cycle progress derivation. Everything else (dashboard widgets, PRs, import/export, cloud backup, volume, analytics) is still validated only by running the app.
 
 5. **Room DAO convention was unstable.** Recent commits flipped back and forth on `suspend` modifiers for `@Query` / `@Delete`. The current convention (see `CLAUDE.md`) is: suspend for writes, non-suspend for `Flow`/`LiveData` returns, non-suspend snapshot reads only where sync call sites require them.
 
@@ -127,6 +133,11 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-18): `WorkoutDatabaseMigrationTest` at `app/src/androidTest/.../data/` uses `MigrationTestHelper` to confirm the v21 schema opens cleanly. It does not run under `./gradlew test` — it's an instrumented test. Run from Android Studio with a connected device/emulator. When the first real `Migration` is added, extend this file with a `runMigrationsAndValidate` case.
   - Not started: tests for other ViewModels (dashboard, PRs, analytics, export/import). Not gating.
 - **Phase 4 — Resume feature work.** Complete mesocycle / program management UX.
+  - Done (2026-04-18, slice 1): current week / next session / planned end date on `ActiveCycleDashboard`. Pure `cycleProgress()` helper + 8 JVM tests; `DashboardCycleViews.kt` consumes it. No schema change.
+  - Next candidates (from the 2026-04-18 audit, no particular ordering):
+    - Deload-week flag on `ProgramWeekDefinition` (first real `Migration` bump to v22 — extend `WorkoutDatabaseMigrationTest` at that point).
+    - Per-exercise progression metadata on `TemplateExercise` (RIR/RPE ranges, rep/weight targets per week).
+    - Dedicated cycle-detail screen (week-by-week breakdown, PRs hit, volume/duration aggregates) — composes on top of what slice 1 computes.
 
 ## Deleted during cleanup
 

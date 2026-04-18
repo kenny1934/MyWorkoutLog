@@ -14,6 +14,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import java.time.format.DateTimeFormatter
+
+private val DISPLAY_DATE = DateTimeFormatter.ofPattern("MMM d, yyyy")
 
 @Composable
 fun NoActiveCycleDashboard(
@@ -61,7 +64,7 @@ fun ActiveCycleDashboard(
     activeCycleViewModel: ActiveCycleViewModel,
     navController: NavHostController
 ) {
-    val program = activeCycle.cycleProgram
+    val progress = remember(activeCycle) { cycleProgress(activeCycle) }
     var showEndCycleConfirmation by remember { mutableStateOf(false) }
 
     LazyColumn(
@@ -74,27 +77,67 @@ fun ActiveCycleDashboard(
             Text(activeCycle.userCycleName, fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Text(activeCycle.programTemplateName, style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
+            CycleProgressSummary(progress)
+            Spacer(modifier = Modifier.height(8.dp))
             Button(onClick = { showEndCycleConfirmation = true }, modifier = Modifier.fillMaxWidth()) {
                 Text("End Current Cycle")
             }
         }
 
-        program.weeks.sortedBy { it.order }.forEach { week ->
+        progress.orderedWeeks.forEachIndexed { weekIndex, week ->
+            val isCurrentWeek = weekIndex == progress.currentWeekIndex
             item {
-                Text(week.weekLabel, style = MaterialTheme.typography.titleLarge)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        week.weekLabel,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = if (isCurrentWeek) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface,
+                        fontWeight = if (isCurrentWeek) FontWeight.Bold else FontWeight.Normal
+                    )
+                    if (isCurrentWeek) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Current",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
             }
             items(week.sessions.sortedBy { it.order }) { session ->
                 val sessionKey = "${week.id}_${session.id}"
                 val isCompleted = activeCycle.completedSessions.containsKey(sessionKey)
                 val workoutId = activeCycle.completedSessions[sessionKey]
+                val isNextUp = !isCompleted && session.id == progress.nextSession?.id &&
+                        week.id == progress.currentWeek?.id
 
-                Card(elevation = CardDefaults.cardElevation(2.dp)) {
+                val cardColors = if (isNextUp) {
+                    CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                } else {
+                    CardDefaults.cardColors()
+                }
+
+                Card(elevation = CardDefaults.cardElevation(2.dp), colors = cardColors) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(session.sessionName, modifier = Modifier.weight(1f))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(session.sessionName)
+                            if (isNextUp) {
+                                Text(
+                                    "Up next",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
                         if (isCompleted && workoutId != null) {
                             Button(
                                 onClick = {
@@ -146,5 +189,40 @@ fun ActiveCycleDashboard(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun CycleProgressSummary(progress: CycleProgressInfo) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            val totalWeeks = progress.orderedWeeks.size
+            val headline = when {
+                progress.isComplete -> "Cycle complete"
+                progress.currentWeekIndex != null && totalWeeks > 0 ->
+                    "Week ${progress.currentWeekIndex + 1} of $totalWeeks"
+                else -> "No sessions scheduled"
+            }
+            Text(headline, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            if (progress.totalSessionCount > 0) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "${progress.completedSessionCount} of ${progress.totalSessionCount} sessions done",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            if (progress.startDate != null && progress.plannedEndDate != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Started ${progress.startDate.format(DISPLAY_DATE)} · " +
+                            "Planned end ${progress.plannedEndDate.format(DISPLAY_DATE)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }

@@ -393,6 +393,9 @@ fun SimpleCycleProgressWidgetCard(
     navController: NavHostController,
     onEndCycle: (() -> Unit)? = null
 ) {
+    val info = remember(widget.cycle) { cycleProgress(widget.cycle) }
+    val cycleDateFormatter = remember { java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy") }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -445,13 +448,32 @@ fun SimpleCycleProgressWidgetCard(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    if (info.startDate != null && info.plannedEndDate != null) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Started ${info.startDate.format(cycleDateFormatter)} · " +
+                                    "Planned end ${info.plannedEndDate.format(cycleDateFormatter)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Quick action button
-                    widget.nextSession?.let {
+                    // Quick action button — derive next session from the helper so the
+                    // button actually navigates to the correct cycle/week/session, not
+                    // to a half-formed route.
+                    val nextWeek = info.currentWeek
+                    val nextSession = info.nextSession
+                    if (nextWeek != null && nextSession != null) {
                         ElevatedButton(
                             onClick = {
-                                navController.navigate("workoutLogger/${widget.cycle.cycleUuid}")
+                                val route = Screen.WorkoutLogger.createRoute(
+                                    templateId = nextSession.workoutTemplateId,
+                                    cycleId = widget.cycle.cycleUuid,
+                                    weekId = nextWeek.id,
+                                    sessionId = nextSession.id
+                                )
+                                navController.navigate(route)
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -461,9 +483,13 @@ fun SimpleCycleProgressWidgetCard(
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Start Next Session")
+                            Text(
+                                text = "Start ${nextSession.sessionName}",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
-                    } ?: run {
+                    } else {
                         OutlinedButton(
                             onClick = {
                                 navController.navigate("analytics")
@@ -477,7 +503,7 @@ fun SimpleCycleProgressWidgetCard(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "Analytics",
+                                text = if (info.isComplete) "Cycle complete" else "Analytics",
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 fontSize = adaptiveTextSize(
