@@ -18,3 +18,17 @@ fun duplicateWeekInto(
     val inserted = weeks.toMutableList().apply { add(idx + 1, copy) }
     return inserted.mapIndexed { i, w -> w.copy(order = i + 1) }
 }
+
+fun moveWeek(
+    weeks: List<ProgramWeekDefinition>,
+    fromIndex: Int,
+    toIndex: Int
+): List<ProgramWeekDefinition> {
+    if (fromIndex == toIndex) return weeks
+    if (fromIndex !in weeks.indices) return weeks
+    if (toIndex !in weeks.indices) return weeks
+    val reordered = weeks.toMutableList().apply {
+        add(toIndex, removeAt(fromIndex))
+    }
+    return reordered.mapIndexed { i, w -> w.copy(order = i + 1) }
+}

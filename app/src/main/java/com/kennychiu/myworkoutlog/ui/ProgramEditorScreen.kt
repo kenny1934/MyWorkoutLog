@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -88,10 +89,39 @@ fun ProgramEditorScreen(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
             )
             LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(editedWeeks) { week ->
+                itemsIndexed(editedWeeks) { index, week ->
+                    val canMoveUp = index > 0
+                    val canMoveDown = index < editedWeeks.size - 1
                     Card(elevation = CardDefaults.cardElevation(2.dp)) {
                         Column(Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column {
+                                    IconButton(
+                                        onClick = { editedWeeks = moveWeek(editedWeeks, index, index - 1) },
+                                        enabled = canMoveUp,
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.KeyboardArrowUp,
+                                            contentDescription = "Move week up",
+                                            tint = if (canMoveUp) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { editedWeeks = moveWeek(editedWeeks, index, index + 1) },
+                                        enabled = canMoveDown,
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.KeyboardArrowDown,
+                                            contentDescription = "Move week down",
+                                            tint = if (canMoveDown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.width(8.dp))
                                 OutlinedTextField(
                                     value = week.weekLabel,
                                     onValueChange = { newLabel ->
@@ -610,10 +640,39 @@ fun EnhancedProgramEditor(
             verticalArrangement = Arrangement.spacedBy(workoutElementSpacing()),
             modifier = Modifier.weight(1f)
         ) {
-            items(editedWeeks) { week ->
+            itemsIndexed(editedWeeks) { index, week ->
+                val canMoveUp = index > 0
+                val canMoveDown = index < editedWeeks.size - 1
                 Card(elevation = CardDefaults.cardElevation(2.dp)) {
                     Column(Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column {
+                                IconButton(
+                                    onClick = { editedWeeks = moveWeek(editedWeeks, index, index - 1) },
+                                    enabled = canMoveUp,
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowUp,
+                                        contentDescription = "Move week up",
+                                        tint = if (canMoveUp) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                IconButton(
+                                    onClick = { editedWeeks = moveWeek(editedWeeks, index, index + 1) },
+                                    enabled = canMoveDown,
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowDown,
+                                        contentDescription = "Move week down",
+                                        tint = if (canMoveDown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
                             OutlinedTextField(
                                 value = week.weekLabel,
                                 onValueChange = { newLabel ->

@@ -93,6 +93,70 @@ class ProgramEditorHelpersTest {
         assertEquals(weeks, result)
     }
 
+    @Test
+    fun `moveWeek swaps a week upward`() {
+        val weeks = listOf(week("a", order = 1), week("b", order = 2), week("c", order = 3))
+        val result = moveWeek(weeks, fromIndex = 2, toIndex = 1)
+
+        assertEquals(listOf("a", "c", "b"), result.map { it.id })
+    }
+
+    @Test
+    fun `moveWeek swaps a week downward`() {
+        val weeks = listOf(week("a", order = 1), week("b", order = 2), week("c", order = 3))
+        val result = moveWeek(weeks, fromIndex = 0, toIndex = 1)
+
+        assertEquals(listOf("b", "a", "c"), result.map { it.id })
+    }
+
+    @Test
+    fun `moveWeek renumbers order to match list position`() {
+        val weeks = listOf(week("a", order = 1), week("b", order = 2), week("c", order = 3))
+        val result = moveWeek(weeks, fromIndex = 0, toIndex = 2)
+
+        assertEquals(listOf("b", "c", "a"), result.map { it.id })
+        assertEquals(listOf(1, 2, 3), result.map { it.order })
+    }
+
+    @Test
+    fun `moveWeek is a no-op when indices are equal`() {
+        val weeks = listOf(week("a", order = 1), week("b", order = 2))
+        val result = moveWeek(weeks, fromIndex = 1, toIndex = 1)
+
+        assertEquals(weeks, result)
+    }
+
+    @Test
+    fun `moveWeek is a no-op when fromIndex is out of bounds`() {
+        val weeks = listOf(week("a", order = 1), week("b", order = 2))
+        assertEquals(weeks, moveWeek(weeks, fromIndex = -1, toIndex = 0))
+        assertEquals(weeks, moveWeek(weeks, fromIndex = 5, toIndex = 0))
+    }
+
+    @Test
+    fun `moveWeek is a no-op when toIndex is out of bounds`() {
+        val weeks = listOf(week("a", order = 1), week("b", order = 2))
+        assertEquals(weeks, moveWeek(weeks, fromIndex = 0, toIndex = -1))
+        assertEquals(weeks, moveWeek(weeks, fromIndex = 0, toIndex = 5))
+    }
+
+    @Test
+    fun `moveWeek preserves sessions and ids of the moved week`() {
+        val sessions = listOf(session("s1"), session("s2", order = 2))
+        val weeks = listOf(
+            week("a", order = 1),
+            week("b", order = 2, sessions = sessions, isDeload = true, rir = "2-3"),
+            week("c", order = 3)
+        )
+        val result = moveWeek(weeks, fromIndex = 1, toIndex = 0)
+
+        val moved = result[0]
+        assertEquals("b", moved.id)
+        assertEquals(sessions, moved.sessions)
+        assertTrue(moved.isDeloadWeek)
+        assertEquals("2-3", moved.targetRir)
+    }
+
     private class IdCounter : () -> String {
         private var n = 0
         override fun invoke(): String = "id-${++n}"
