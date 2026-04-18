@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-18 (Phase 4 slice 4 landed; cycle context banner on workout logger).
+Last updated: 2026-04-18 (Phase 4 slice 5a landed; read-only cycle-detail screen).
 
 ## Next session — start here
 
@@ -36,6 +36,13 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 - New private `CycleContextBanner` composable at the bottom of `ui/WorkoutLoggerScreens.kt`. Renders as the first `LazyColumn` item in the compact layout when the current week has `isDeloadWeek == true` or a non-blank `targetRir`. Shows the week label plus "Deload" (`tertiaryContainer`) and/or "RIR X" (`secondaryContainer`) badges — same theming as the dashboard widget so the two surfaces agree visually.
 - Skipped for the master-detail (`shouldUseWorkoutMasterDetail()`) layout for now — phone usage is the primary gym flow.
 - No data/schema change; reads existing fields added in slices 2/3. JVM tests still 28.
+
+**Phase 4 slice 5a landed 2026-04-18** (build-verified, no schema change):
+- New `ui/CycleDetailScreen.kt`: read-only detail view of the currently active program cycle. Scaffold + back nav, header card (user cycle name, program name, start/planned-end, linear progress bar with "done / total" label, "Cycle complete" chip when finished), and a `LazyColumn` of week cards ordered by `week.order`.
+- Each week card shows the week label, a "Current" pill for `cycleProgress().currentWeek`, plus "Deload" and "RIR X" badges (matches dashboard widget + logger banner theming). Session rows underneath show a filled `CheckCircle` when `completedSessions["${weekId}_${sessionId}"]` is set, else an outlined `RadioButtonUnchecked`.
+- New `Screen.CycleDetail` route (no args) wired in `AppNavigation.kt`. `MainActivity` composable entry calls `CycleDetailScreen(activeCycleViewModel, onNavigateUp)`.
+- Dashboard widget `SimpleCycleProgressWidgetCard` is now clickable — tapping anywhere on the card navigates to `Screen.CycleDetail`. The existing "Start <next session>" button still works since it lives in its own onClick.
+- Sub-slice 5b (PRs hit during cycle + per-week volume/duration aggregates) deferred — current data flow already supports this via `personalRecordDao` + `loggedWorkoutDao.getByCycleId`, but the UI wiring is its own slice.
 
 The SDK setup section below is kept as a reference for reinstalling on a fresh machine.
 
@@ -158,7 +165,8 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-18, slice 2): deload-week flag on `ProgramWeekDefinition`, first real `Migration(21, 22)`, program-editor toggle, dashboard widget "Deload" badge, instrumented migration test. See the slice 2 section above.
   - Done (2026-04-18, slice 3): per-week `targetRir` on `ProgramWeekDefinition`, second real `Migration(22, 23)`, program-editor TextField, dashboard widget "RIR X" badge, instrumented migration test extended. See the slice 3 section above.
   - Done (2026-04-18, slice 4): cycle context banner at the top of the workout logger (compact layout). Surfaces deload flag + target RIR from the current cycle week.
-  - Further candidates: dedicated cycle-detail screen (week-by-week breakdown, PRs hit, volume/duration aggregates); mirror the cycle context banner into the master-detail logger layout; per-set/per-exercise progression targets (separate from the per-week flag).
+  - Done (2026-04-18, slice 5a): read-only cycle-detail screen with week-by-week breakdown and session completion state. Tappable from the dashboard widget.
+  - Further candidates: slice 5b (PRs hit during cycle + per-week volume/duration aggregates on the detail screen); mirror the slice 4 banner into the master-detail logger layout; per-set/per-exercise progression targets (separate from the per-week flag).
 
 ## Deleted during cleanup
 
