@@ -397,7 +397,9 @@ fun SimpleCycleProgressWidgetCard(
     val cycleDateFormatter = remember { java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy") }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { navController.navigate(Screen.CycleDetail.route) },
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

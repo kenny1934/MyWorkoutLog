@@ -245,6 +245,12 @@ fun AppNavHost(
                 onNavigateUp = { navController.navigateUp() }
             )
         }
+        composable(Screen.CycleDetail.route) {
+            CycleDetailScreen(
+                activeCycleViewModel = activeCycleViewModel,
+                onNavigateUp = { navController.navigateUp() },
+            )
+        }
         composable(Screen.PersonalRecords.route) {
             PersonalRecordsScreen(
                 viewModel = prViewModel,

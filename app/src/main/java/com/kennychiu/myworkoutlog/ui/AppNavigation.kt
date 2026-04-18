@@ -44,6 +44,10 @@ sealed class Screen(val route: String) {
         fun createRoute(programId: String) = "program_editor/$programId"
     }
 
+    // Read-only detail of the currently active program cycle (slice 5a).
+    // Takes no arguments — there's only ever one active cycle (id=1).
+    data object CycleDetail : Screen("cycle_detail")
+
     // The route for viewing personal records
     data object PersonalRecords : Screen("personal_records")
 
