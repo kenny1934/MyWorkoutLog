@@ -17,6 +17,16 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Include exported Room schemas as a test asset so migration tests can use them.
+        sourceSets {
+            getByName("androidTest").assets.srcDirs("$projectDir/schemas")
+        }
+    }
+
+    ksp {
+        // Export Room schema snapshots for migration authoring and tests.
+        arg("room.schemaLocation", "$projectDir/schemas")
     }
 
     buildTypes {
