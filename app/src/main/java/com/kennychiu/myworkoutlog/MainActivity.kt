@@ -178,7 +178,10 @@ fun AppNavHost(
             LibraryScreen(onNavigate = { route -> navController.navigate(route) })
         }
         composable(Screen.ManageExercises.route) {
-            ManageExercisesScreen(viewModel = exerciseViewModel)
+            ManageExercisesScreen(
+                viewModel = exerciseViewModel,
+                onNavigateUp = { navController.navigateUp() }
+            )
         }
         composable(Screen.ManageTemplates.route) {
             ManageTemplatesScreen(
@@ -188,7 +191,8 @@ fun AppNavHost(
                 },
                 onStartWorkout = { templateId ->
                     navController.navigate(Screen.WorkoutLogger.createRoute(templateId))
-                }
+                },
+                onNavigateUp = { navController.navigateUp() }
             )
         }
         composable(Screen.TemplateDetail.route) { backStackEntry ->
@@ -238,7 +242,8 @@ fun AppNavHost(
                     navController.navigate(Screen.Dashboard.route) {
                         popUpTo(Screen.Dashboard.route) { inclusive = true }
                     }
-                }
+                },
+                onNavigateUp = { navController.navigateUp() }
             )
         }
         composable(Screen.ProgramEditor.route) { backStackEntry ->
@@ -265,12 +270,14 @@ fun AppNavHost(
                 },
                 onNavigateToExerciseAnalytics = { exerciseId ->
                     navController.navigate(Screen.Analytics.createRouteWithTab("Performance", exerciseId))
-                }
+                },
+                onNavigateUp = { navController.navigateUp() }
             )
         }
         composable(Screen.Settings.route) {
             SettingsScreen(
                 viewModel = settingsViewModel,
+                onNavigateUp = { navController.navigateUp() },
                 onNavigateToExport = {
                     navController.navigate("export")
                 },

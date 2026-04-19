@@ -5,6 +5,7 @@ package com.kennychiu.myworkoutlog.ui
 import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
+import com.kennychiu.myworkoutlog.ui.theme.Dimens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,10 +17,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
@@ -27,7 +26,8 @@ fun ManageProgramsScreen(
     programViewModel: ProgramViewModel,
     activeCycleViewModel: ActiveCycleViewModel,
     onNavigateToProgram: (String) -> Unit,
-    onNavigateToDashboard: () -> Unit = {}
+    onNavigateToDashboard: () -> Unit = {},
+    onNavigateUp: (() -> Unit)? = null
 ) {
     val programs by programViewModel.allPrograms.collectAsStateWithLifecycle()
     var showCreateProgramDialog by remember { mutableStateOf(false) }
@@ -36,18 +36,16 @@ fun ManageProgramsScreen(
     var programToDelete by remember { mutableStateOf<ProgramTemplate?>(null) }
     var newName by remember { mutableStateOf("") }
 
-    Scaffold(
+    ScreenScaffold(
+        title = "Program Blueprints",
+        onNavigateUp = onNavigateUp,
         floatingActionButton = {
             FloatingActionButton(onClick = { showCreateProgramDialog = true }) {
                 Icon(Icons.Filled.Add, contentDescription = "Create new program")
             }
-        },
-        contentWindowInsets = WindowInsets(0),
+        }
     ) { paddingValues ->
-        Column(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
-            Text("Program Blueprints", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(16.dp))
-
+        Column(modifier = Modifier.padding(paddingValues).padding(Dimens.screenPadding)) {
             if (programs.isEmpty()) {
                 Text(
                     "No programs yet. Click the '+' button to create one.",

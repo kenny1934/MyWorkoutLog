@@ -17,6 +17,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
+    onNavigateUp: (() -> Unit)? = null,
     onNavigateToExport: () -> Unit = {},
     onNavigateToImport: () -> Unit = {},
     onNavigateToCloudBackup: () -> Unit = {}
@@ -24,127 +25,127 @@ fun SettingsScreen(
     val weightUnit by viewModel.weightUnit.collectAsStateWithLifecycle()
     val options = listOf("kg", "lb")
 
-    Column(modifier = Modifier.padding(Dimens.screenPadding)) {
-        Text("Settings", style = MaterialTheme.typography.headlineSmall)
-        Spacer(modifier = Modifier.height(Dimens.spacing24))
-
-        // Weight Unit Setting
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCard)
+    ScreenScaffold(title = "Settings", onNavigateUp = onNavigateUp) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .padding(paddingValues)
+                .padding(Dimens.screenPadding)
         ) {
-            Column(modifier = Modifier.padding(Dimens.spacing16)) {
-                Text(
-                    "Preferences",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(modifier = Modifier.height(Dimens.spacing16))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCard)
+            ) {
+                Column(modifier = Modifier.padding(Dimens.spacing16)) {
+                    Text(
+                        "Preferences",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(Dimens.spacing16))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Weight Unit", style = MaterialTheme.typography.bodyLarge)
-                    SingleChoiceSegmentedButtonRow {
-                        options.forEachIndexed { index, label ->
-                            SegmentedButton(
-                                shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
-                                onClick = { viewModel.setWeightUnit(label) },
-                                selected = weightUnit == label
-                            ) {
-                                Text(label)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Weight Unit", style = MaterialTheme.typography.bodyLarge)
+                        SingleChoiceSegmentedButtonRow {
+                            options.forEachIndexed { index, label ->
+                                SegmentedButton(
+                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                                    onClick = { viewModel.setWeightUnit(label) },
+                                    selected = weightUnit == label
+                                ) {
+                                    Text(label)
+                                }
                             }
                         }
                     }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(Dimens.spacing16))
+            Spacer(modifier = Modifier.height(Dimens.spacing16))
 
-        // Data Management Section
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCard)
-        ) {
-            Column(modifier = Modifier.padding(Dimens.spacing16)) {
-                Text(
-                    "Data Management",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(modifier = Modifier.height(Dimens.spacing16))
-
-                SettingsNavRow(
-                    icon = Icons.Filled.Download,
-                    iconDescription = "Export Data",
-                    title = "Export Data",
-                    subtitle = "Export workouts, exercises, and personal records",
-                    onClick = onNavigateToExport
-                )
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = Dimens.spacing8),
-                    color = MaterialTheme.colorScheme.outlineVariant
-                )
-
-                SettingsNavRow(
-                    icon = Icons.Filled.Upload,
-                    iconDescription = "Import Data",
-                    title = "Import Data",
-                    subtitle = "Import workouts, exercises, and personal records",
-                    onClick = onNavigateToImport
-                )
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = Dimens.spacing8),
-                    color = MaterialTheme.colorScheme.outlineVariant
-                )
-
-                SettingsNavRow(
-                    icon = Icons.Filled.Cloud,
-                    iconDescription = "Cloud Backup & Restore",
-                    title = "Cloud Backup & Restore",
-                    subtitle = "Back up to Google Drive and restore on any device",
-                    onClick = onNavigateToCloudBackup
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(Dimens.spacing16))
-
-        // About Section
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCard)
-        ) {
-            Column(modifier = Modifier.padding(Dimens.spacing16)) {
-                Text(
-                    "About",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(modifier = Modifier.height(Dimens.spacing16))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Info,
-                        contentDescription = "App Info",
-                        tint = MaterialTheme.colorScheme.primary
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCard)
+            ) {
+                Column(modifier = Modifier.padding(Dimens.spacing16)) {
+                    Text(
+                        "Data Management",
+                        style = MaterialTheme.typography.titleMedium
                     )
-                    Spacer(modifier = Modifier.width(Dimens.spacing16))
-                    Column {
-                        Text(
-                            "MyWorkoutLog",
-                            style = MaterialTheme.typography.bodyLarge
+                    Spacer(modifier = Modifier.height(Dimens.spacing16))
+
+                    SettingsNavRow(
+                        icon = Icons.Filled.Download,
+                        iconDescription = "Export Data",
+                        title = "Export Data",
+                        subtitle = "Export workouts, exercises, and personal records",
+                        onClick = onNavigateToExport
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = Dimens.spacing8),
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+
+                    SettingsNavRow(
+                        icon = Icons.Filled.Upload,
+                        iconDescription = "Import Data",
+                        title = "Import Data",
+                        subtitle = "Import workouts, exercises, and personal records",
+                        onClick = onNavigateToImport
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = Dimens.spacing8),
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+
+                    SettingsNavRow(
+                        icon = Icons.Filled.Cloud,
+                        iconDescription = "Cloud Backup & Restore",
+                        title = "Cloud Backup & Restore",
+                        subtitle = "Back up to Google Drive and restore on any device",
+                        onClick = onNavigateToCloudBackup
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(Dimens.spacing16))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCard)
+            ) {
+                Column(modifier = Modifier.padding(Dimens.spacing16)) {
+                    Text(
+                        "About",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(Dimens.spacing16))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Info,
+                            contentDescription = "App Info",
+                            tint = MaterialTheme.colorScheme.primary
                         )
-                        Text(
-                            "Personal workout tracker",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Spacer(modifier = Modifier.width(Dimens.spacing16))
+                        Column {
+                            Text(
+                                "MyWorkoutLog",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                "Personal workout tracker",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }

@@ -5,6 +5,7 @@ package com.kennychiu.myworkoutlog.ui
 import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
+import com.kennychiu.myworkoutlog.ui.theme.Dimens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -31,10 +32,11 @@ import java.util.*
 fun ManageTemplatesScreen(
     viewModel: WorkoutTemplateViewModel,
     onNavigateToTemplate: (String) -> Unit,
-    onStartWorkout: (String) -> Unit
+    onStartWorkout: (String) -> Unit,
+    onNavigateUp: (() -> Unit)? = null
 ) {
     val layoutInfo = rememberAdaptiveLayoutInfo()
-    
+
     if (layoutInfo.useMasterDetail) {
         // Large screen: Master-detail layout
         TemplateManagementMasterDetailView(
@@ -48,7 +50,8 @@ fun ManageTemplatesScreen(
         TemplateManagementSingleColumnView(
             viewModel = viewModel,
             onNavigateToTemplate = onNavigateToTemplate,
-            onStartWorkout = onStartWorkout
+            onStartWorkout = onStartWorkout,
+            onNavigateUp = onNavigateUp
         )
     }
 }
@@ -57,7 +60,8 @@ fun ManageTemplatesScreen(
 private fun TemplateManagementSingleColumnView(
     viewModel: WorkoutTemplateViewModel,
     onNavigateToTemplate: (String) -> Unit,
-    onStartWorkout: (String) -> Unit
+    onStartWorkout: (String) -> Unit,
+    onNavigateUp: (() -> Unit)?
 ) {
     val templates by viewModel.allTemplates.collectAsStateWithLifecycle()
     var showDialog by remember { mutableStateOf(false) }
@@ -65,18 +69,16 @@ private fun TemplateManagementSingleColumnView(
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var templateToDelete by remember { mutableStateOf<WorkoutTemplate?>(null) }
 
-    Scaffold(
+    ScreenScaffold(
+        title = "Workout Templates",
+        onNavigateUp = onNavigateUp,
         floatingActionButton = {
             FloatingActionButton(onClick = { showDialog = true }) {
                 Icon(Icons.Filled.Add, contentDescription = "Create new template")
             }
-        },
-        contentWindowInsets = WindowInsets(0),
+        }
     ) { paddingValues ->
-        Column(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
-            Text("Workout Templates", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(16.dp))
-
+        Column(modifier = Modifier.padding(paddingValues).padding(Dimens.screenPadding)) {
             if (templates.isEmpty()) {
                 Text(
                     "No templates yet. Click the '+' button to create one.",

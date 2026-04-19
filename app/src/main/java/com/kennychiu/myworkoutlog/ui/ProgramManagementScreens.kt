@@ -29,7 +29,8 @@ fun AdaptiveProgramManagementScreen(
     activeCycleViewModel: ActiveCycleViewModel,
     templateViewModel: WorkoutTemplateViewModel,
     onNavigateToProgram: (String) -> Unit = {},
-    onNavigateToDashboard: () -> Unit = {}
+    onNavigateToDashboard: () -> Unit = {},
+    onNavigateUp: (() -> Unit)? = null
 ) {
     val layoutInfo = rememberAdaptiveLayoutInfo()
     val useMasterDetail = layoutInfo.useMasterDetail
@@ -57,7 +58,8 @@ fun AdaptiveProgramManagementScreen(
                 programViewModel = programViewModel,
                 activeCycleViewModel = activeCycleViewModel,
                 onNavigateToProgram = { programId -> selectedProgramId = programId },
-                onNavigateToDashboard = onNavigateToDashboard
+                onNavigateToDashboard = onNavigateToDashboard,
+                onNavigateUp = onNavigateUp
             )
         }
     }

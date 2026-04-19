@@ -3,6 +3,7 @@ package com.kennychiu.myworkoutlog.ui
 import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
+import com.kennychiu.myworkoutlog.ui.theme.Dimens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,10 +24,11 @@ import kotlin.math.roundToInt
 fun PersonalRecordsScreen(
     viewModel: PrViewModel,
     onNavigateToWorkout: (String) -> Unit,
-    onNavigateToExerciseAnalytics: (String) -> Unit = {}
+    onNavigateToExerciseAnalytics: (String) -> Unit = {},
+    onNavigateUp: (() -> Unit)? = null
 ) {
     val layoutInfo = rememberAdaptiveLayoutInfo()
-    
+
     if (layoutInfo.useMasterDetail) {
         // Large screen: Master-detail layout
         PersonalRecordsMasterDetailView(
@@ -40,7 +42,8 @@ fun PersonalRecordsScreen(
         PersonalRecordsSingleColumnView(
             viewModel = viewModel,
             onNavigateToWorkout = onNavigateToWorkout,
-            onNavigateToExerciseAnalytics = onNavigateToExerciseAnalytics
+            onNavigateToExerciseAnalytics = onNavigateToExerciseAnalytics,
+            onNavigateUp = onNavigateUp
         )
     }
 }
@@ -49,18 +52,27 @@ fun PersonalRecordsScreen(
 private fun PersonalRecordsSingleColumnView(
     viewModel: PrViewModel,
     onNavigateToWorkout: (String) -> Unit,
-    onNavigateToExerciseAnalytics: (String) -> Unit
+    onNavigateToExerciseAnalytics: (String) -> Unit,
+    onNavigateUp: (() -> Unit)?
 ) {
     val searchText by viewModel.searchText.collectAsStateWithLifecycle()
     val filteredPRs by viewModel.filteredPRs.collectAsStateWithLifecycle()
     val prsByExercise = filteredPRs.groupBy { it.exerciseName }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    ScreenScaffold(
+        title = "Personal Records",
+        onNavigateUp = onNavigateUp
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
         OutlinedTextField(
             value = searchText,
             onValueChange = viewModel::onSearchTextChanged,
             label = { Text("Search Exercise...") },
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(Dimens.spacing16),
             singleLine = true,
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") }
         )
@@ -142,6 +154,7 @@ private fun PersonalRecordsSingleColumnView(
                     }
                 }
             }
+        }
         }
     }
 }

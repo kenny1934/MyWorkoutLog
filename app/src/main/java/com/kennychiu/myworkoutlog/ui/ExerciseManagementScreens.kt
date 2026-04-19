@@ -5,6 +5,7 @@ package com.kennychiu.myworkoutlog.ui
 import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
+import com.kennychiu.myworkoutlog.ui.theme.Dimens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -24,9 +25,12 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
-fun ManageExercisesScreen(viewModel: ExerciseViewModel) {
+fun ManageExercisesScreen(
+    viewModel: ExerciseViewModel,
+    onNavigateUp: (() -> Unit)? = null
+) {
     val layoutInfo = rememberAdaptiveLayoutInfo()
-    
+
     if (layoutInfo.useMasterDetail) {
         // Large screen: Master-detail layout
         ExerciseManagementMasterDetailView(
@@ -35,12 +39,18 @@ fun ManageExercisesScreen(viewModel: ExerciseViewModel) {
         )
     } else {
         // Small screen: Original single-column layout
-        ExerciseManagementSingleColumnView(viewModel = viewModel)
+        ExerciseManagementSingleColumnView(
+            viewModel = viewModel,
+            onNavigateUp = onNavigateUp
+        )
     }
 }
 
 @Composable
-private fun ExerciseManagementSingleColumnView(viewModel: ExerciseViewModel) {
+private fun ExerciseManagementSingleColumnView(
+    viewModel: ExerciseViewModel,
+    onNavigateUp: (() -> Unit)?
+) {
     val exercises by viewModel.allExercises.collectAsStateWithLifecycle()
 
     // State for managing the dialogs
@@ -48,24 +58,21 @@ private fun ExerciseManagementSingleColumnView(viewModel: ExerciseViewModel) {
     var exerciseToEdit by remember { mutableStateOf<Exercise?>(null) }
     var exerciseToDelete by remember { mutableStateOf<Exercise?>(null) }
 
-    // Scaffold provides the structure for the FloatingActionButton
-    Scaffold(
+    ScreenScaffold(
+        title = "Manage Exercises",
+        onNavigateUp = onNavigateUp,
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(Icons.Filled.Add, contentDescription = "Add new exercise")
             }
-        },
-        contentWindowInsets = WindowInsets(0),
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .padding(paddingValues)
-                .padding(16.dp)
+                .padding(Dimens.screenPadding)
         ) {
-            Text("Manage Exercises", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(16.dp))
-
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(Dimens.spacing8)) {
                 items(exercises) { exercise ->
                     ExerciseItem(
                         exercise = exercise,
