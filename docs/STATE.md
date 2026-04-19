@@ -2,9 +2,15 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 5 slices 25–31 — UI/UX/perf overhaul: design tokens, ScreenScaffold, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression).
+Last updated: 2026-04-19 (Phase 5 slices 25–33 — UI/UX/perf overhaul: design tokens, ScreenScaffold + 2 follow-ups, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression).
 
 ## Next session — start here
+
+**Phase 5 slices 32 + 33 landed 2026-04-19** (build + JVM tests green, commits pushed):
+
+- `6382b47` slice 32 — **inner TopAppBar double-top-inset fix.** MainActivity's outer `Scaffold` has no `topBar` and uses default `contentWindowInsets = WindowInsets.systemBars`, so `innerPadding.top` already reserves the status bar before `NavHost` content renders. Every inner `Scaffold`'s `TopAppBar` still carried its default `windowInsets = statusBars` and re-reserved that inset on top, leaving an extra status-bar-height of padding above each title. Zeroed `windowInsets = WindowInsets(0)` on all 10 inner `TopAppBar`s — `ScreenScaffold.kt` plus 7 hand-rolled Scaffolds (`CloudBackupScreen` × 2, `CycleDetailScreen`, `ExportScreen`, `HistoryDetailScreen`, `ImportScreen`, `ProgramEditorScreen`, `TemplateManagementScreens` TemplateDetailScreen, `WorkoutLoggerScreens`). Mirror of the existing `contentWindowInsets = WindowInsets(0)` pattern on those same Scaffolds for the bottom system-nav inset.
+
+- `2a642b9` slice 33 — **master-detail screens → ScreenScaffold + back arrow.** Slice 26 only migrated single-column paths; the four master-detail variants were still `Row{masterCard + detailCard}` with no top bar and a hand-rolled title inside the master card. Wrapped each in `ScreenScaffold(title, onNavigateUp)`, hoisted the Add affordance into the `TopAppBar` `actions` slot where present, and dropped the redundant internal title: `ExerciseManagementMasterDetailView` (+ Add exercise in actions), `TemplateManagementMasterDetailView` (+ Create template in actions), `PersonalRecordsMasterDetailView` (no add; title + back only; `items(exerciseGroups)` now keyed by `exerciseId`), and `ProgramMasterDetailLayout` (title matches the single-column path; bottom "Create New Program" Button stays — text-labeled, more prominent than an overflow icon). `AdaptiveProgramManagementScreen` now threads `onNavigateUp` through to the master-detail layout as well as the single-column one. Each master-detail body picks up the slice-32 top-inset fix automatically.
 
 **Phase 5 slices 25–31 landed 2026-04-19** (build + JVM tests green at each slice, all 7 commits pushed):
 
@@ -24,8 +30,7 @@ Last updated: 2026-04-19 (Phase 5 slices 25–31 — UI/UX/perf overhaul: design
 
 ### Still to do / not in Phase 5
 
-- **Device verification.** Backlog now spans slices 5b–31 — particularly worth eyeballing: drag-reorder after slice 28 UI collapse (no more arrow fallback), bottom sheets on Z Fold inner + outer screens (slice 30), and the logger IME chain mid-workout (slice 27).
-- **Master-detail screens without a top bar.** Slice 26 only migrated single-column paths for Exercises / Templates / Personal Records. Master-detail variants still hand-roll internal headers and have no back button; a follow-up slice can apply ScreenScaffold with a back arrow and let master-detail content consume its paddingValues.
+- **Device verification.** Backlog now spans slices 5b–33 — particularly worth eyeballing on the Z Fold unfolded: master-detail back-button behaviour + Add-in-TopBar (slice 33), and all screens now that the top inset isn't doubled (slice 32). Prior-session priorities carry: drag-reorder after slice 28, bottom sheets (slice 30), logger IME chain (slice 27).
 - **Dashboard CTA surfacing.** Audit flagged "Start next session" as being buried 3 taps deep inside an expandable widget. Slice 31 addressed loading/empty states but didn't promote the CTA — a dedicated slice could hoist the primary action out of the widget and into a persistent row at the top of the dashboard.
 - **Design-token migration opportunistic.** Most `.dp` / `fontSize = N.sp` literals remain in place across 30+ files — tokens are landed, screens migrate as they're touched. No big-bang rewrite scheduled.
 
