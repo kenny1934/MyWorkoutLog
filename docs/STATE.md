@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 5 slices 25–37 — UI/UX/perf overhaul + slice 37 dead-code cleanup: design tokens, ScreenScaffold + follow-ups, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression, truncation sweep, dashboard CTA surfacing, deleted dead card wrappers).
+Last updated: 2026-04-19 (Phase 5 slices 25–37 + 39 — UI/UX/perf overhaul, dead-code cleanup, dashboard elevation token migration: design tokens, ScreenScaffold + follow-ups, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression, truncation sweep, dashboard CTA surfacing, deleted dead card wrappers, dashboard cards now use `Dimens.elevationCardRaised`).
 
 ## Next session — start here
 
@@ -12,7 +12,7 @@ Last updated: 2026-04-19 (Phase 5 slices 25–37 — UI/UX/perf overhaul + slice
 
 - ~~**Slice 37 — delete dead card wrappers.**~~ Landed 2026-04-19 (see chronological entry below). 166 LOC removed.
 - **Slice 38 — collapse redundant widget CTA button.** XS. Slice 36 surfaced "Start next session" at the top of the dashboard, but `SimpleCycleProgressWidgetCard` still has the `if (nextWeek != null && nextSession != null) { ElevatedButton("Start <name>") }` branch (post-slice-36, around `DashboardWidgetCards.kt:621–644`). Drop that branch; keep only the `else` Analytics / "Cycle complete" fallback. **Do slice 38 after a device eyeball of slice 36** so the decision is informed.
-- **Slice 39 — elevation tokens + migrate dashboard cards.** S. `SimpleWelcomeWidgetCard` (line 65) and `SimpleQuickStatsWidgetCard` (line 151) use `defaultElevation = 6.dp`; the other 4 cards (+ slice-36's `NextSessionCtaCard`) use `4.dp`. Add `elevation1 = 2.dp`, `elevation2 = 4.dp`, `elevation3 = 6.dp` to `ui/theme/Dimens.kt`. Pick one (likely `elevation2`) for dashboard cards and migrate all 6 sites in `DashboardWidgetCards.kt`.
+- ~~**Slice 39 — elevation tokens + migrate dashboard cards.**~~ Landed 2026-04-19 (see chronological entry below). Tokens already existed in `Dimens.kt` (audit premise was outdated) — used the existing `Dimens.elevationCardRaised` (4.dp) and migrated all 6 sites; the two prior 6.dp outliers (Welcome + QuickStats) flatten to 4.dp.
 
 ### Round 2 — logger polish
 
@@ -36,6 +36,12 @@ Last updated: 2026-04-19 (Phase 5 slices 25–37 — UI/UX/perf overhaul + slice
 Backlog spans slices 33 / 34 / 35 / 36. Top priority after slice 36: the new CTA on Z-Fold inner + outer, with active cycle + with no active cycle + right after logging the final session (CTA should disappear). Expect to surface minor responsive tweaks.
 
 ---
+
+**Phase 5 slice 39 landed 2026-04-19** (build + JVM tests green; no schema change):
+
+- **Dashboard cards consolidated on `Dimens.elevationCardRaised`.** Pre-slice, `ui/DashboardWidgetCards.kt` had 6 explicit `defaultElevation = N.dp` literals split between 4.dp (`SimpleBodyweightWidgetCard`, `NextSessionCtaCard` from slice 36, `SimpleCycleProgressWidgetCard`, `SimpleBodyweightTrendWidgetCard`) and 6.dp (`SimpleWelcomeWidgetCard`, `SimpleQuickStatsWidgetCard`). The two outliers now flatten to 4.dp so every widget on the dashboard sits on the same elevation plane — the prior +2dp on Welcome / QuickStats was an inconsistency, not an intentional emphasis (the cycle-progress + next-session cards are at least as important and were already at 4dp).
+- **No new tokens added.** Slice plan called for `elevation1/2/3` numeric tokens but `ui/theme/Dimens.kt` already exposes the semantic `elevationNone / elevationCard (2dp) / elevationCardRaised (4dp) / elevationModal (8dp)` set from slice 25. Adding parallel numeric names would have duplicated meaning. Used the existing `elevationCardRaised` (4dp). Added one explicit `import com.kennychiu.myworkoutlog.ui.theme.Dimens` to `DashboardWidgetCards.kt` (other files in the package import as needed when they touch tokens — opportunistic per slice 25's working style).
+- **Visual hierarchy.** All 6 dashboard cards now have identical Material elevation. The slice-36 NextSessionCtaCard still differentiates itself via `primaryContainer` background — colour, not shadow, carries the "primary action" weight. JVM test count unchanged at 103.
 
 **Phase 5 slice 37 landed 2026-04-19** (build + JVM tests green; no schema change; -166 LOC):
 
