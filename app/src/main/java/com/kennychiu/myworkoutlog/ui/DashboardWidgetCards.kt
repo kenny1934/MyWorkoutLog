@@ -757,7 +757,7 @@ fun SimpleBodyweightTrendWidgetCard(widget: DashboardWidget.BodyweightTrendWidge
                 )
             } else {
                 Text(
-                    text = "No bodyweight data available",
+                    text = "No bodyweight data yet",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -897,7 +897,7 @@ fun SimplePerformanceTrendWidgetCard(
                     }
                 } else {
                     Text(
-                        text = "No performance data available",
+                        text = "No performance data yet",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1100,7 +1100,7 @@ fun SimpleVolumeProgressWidgetCard(
                     )
                 } else {
                     Text(
-                        text = "No volume data available",
+                        text = "No volume data yet",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1146,7 +1146,7 @@ fun SimpleAchievementWidgetCard(widget: DashboardWidget.AchievementWidget) {
                 )
             } else {
                 Text(
-                    text = "Keep training to unlock achievements!",
+                    text = "No achievements yet",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

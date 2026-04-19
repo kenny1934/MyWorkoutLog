@@ -36,7 +36,7 @@ fun InteractivePerformanceChart(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "No performance data available",
+                text = "No performance data yet",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -189,7 +189,7 @@ fun InteractiveVolumeChart(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "No volume data available",
+                text = "No volume data yet",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -276,7 +276,7 @@ fun VolumeStatisticsCard(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "No volume data available",
+                    text = "No volume data yet",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
