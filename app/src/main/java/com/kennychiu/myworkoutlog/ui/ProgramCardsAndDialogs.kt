@@ -5,9 +5,12 @@ package com.kennychiu.myworkoutlog.ui
 import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
+import com.kennychiu.myworkoutlog.ui.theme.Dimens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
@@ -21,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import java.util.UUID
 
 // Enhanced Program Card with large screen optimizations
 @Composable
@@ -251,109 +255,197 @@ fun ProgramDetailEmptyState(
 }
 
 @Composable
-fun CreateProgramDialog(
+fun CreateProgramSheet(
     newName: String,
     onNameChange: (String) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Dimens.spacing24, vertical = Dimens.spacing8)
+                .padding(bottom = Dimens.spacing16)
+        ) {
             Text(
                 "New Program Blueprint",
                 style = MaterialTheme.typography.headlineSmall
             )
-        },
-        text = {
-            Column {
-                Text(
-                    "Create a new workout program with custom weeks and sessions.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = newName,
-                    onValueChange = onNameChange,
-                    label = { Text("Program Name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                enabled = newName.isNotBlank()
+            Spacer(modifier = Modifier.height(Dimens.spacing8))
+            Text(
+                "Create a new workout program with custom weeks and sessions.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(Dimens.spacing16))
+            OutlinedTextField(
+                value = newName,
+                onValueChange = onNameChange,
+                label = { Text("Program Name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(Dimens.spacing24))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
             ) {
-                Text("Create")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+                Spacer(modifier = Modifier.width(Dimens.spacing8))
+                Button(
+                    onClick = onConfirm,
+                    enabled = newName.isNotBlank()
+                ) { Text("Create") }
             }
         }
-    )
+    }
 }
 
 @Composable
-fun StartCycleDialog(
+fun StartCycleSheet(
     program: ProgramTemplate,
     cycleName: String,
     onCycleNameChange: (String) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Dimens.spacing24, vertical = Dimens.spacing8)
+                .padding(bottom = Dimens.spacing16)
+        ) {
             Text(
                 "Start New Cycle",
                 style = MaterialTheme.typography.headlineSmall
             )
-        },
-        text = {
-            Column {
+            Spacer(modifier = Modifier.height(Dimens.spacing12))
+            Text(
+                "You are about to start the program: ${program.name}",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            if (program.weeks.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(Dimens.spacing4))
                 Text(
-                    "You are about to start the program: ${program.name}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                if (program.weeks.isNotEmpty()) {
-                    Text(
-                        "This program contains ${program.weeks.size} weeks with ${program.weeks.sumOf { it.sessions.size }} total sessions.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = cycleName,
-                    onValueChange = onCycleNameChange,
-                    label = { Text("Give this cycle a name") },
-                    placeholder = { Text(program.name) },
-                    modifier = Modifier.fillMaxWidth()
+                    "This program contains ${program.weeks.size} weeks with ${program.weeks.sumOf { it.sessions.size }} total sessions.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        },
-        confirmButton = {
-            Button(onClick = onConfirm) {
-                Text("Start")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+            Spacer(modifier = Modifier.height(Dimens.spacing16))
+            OutlinedTextField(
+                value = cycleName,
+                onValueChange = onCycleNameChange,
+                label = { Text("Give this cycle a name") },
+                placeholder = { Text(program.name) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(Dimens.spacing24))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+                Spacer(modifier = Modifier.width(Dimens.spacing8))
+                Button(onClick = onConfirm) { Text("Start") }
             }
         }
-    )
+    }
+}
+
+/**
+ * Shared "Add Session to Week" sheet — pick a template, give the session a name, tap to add.
+ * Previously duplicated as an AlertDialog in both program editors; lifted here so both editors
+ * (compact + master-detail) share the same interaction.
+ */
+@Composable
+fun AddSessionSheet(
+    allTemplates: List<WorkoutTemplate>,
+    currentSessionCount: Int,
+    onAdd: (ProgramSessionDefinition) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var sessionName by remember { mutableStateOf("") }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Dimens.spacing24, vertical = Dimens.spacing8)
+                .padding(bottom = Dimens.spacing16)
+        ) {
+            Text(
+                "Add Session",
+                style = MaterialTheme.typography.headlineSmall
+            )
+            Spacer(modifier = Modifier.height(Dimens.spacing16))
+            OutlinedTextField(
+                value = sessionName,
+                onValueChange = { sessionName = it },
+                label = { Text("Session Name (e.g., Day 1)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(Dimens.spacing16))
+            Text(
+                "Choose a template",
+                style = MaterialTheme.typography.titleSmall
+            )
+            Spacer(modifier = Modifier.height(Dimens.spacing8))
+            if (allTemplates.isEmpty()) {
+                Text(
+                    "No templates yet. Create one under Library → Manage Templates first.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = Dimens.spacing8)
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 300.dp),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.spacing4)
+                ) {
+                    items(allTemplates, key = { it.id }) { template ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val newSession = ProgramSessionDefinition(
+                                        id = UUID.randomUUID().toString(),
+                                        sessionName = sessionName.ifBlank { "Session ${currentSessionCount + 1}" },
+                                        workoutTemplateId = template.id,
+                                        order = currentSessionCount + 1
+                                    )
+                                    onAdd(newSession)
+                                }
+                                .padding(vertical = Dimens.spacing12),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = template.name,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                Text(
+                                    text = "${template.templateExercises.size} exercises",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(Dimens.spacing16))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        }
+    }
 }

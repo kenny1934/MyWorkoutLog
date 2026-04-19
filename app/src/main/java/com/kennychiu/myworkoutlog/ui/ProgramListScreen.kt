@@ -135,69 +135,42 @@ fun ManageProgramsScreen(
                 }
             }
 
-            // Dialog for creating a new program
+            // Bottom sheet for creating a new program
             if (showCreateProgramDialog) {
-                AlertDialog(
-                    onDismissRequest = { showCreateProgramDialog = false },
-                    title = { Text("New Program Blueprint") },
-                    text = {
-                        OutlinedTextField(
-                            value = newName,
-                            onValueChange = { newName = it },
-                            label = { Text("Program Name") },
-                            singleLine = true
-                        )
-                    },
-                    confirmButton = {
-                        Button(
-                            onClick = {
-                                if (newName.isNotBlank()) {
-                                    programViewModel.insert(newName, null)
-                                    newName = ""
-                                    showCreateProgramDialog = false
-                                }
-                            }
-                        ) { Text("Create") }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showCreateProgramDialog = false }) {
-                            Text("Cancel")
+                CreateProgramSheet(
+                    newName = newName,
+                    onNameChange = { newName = it },
+                    onConfirm = {
+                        if (newName.isNotBlank()) {
+                            programViewModel.insert(newName, null)
+                            newName = ""
+                            showCreateProgramDialog = false
                         }
+                    },
+                    onDismiss = {
+                        showCreateProgramDialog = false
+                        newName = ""
                     }
                 )
             }
 
-            // Dialog for starting a new cycle
+            // Bottom sheet for starting a new cycle
             if (showStartCycleDialog != null) {
                 val programToStart = showStartCycleDialog!!
-                AlertDialog(
-                    onDismissRequest = { showStartCycleDialog = null },
-                    title = { Text("Start New Cycle") },
-                    text = {
-                        Column {
-                            Text("You are about to start the program: ${programToStart.name}")
-                            Spacer(Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = newName,
-                                onValueChange = { newName = it },
-                                label = { Text("Give this cycle a name") },
-                                placeholder = { Text(programToStart.name) }
-                            )
-                        }
+                StartCycleSheet(
+                    program = programToStart,
+                    cycleName = newName,
+                    onCycleNameChange = { newName = it },
+                    onConfirm = {
+                        val cycleName = newName.ifBlank { programToStart.name }
+                        activeCycleViewModel.startCycle(programToStart, cycleName)
+                        showStartCycleDialog = null
+                        newName = ""
+                        onNavigateToDashboard()
                     },
-                    confirmButton = {
-                        Button(onClick = {
-                            val cycleName = newName.ifBlank { programToStart.name }
-                            activeCycleViewModel.startCycle(programToStart, cycleName)
-                            showStartCycleDialog = null
-                            newName = ""
-                            onNavigateToDashboard()
-                        }) { Text("Start") }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = {
-                            showStartCycleDialog = null
-                        }) { Text("Cancel") }
+                    onDismiss = {
+                        showStartCycleDialog = null
+                        newName = ""
                     }
                 )
             }

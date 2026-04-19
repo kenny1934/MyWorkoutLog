@@ -128,7 +128,7 @@ fun ProgramDetailViewer(
     }
 
     if (showStartCycleDialog) {
-        StartCycleDialog(
+        StartCycleSheet(
             program = program,
             cycleName = cycleName,
             onCycleNameChange = { cycleName = it },

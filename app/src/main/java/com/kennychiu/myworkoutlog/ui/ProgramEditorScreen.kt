@@ -214,52 +214,24 @@ fun ProgramEditorScreen(
             }
         }
 
-        // Dialog for adding a session to a week
+        // Bottom sheet for adding a session to a week
         if (showAddSessionDialog != null) {
             val weekIdToAddSessionTo = showAddSessionDialog
-            var sessionName by remember { mutableStateOf("") }
-            AlertDialog(
-                onDismissRequest = { showAddSessionDialog = null },
-                title = { Text("Add Session") },
-                text = {
-                    Column {
-                        OutlinedTextField(
-                            value = sessionName,
-                            onValueChange = { sessionName = it },
-                            label = { Text("Session Name (e.g., Day 1)") }
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text("Choose a template:", fontWeight = FontWeight.Bold)
-                        LazyColumn(modifier = Modifier.height(150.dp)) {
-                            items(allWorkoutTemplates) { template ->
-                                Text(
-                                    text = template.name,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            val weekToUpdate = editedWeeks.find { it.id == weekIdToAddSessionTo }
-                                            if (weekToUpdate != null) {
-                                                val newSession = ProgramSessionDefinition(
-                                                    id = UUID.randomUUID().toString(),
-                                                    sessionName = sessionName.ifBlank { "Session ${weekToUpdate.sessions.size + 1}" },
-                                                    workoutTemplateId = template.id,
-                                                    order = weekToUpdate.sessions.size + 1
-                                                )
-                                                val updatedSessions = weekToUpdate.sessions + newSession
-                                                val updatedWeek = weekToUpdate.copy(sessions = updatedSessions)
-                                                editedWeeks = editedWeeks.map { if (it.id == weekIdToAddSessionTo) updatedWeek else it }
-                                            }
-                                            showAddSessionDialog = null
-                                        }
-                                        .padding(vertical = 8.dp)
-                                )
-                            }
+            val weekToUpdate = editedWeeks.find { it.id == weekIdToAddSessionTo }
+            AddSessionSheet(
+                allTemplates = allWorkoutTemplates,
+                currentSessionCount = weekToUpdate?.sessions?.size ?: 0,
+                onAdd = { newSession ->
+                    if (weekToUpdate != null) {
+                        val updatedSessions = weekToUpdate.sessions + newSession
+                        val updatedWeek = weekToUpdate.copy(sessions = updatedSessions)
+                        editedWeeks = editedWeeks.map {
+                            if (it.id == weekIdToAddSessionTo) updatedWeek else it
                         }
                     }
+                    showAddSessionDialog = null
                 },
-                confirmButton = {
-                    TextButton(onClick = { showAddSessionDialog = null }) { Text("Cancel") }
-                }
+                onDismiss = { showAddSessionDialog = null }
             )
         }
     }
@@ -779,53 +751,24 @@ fun EnhancedProgramEditor(
         }
     }
 
-    // Add Session Dialog - reusing existing implementation
+    // Bottom sheet for adding a session to a week (master-detail editor)
     if (showAddSessionDialog != null) {
         val weekIdToAddSessionTo = showAddSessionDialog
-        var sessionName by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { showAddSessionDialog = null },
-            title = { Text("Add Session") },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = sessionName,
-                        onValueChange = { sessionName = it },
-                        label = { Text("Session Name (e.g., Day 1)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text("Choose a template:", fontWeight = FontWeight.Bold)
-                    LazyColumn(modifier = Modifier.height(150.dp)) {
-                        items(allTemplates) { template ->
-                            Text(
-                                text = template.name,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        val weekToUpdate = editedWeeks.find { it.id == weekIdToAddSessionTo }
-                                        if (weekToUpdate != null) {
-                                            val newSession = ProgramSessionDefinition(
-                                                id = UUID.randomUUID().toString(),
-                                                sessionName = sessionName.ifBlank { "Session ${weekToUpdate.sessions.size + 1}" },
-                                                workoutTemplateId = template.id,
-                                                order = weekToUpdate.sessions.size + 1
-                                            )
-                                            val updatedSessions = weekToUpdate.sessions + newSession
-                                            val updatedWeek = weekToUpdate.copy(sessions = updatedSessions)
-                                            editedWeeks = editedWeeks.map { if (it.id == weekIdToAddSessionTo) updatedWeek else it }
-                                        }
-                                        showAddSessionDialog = null
-                                    }
-                                    .padding(vertical = 8.dp)
-                            )
-                        }
+        val weekToUpdate = editedWeeks.find { it.id == weekIdToAddSessionTo }
+        AddSessionSheet(
+            allTemplates = allTemplates,
+            currentSessionCount = weekToUpdate?.sessions?.size ?: 0,
+            onAdd = { newSession ->
+                if (weekToUpdate != null) {
+                    val updatedSessions = weekToUpdate.sessions + newSession
+                    val updatedWeek = weekToUpdate.copy(sessions = updatedSessions)
+                    editedWeeks = editedWeeks.map {
+                        if (it.id == weekIdToAddSessionTo) updatedWeek else it
                     }
                 }
+                showAddSessionDialog = null
             },
-            confirmButton = {
-                TextButton(onClick = { showAddSessionDialog = null }) { Text("Cancel") }
-            }
+            onDismiss = { showAddSessionDialog = null }
         )
     }
 }

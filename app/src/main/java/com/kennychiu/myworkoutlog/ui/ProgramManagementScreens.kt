@@ -312,7 +312,7 @@ private fun ProgramMasterPanel(
 
     // Dialogs
     if (showCreateDialog) {
-        CreateProgramDialog(
+        CreateProgramSheet(
             newName = newName,
             onNameChange = { newName = it },
             onConfirm = {
@@ -330,7 +330,7 @@ private fun ProgramMasterPanel(
     }
 
     if (showStartCycleDialog != null) {
-        StartCycleDialog(
+        StartCycleSheet(
             program = showStartCycleDialog!!,
             cycleName = newName,
             onCycleNameChange = { newName = it },
