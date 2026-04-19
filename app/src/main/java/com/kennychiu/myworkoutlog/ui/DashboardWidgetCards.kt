@@ -613,61 +613,32 @@ fun SimpleCycleProgressWidgetCard(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Quick action button — derive next session from the helper so the
-                    // button actually navigates to the correct cycle/week/session, not
-                    // to a half-formed route.
-                    val nextWeek = info.currentWeek
-                    val nextSession = info.nextSession
-                    if (nextWeek != null && nextSession != null) {
-                        ElevatedButton(
-                            onClick = {
-                                val route = Screen.WorkoutLogger.createRoute(
-                                    templateId = nextSession.workoutTemplateId,
-                                    cycleId = widget.cycle.cycleUuid,
-                                    weekId = nextWeek.id,
-                                    sessionId = nextSession.id
-                                )
-                                navController.navigate(route)
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.PlayArrow,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+                    // Secondary action — the primary "Start next session" CTA lives
+                    // at the top of the dashboard (NextSessionCtaCard, slice 36),
+                    // so this widget only surfaces Analytics / Cycle-complete.
+                    OutlinedButton(
+                        onClick = {
+                            navController.navigate("analytics")
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Analytics,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (info.isComplete) "Cycle complete" else "Analytics",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontSize = adaptiveTextSize(
+                                baseSize = MaterialTheme.typography.labelMedium.fontSize,
+                                compactMultiplier = 0.8f,
+                                mediumMultiplier = 0.9f,
+                                expandedMultiplier = 1f
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Start ${nextSession.sessionName}",
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    } else {
-                        OutlinedButton(
-                            onClick = {
-                                navController.navigate("analytics")
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Analytics,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = if (info.isComplete) "Cycle complete" else "Analytics",
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                fontSize = adaptiveTextSize(
-                                    baseSize = MaterialTheme.typography.labelMedium.fontSize,
-                                    compactMultiplier = 0.8f,
-                                    mediumMultiplier = 0.9f,
-                                    expandedMultiplier = 1f
-                                )
-                            )
-                        }
+                        )
                     }
 
                     // Add End Cycle button if callback provided
