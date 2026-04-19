@@ -2,40 +2,47 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 5 slices 25–45 — UI/UX/perf overhaul, dead-code cleanup, dashboard elevation token migration, suggestion-chip slot reservation, set-row effect consolidation, orphan-workouts collapsible, performance-trend meta row, customization-mode chip, redundant widget-CTA removed: design tokens, ScreenScaffold + follow-ups, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression, truncation sweep, dashboard CTA surfacing, deleted dead card wrappers, dashboard cards now use `Dimens.elevationCardRaised`, suggestion-chip slot reserved at fixed height, 12 set-row LaunchedEffects collapsed into one `rememberDebouncedField` helper, orphan-workouts section collapsed by default with count in header, customization-mode controls moved off widget titles into a bottom-end chip, previously-unused `PerformanceTrendWidget.timeframe` + `volumeTrend` surfaced in collapsed view, CycleProgress widget's redundant "Start next session" button removed now that slice-36 top-of-dashboard CTA is confirmed on-device).
+Last updated: 2026-04-20 (Phase 5 slice 46 — Round B of the dashboard audit landed: four dead composables + one orphaned helper deleted from `ui/DashboardWidgetComponents.kt`. Prior entry: dashboard UI/UX audit drafted → `docs/DASHBOARD_AUDIT.md`. Earlier: Phase 5 slices 25–45 — UI/UX/perf overhaul, dead-code cleanup, dashboard elevation token migration, suggestion-chip slot reservation, set-row effect consolidation, orphan-workouts collapsible, performance-trend meta row, customization-mode chip, redundant widget-CTA removed).
 
 ## Next session — start here
 
-**Audit-driven slice plan (drafted 2026-04-19 after slice 36).** Ordered; each lands independently. XS = ≤30 LOC single file, S = 1–2 files, M = 3+ files / cross-cutting. Verify each claim against the current tree before editing — file line numbers shift with every slice.
+**Fresh dashboard UI/UX audit at `docs/DASHBOARD_AUDIT.md`** (drafted 2026-04-20, supersedes the completed 37–45 plan). 18 findings across 6 rounds with file/line refs and size estimates. Every claim must be re-verified against the current tree before editing — line numbers and behaviour drift.
 
-### Round 1 — cheap cleanups, low risk
+Recommended order:
 
-- ~~**Slice 37 — delete dead card wrappers.**~~ Landed 2026-04-19 (see chronological entry below). 166 LOC removed.
-- ~~**Slice 38 — collapse redundant widget CTA button.**~~ Landed 2026-04-19 (see chronological entry below). Slice 36's NextSessionCtaCard was confirmed good on-device, unblocking the widget-button removal. Net -29 LOC.
-- ~~**Slice 39 — elevation tokens + migrate dashboard cards.**~~ Landed 2026-04-19 (see chronological entry below). Tokens already existed in `Dimens.kt` (audit premise was outdated) — used the existing `Dimens.elevationCardRaised` (4.dp) and migrated all 6 sites; the two prior 6.dp outliers (Welcome + QuickStats) flatten to 4.dp.
+1. ~~**Round B (dead-code, XS × 4)**~~ — Landed 2026-04-20 as slice 46 (bundled). See chronological entry below.
+2. **Round A #3 (XS)** — mirror of slice 38: drop `SimpleNextSessionWidgetCard`'s Start Session button + collapsed session-name restatement, since the top `NextSessionCtaCard` covers both.
+3. **Round A #1 (S)** — drop the streak badge from `SimpleWelcomeWidgetCard`; `SimpleQuickStatsWidgetCard` already owns that number.
+4. **Round A #2 (S)** — decide whether to deprecate `SimpleBodyweightWidgetCard` in favour of `SimpleBodyweightTrendWidgetCard` (strict superset). User decision before starting.
+5. **Round C #9 (M, probably its own session)** — `ScreenScaffold` migration for the dashboard (slice 26 skipped it).
+6. **Rounds D / E / F** — opportunistic, pick one per session as the area is touched.
 
-### Round 2 — logger polish
+Older slice plan (slices 37–45) is complete. Entries kept below for history.
 
-- ~~**Slice 40 — CycleContextBanner in tablet logger.**~~ Already done. The audit was wrong: `MasterDetailWorkoutView` already accepts an optional `contextBanner: (@Composable () -> Unit)?` slot (added during the slice 17/18 master-detail extensions, see `ui/AdaptiveWorkoutComponents.kt:58`) and `WorkoutLoggerScreens.kt:393–406` already passes a `CycleContextBanner` into it gated on `currentCycleWeek?.takeIf { it.isDeloadWeek || !it.targetRir.isNullOrBlank() }`. Verify on-device next time the Z Fold unfolded view shows a deload week — no code change required.
-- ~~**Slice 41 — suggestion-chip layout stability in set row.**~~ Landed 2026-04-19 (see chronological entry below). Wrapped the chip in a `Box(heightIn(min = AssistChipDefaults.Height))`.
-- ~~**Slice 42 — consolidate 12 LaunchedEffect blocks in set row.**~~ Landed 2026-04-19 (see chronological entry below). Extracted `rememberDebouncedField` helper; 12 effects → 1 helper + 6 call sites. Net −44 LOC.
+### Legacy slice 37–45 plan (all landed 2026-04-19)
 
-### Round 3 — information hierarchy
-
-- ~~**Slice 43 — orphan-workouts summary in history.**~~ Landed 2026-04-19 (see chronological entry below). Added a collapsible "Individual Workouts · N" section header; items collapsed by default. Shared helper so both `MesocycleHistoryView` and `MesocycleHistoryMasterView` stay in sync.
-- ~~**Slice 44 — dashboard expandable-widget audit.**~~ Landed 2026-04-19 (see chronological entry below). Premise partially wrong — neither widget was "largely duplicate" (PerformanceTrend collapsed/expanded are preview-vs-interactive-chart; Achievement collapsed/expanded are 1-compact vs all-full+milestone — both preview-vs-detail, not duplicate). Real opportunity was that `PerformanceTrendWidget.timeframe` and `volumeTrend` were computed but never displayed. Added a compact meta row surfacing both at the top of the collapsed view.
-- ~~**Slice 45 — customization-mode overlay.**~~ Landed 2026-04-19 (see chronological entry below). Replaced the full-width black-scrim overlay with a compact bottom-end pill (`Surface(shape = RoundedCornerShape(24.dp))`) holding the three IconButtons. Widget titles stay readable in edit mode; the redundant inline title the scrim was compensating for is gone.
-
-### Round 4 — opportunistic / deferred
-
-- **Font-size token migration (ongoing).** Per slice 25's working style — touch tokens as screens are edited, no dedicated slice.
-- **Not scheduled:** history single-column vs master-detail path consolidation (M, moderate value — both paths duplicate the view-mode picker), program-editor name-field hoist into TopAppBar (S, aesthetic only).
+- ~~**Slice 37 — delete dead card wrappers.**~~ Landed 2026-04-19. 166 LOC removed.
+- ~~**Slice 38 — collapse redundant widget CTA button.**~~ Landed 2026-04-19. Net -29 LOC.
+- ~~**Slice 39 — elevation tokens + migrate dashboard cards.**~~ Landed 2026-04-19. Used existing `Dimens.elevationCardRaised` (4.dp), 6 sites migrated.
+- ~~**Slice 40 — CycleContextBanner in tablet logger.**~~ Already done pre-audit. `MasterDetailWorkoutView` already accepts `contextBanner` slot (`ui/AdaptiveWorkoutComponents.kt:58`); `WorkoutLoggerScreens.kt:393–406` wires it to the active cycle week. Verify on-device.
+- ~~**Slice 41 — suggestion-chip layout stability in set row.**~~ Landed 2026-04-19. Wrapped in `Box(heightIn(min = AssistChipDefaults.Height))`.
+- ~~**Slice 42 — consolidate 12 LaunchedEffect blocks in set row.**~~ Landed 2026-04-19. `rememberDebouncedField` helper; 12 effects → 1 helper + 6 call sites. Net −44 LOC.
+- ~~**Slice 43 — orphan-workouts summary in history.**~~ Landed 2026-04-19. Collapsible "Individual Workouts · N" header, shared helper across both history paths.
+- ~~**Slice 44 — dashboard expandable-widget audit.**~~ Landed 2026-04-19. Premise partially wrong; real opportunity was surfacing unused `PerformanceTrendWidget.timeframe` + `volumeTrend` fields in the collapsed view.
+- ~~**Slice 45 — customization-mode overlay.**~~ Landed 2026-04-19. Full-width scrim → compact bottom-end pill.
 
 ### Device-verification sweep (non-coding, do any time)
 
-Backlog spans slices 33 / 34 / 35 / 36. Top priority after slice 36: the new CTA on Z-Fold inner + outer, with active cycle + with no active cycle + right after logging the final session (CTA should disappear). Expect to surface minor responsive tweaks.
+Backlog spans slices 33–45. Highest priority: slice 36 CTA on Z-Fold inner + outer (active cycle / no active cycle / right after final session logged → CTA should disappear). Then slices 42–45 in order.
 
 ---
+
+**Phase 5 slice 46 landed 2026-04-20** (build + JVM tests green; no schema change):
+
+- **Four dead dashboard composables deleted.** Round B of the dashboard audit verified and removed, all from `ui/DashboardWidgetComponents.kt`: the public `StatCard` (the live one is a `private` sibling in `DashboardWidgetCards.kt:259` that `SimpleQuickStatsWidgetCard` uses), `InsightCard` (superseded by `EnhancedInsightCard` in `DashboardHelpers.kt:63`, already used at all four dashboard call sites), `QuickActionButton` (the compact path already used `EnhancedQuickActionButton`; the tablet path at `ui/DashboardScreen.kt:235` was the only remaining caller of the old one), and `WorkoutHeatmapGrid` (`ActivityHeatmapGrid` + `EnhancedActivityHeatmap` cover the two live heatmap surfaces). The private `getIntensityColor` helper in the same file was only used by `WorkoutHeatmapGrid` — also deleted.
+- **Tablet QuickActions path migrated.** `DashboardScreen.kt:235` flipped from `QuickActionButton(action = …, onClick = …)` to `EnhancedQuickActionButton(action = …, onClick = …)`; the two composables took the same two-arg shape, so the call site change was a one-line rename with no callback rework. Compact path (`:734`) was already on Enhanced.
+- **Unused imports cleaned up.** After the deletions, `androidx.compose.foundation.lazy.LazyRow` / `lazy.items` / `lazy.grid.LazyVerticalGrid` / `lazy.grid.GridCells` / `lazy.grid.items`, `androidx.compose.foundation.clickable`, `androidx.compose.ui.platform.LocalDensity`, `java.time.LocalDate`, and `kotlin.math.cos` / `sin` all became orphaned in `DashboardWidgetComponents.kt` and were removed. `ActivityHeatmapGrid` (still in the file) uses `java.time.LocalDate` fully qualified, so dropping the top-level import is safe.
+- Bundled as a single slice rather than four micro-slices per the audit's "all XS, all in one batch or as 4 separate micro-slices" note — they were independent verify-and-delete tasks with no shared risk. Net -269 LOC in `DashboardWidgetComponents.kt` and +1/-1 in `DashboardScreen.kt`. JVM test count unchanged at 103. No new tests — pure dead-code removal; nothing in the test suite referenced any of the deleted composables.
 
 **Phase 5 slice 38 landed 2026-04-19** (build + JVM tests green; no schema change):
 
