@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+
 package com.kennychiu.myworkoutlog.viewmodel
 
 import com.kennychiu.myworkoutlog.data.*
