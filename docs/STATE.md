@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 5 slices 25–37 + 39 + 41 + 42 + 43 + 44 + 45 — UI/UX/perf overhaul, dead-code cleanup, dashboard elevation token migration, suggestion-chip slot reservation, set-row effect consolidation, orphan-workouts collapsible, performance-trend meta row, customization-mode chip: design tokens, ScreenScaffold + follow-ups, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression, truncation sweep, dashboard CTA surfacing, deleted dead card wrappers, dashboard cards now use `Dimens.elevationCardRaised`, suggestion-chip slot reserved at fixed height, 12 set-row LaunchedEffects collapsed into one `rememberDebouncedField` helper, orphan-workouts section collapsed by default with count in header, customization-mode controls moved off widget titles into a bottom-end chip, previously-unused `PerformanceTrendWidget.timeframe` + `volumeTrend` surfaced in collapsed view).
+Last updated: 2026-04-19 (Phase 5 slices 25–45 — UI/UX/perf overhaul, dead-code cleanup, dashboard elevation token migration, suggestion-chip slot reservation, set-row effect consolidation, orphan-workouts collapsible, performance-trend meta row, customization-mode chip, redundant widget-CTA removed: design tokens, ScreenScaffold + follow-ups, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression, truncation sweep, dashboard CTA surfacing, deleted dead card wrappers, dashboard cards now use `Dimens.elevationCardRaised`, suggestion-chip slot reserved at fixed height, 12 set-row LaunchedEffects collapsed into one `rememberDebouncedField` helper, orphan-workouts section collapsed by default with count in header, customization-mode controls moved off widget titles into a bottom-end chip, previously-unused `PerformanceTrendWidget.timeframe` + `volumeTrend` surfaced in collapsed view, CycleProgress widget's redundant "Start next session" button removed now that slice-36 top-of-dashboard CTA is confirmed on-device).
 
 ## Next session — start here
 
@@ -11,7 +11,7 @@ Last updated: 2026-04-19 (Phase 5 slices 25–37 + 39 + 41 + 42 + 43 + 44 + 45 �
 ### Round 1 — cheap cleanups, low risk
 
 - ~~**Slice 37 — delete dead card wrappers.**~~ Landed 2026-04-19 (see chronological entry below). 166 LOC removed.
-- **Slice 38 — collapse redundant widget CTA button.** XS. Slice 36 surfaced "Start next session" at the top of the dashboard, but `SimpleCycleProgressWidgetCard` still has the `if (nextWeek != null && nextSession != null) { ElevatedButton("Start <name>") }` branch (post-slice-36, around `DashboardWidgetCards.kt:621–644`). Drop that branch; keep only the `else` Analytics / "Cycle complete" fallback. **Do slice 38 after a device eyeball of slice 36** so the decision is informed.
+- ~~**Slice 38 — collapse redundant widget CTA button.**~~ Landed 2026-04-19 (see chronological entry below). Slice 36's NextSessionCtaCard was confirmed good on-device, unblocking the widget-button removal. Net -29 LOC.
 - ~~**Slice 39 — elevation tokens + migrate dashboard cards.**~~ Landed 2026-04-19 (see chronological entry below). Tokens already existed in `Dimens.kt` (audit premise was outdated) — used the existing `Dimens.elevationCardRaised` (4.dp) and migrated all 6 sites; the two prior 6.dp outliers (Welcome + QuickStats) flatten to 4.dp.
 
 ### Round 2 — logger polish
@@ -36,6 +36,12 @@ Last updated: 2026-04-19 (Phase 5 slices 25–37 + 39 + 41 + 42 + 43 + 44 + 45 �
 Backlog spans slices 33 / 34 / 35 / 36. Top priority after slice 36: the new CTA on Z-Fold inner + outer, with active cycle + with no active cycle + right after logging the final session (CTA should disappear). Expect to surface minor responsive tweaks.
 
 ---
+
+**Phase 5 slice 38 landed 2026-04-19** (build + JVM tests green; no schema change):
+
+- **Redundant "Start next session" button removed from `SimpleCycleProgressWidgetCard`.** Slice 36's `NextSessionCtaCard` at the top of the dashboard was confirmed on-device by the user, so the widget's own `ElevatedButton` branch (`Start <sessionName>`) that previously fired the same `Screen.WorkoutLogger.createRoute(...)` as the top CTA is now dead weight. Deleted the `if (nextWeek != null && nextSession != null) { ElevatedButton(...) } else { OutlinedButton(...) }` split; kept only the `OutlinedButton` body (Analytics / "Cycle complete", gated on `info.isComplete`). Widget still surfaces secondary actions (Analytics navigation + optional End Cycle button); primary action consolidates onto the top-of-dashboard CTA card.
+- **Unused locals pruned.** The `val nextWeek = info.currentWeek` and `val nextSession = info.nextSession` bindings only existed to key the removed ElevatedButton — dropped. The lead comment that justified "derive next session from the helper so the button actually navigates to the correct cycle/week/session" is also gone; replaced with a one-liner pointing at slice 36's CTA card as the primary surface. Net -29 LOC (25+ / 54−).
+- JVM test count unchanged at 103. No new tests — pure UI deletion; the widget's remaining OutlinedButton branch was already exercised when `info.nextSession` was null (completed cycles), so it has visual coverage from existing manual usage.
 
 **Phase 5 slice 44 landed 2026-04-19** (build + JVM tests green; no schema change):
 
