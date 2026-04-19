@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-20 (Phase 5 slice 47 — Round A #3 of the dashboard audit landed: `SimpleNextSessionWidgetCard` lost its redundant Start Session button + collapsed-view session-name restatement, mirror of slice 38. Prior entry: Phase 5 slice 46 — Round B, four dead composables deleted. Earlier: dashboard UI/UX audit drafted → `docs/DASHBOARD_AUDIT.md`; Phase 5 slices 25–45).
+Last updated: 2026-04-20 (Phase 5 slice 48 — Round A #1 of the dashboard audit landed: Welcome widget streak badge removed; `SimpleQuickStatsWidgetCard` is the sole streak surface. Prior entries: slice 47 (Round A #3, NextSession widget simplified), slice 46 (Round B, four dead composables). Earlier: dashboard UI/UX audit drafted → `docs/DASHBOARD_AUDIT.md`; Phase 5 slices 25–45).
 
 ## Next session — start here
 
@@ -12,7 +12,7 @@ Recommended order:
 
 1. ~~**Round B (dead-code, XS × 4)**~~ — Landed 2026-04-20 as slice 46 (bundled). See chronological entry below.
 2. ~~**Round A #3 (XS)**~~ — Landed 2026-04-20 as slice 47. See chronological entry below.
-3. **Round A #1 (S)** — drop the streak badge from `SimpleWelcomeWidgetCard`; `SimpleQuickStatsWidgetCard` already owns that number.
+3. ~~**Round A #1 (S)**~~ — Landed 2026-04-20 as slice 48. See chronological entry below.
 4. **Round A #2 (S)** — decide whether to deprecate `SimpleBodyweightWidgetCard` in favour of `SimpleBodyweightTrendWidgetCard` (strict superset). User decision before starting.
 5. **Round C #9 (M, probably its own session)** — `ScreenScaffold` migration for the dashboard (slice 26 skipped it).
 6. **Rounds D / E / F** — opportunistic, pick one per session as the area is touched.
@@ -36,6 +36,13 @@ Older slice plan (slices 37–45) is complete. Entries kept below for history.
 Backlog spans slices 33–45. Highest priority: slice 36 CTA on Z-Fold inner + outer (active cycle / no active cycle / right after final session logged → CTA should disappear). Then slices 42–45 in order.
 
 ---
+
+**Phase 5 slice 48 landed 2026-04-20** (build + JVM tests green on rerun; no schema change):
+
+- **Welcome widget streak badge removed.** Round A #1 of the dashboard audit. `SimpleWelcomeWidgetCard` and `SimpleQuickStatsWidgetCard` both defaulted above the fold; both displayed the current streak off the same `calculateBasicStreak()` source (Welcome as a `🔥 N day streak` `Surface` badge backed by `Color(0xFFFF6B35).copy(alpha = 0.15f)`, QuickStats as a `StatCard` with label "Streak"). QuickStats is the natural home for that number since it exists to show streak / total workouts / recent PRs side by side. Deleted the `if (widget.currentStreak > 0) { Surface(...) }` block from `SimpleWelcomeWidgetCard`; greeting + motivational message stay. The motivational message still reflects the streak value because `getMotivationalMessage(streak)` is computed in `WidgetRepositorySimplified.kt` and passed in via `widget.motivationalMessage` — no code there changed.
+- **`WelcomeWidget.currentStreak` field dropped.** Once the badge was gone, the only reader of the field was itself. Removed `currentStreak: Int` from `DashboardWidget.WelcomeWidget` in `data/DashboardModels.kt`; updated the single construction site at `WidgetRepositorySimplified.kt:46` to match. The `val streak = calculateBasicStreak()` local stays — it's still the input to `getMotivationalMessage(streak)`. `QuickStatsWidget.currentStreak` is a different field on a different data class and is untouched.
+- **Known timing flake re-confirmed.** `WorkoutLoggerViewModelTest.finishWorkout in edit mode updates existing workout preserving id and startTimestamp, and resets edit flags` at `WorkoutLoggerViewModelTest.kt:193` failed on the first two runs this slice (both initial + `--rerun-tasks`) before passing on the third run. Same flake documented in slice 42 + carried forward in the handoff. Unrelated to this slice — the widget-data-only changes don't touch the logger VM. Test count stable at 103/103.
+- Net -29 LOC across `DashboardWidgetCards.kt` (-27) + `DashboardModels.kt` (-1) + `WidgetRepositorySimplified.kt` (-1). No new tests — no new logic; just a UI deletion + constructor-level propagation of the field removal.
 
 **Phase 5 slice 47 landed 2026-04-20** (build + JVM tests green; no schema change):
 
