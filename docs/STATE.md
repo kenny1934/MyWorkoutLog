@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-20 (Phase 5 slice 48 — Round A #1 of the dashboard audit landed: Welcome widget streak badge removed; `SimpleQuickStatsWidgetCard` is the sole streak surface. Prior entries: slice 47 (Round A #3, NextSession widget simplified), slice 46 (Round B, four dead composables). Earlier: dashboard UI/UX audit drafted → `docs/DASHBOARD_AUDIT.md`; Phase 5 slices 25–45).
+Last updated: 2026-04-20 (Phase 5 slice 49 — Round A #2 of the dashboard audit landed: `SimpleBodyweightWidgetCard` deleted; `SimpleBodyweightTrendWidgetCard` is the sole bodyweight surface. Prior entries: slice 48 (Round A #1, Welcome streak badge removed), slice 47 (Round A #3, NextSession widget simplified), slice 46 (Round B, four dead composables). Earlier: dashboard UI/UX audit drafted → `docs/DASHBOARD_AUDIT.md`; Phase 5 slices 25–45).
 
 ## Next session — start here
 
@@ -13,7 +13,7 @@ Recommended order:
 1. ~~**Round B (dead-code, XS × 4)**~~ — Landed 2026-04-20 as slice 46 (bundled). See chronological entry below.
 2. ~~**Round A #3 (XS)**~~ — Landed 2026-04-20 as slice 47. See chronological entry below.
 3. ~~**Round A #1 (S)**~~ — Landed 2026-04-20 as slice 48. See chronological entry below.
-4. **Round A #2 (S)** — decide whether to deprecate `SimpleBodyweightWidgetCard` in favour of `SimpleBodyweightTrendWidgetCard` (strict superset). User decision before starting.
+4. ~~**Round A #2 (S)**~~ — Landed 2026-04-20 as slice 49 (user picked: delete outright). See chronological entry below.
 5. **Round C #9 (M, probably its own session)** — `ScreenScaffold` migration for the dashboard (slice 26 skipped it).
 6. **Rounds D / E / F** — opportunistic, pick one per session as the area is touched.
 
@@ -36,6 +36,14 @@ Older slice plan (slices 37–45) is complete. Entries kept below for history.
 Backlog spans slices 33–45. Highest priority: slice 36 CTA on Z-Fold inner + outer (active cycle / no active cycle / right after final session logged → CTA should disappear). Then slices 42–45 in order.
 
 ---
+
+**Phase 5 slice 49 landed 2026-04-20** (build + JVM tests green; no schema change):
+
+- **`SimpleBodyweightWidgetCard` deleted outright.** Round A #2 of the dashboard audit; user picked "delete outright" over "gate behind a preference". The simple card (current weight + last-recorded date) was a strict subset of `SimpleBodyweightTrendWidgetCard` (current weight + change + entries + mini chart), and both rendered above the fold on every dashboard. The audit framed either path as viable — delete removes a widget the user has to manage in customization; gating preserves the optional surface at the cost of more dead data flow. Delete won.
+- **Full delete footprint.** Composable removed from `ui/DashboardWidgetCards.kt`. `DashboardWidget.BodyweightWidget` data class removed from `data/DashboardModels.kt` (this was the only widget whose `id` was the literal string `"bodyweight"` — the Trend widget's id is `"bodyweight_trend"`, so there's no overlap). Both construction sites in `data/WidgetRepositorySimplified.kt` dropped (NoActiveCycle path previously at line 68–75, ActiveCycle path previously at line 221–228). `is DashboardWidget.BodyweightWidget -> SimpleBodyweightWidgetCard(...)` branch removed from the `when` in `ui/DashboardScreen.kt`.
+- **Helper chain pruned.** After the two construction sites disappeared, `getLatestBodyweightInfo(): BodyweightInfo?` in `WidgetRepositorySimplified.kt` had no callers. Dropped it + the top-level `data class BodyweightInfo(weight: Double, date: String, unit: String)` that only that helper produced. The DAO method `loggedWorkoutDao.getLatestLoggedWorkoutWithBodyweight()` is unchanged — `WorkoutLoggerViewModel.kt:446` still calls it for auto-prefill of bodyweight on the logger screen, unrelated to the dashboard.
+- **Stored-preference orphan accepted.** Users who had previously dragged/toggled widgets may have a `WidgetConfig(widgetType = "bodyweight", ...)` entry in their dashboard-preferences JSON. `DashboardPreferencesManager` stores configs as an arbitrary-string JSON blob, so the loader will still deserialize the orphan without blowing up — nothing matches it at runtime, so it just sits there as dead data. No migration added; this is a single-user hobby app and the stale entry is harmless. If the user ever touches customization, the orphan will be dropped naturally the next time the saved list is rewritten.
+- Net -138 LOC across `DashboardWidgetCards.kt` (-74) + `WidgetRepositorySimplified.kt` (-52) + `DashboardModels.kt` (-7) + `DashboardScreen.kt` (-5). JVM test count unchanged at 103; passed on first run (no flake this slice).
 
 **Phase 5 slice 48 landed 2026-04-20** (build + JVM tests green on rerun; no schema change):
 
