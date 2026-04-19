@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-20 (Phase 5 slice 51 — Round D #12 of the dashboard audit landed: hardcoded streak orange `Color(0xFFFF6B35)` in `SimpleQuickStatsWidgetCard` is now `MaterialTheme.extendedColors.accent`, which provides a light- and dark-mode-tuned orange out of the existing extended-color palette. Two call sites migrated; `Color` import stays (still used by the `StatCard.color: Color` param + the D #13 change-color sites). Prior entries: slice 50 (Round C #9/#10/#11, ScreenScaffold migration + unified Edit/Done IconButton + debug-gesture delete), slice 49 (Round A #2, Bodyweight simple card deleted), slice 48 (Round A #1, Welcome streak badge removed), slice 47 (Round A #3, NextSession widget simplified), slice 46 (Round B, four dead composables). Earlier: dashboard UI/UX audit → `docs/DASHBOARD_AUDIT.md`; Phase 5 slices 25–45).
+Last updated: 2026-04-20 (Phase 5 slice 52 — Round E #15 of the dashboard audit landed: the tablet-path error-state "Retry" button now calls `refreshDashboard()` instead of `onPullToRefresh()`, matching the compact-path error card's already-correct handler. Both error Retries now share semantics; `onPullToRefresh()` is once again scoped to the actual pull-to-refresh gesture (which carries its own 500ms animation delay that makes no sense for a button tap). Prior entries: slice 51 (Round D #12, streak orange → `extendedColors.accent`), slice 50 (Round C #9/#10/#11, ScreenScaffold migration + unified Edit/Done IconButton + debug-gesture delete), slice 49 (Round A #2, Bodyweight simple card deleted), slice 48 (Round A #1, Welcome streak badge removed), slice 47 (Round A #3, NextSession widget simplified), slice 46 (Round B, four dead composables). Earlier: dashboard UI/UX audit → `docs/DASHBOARD_AUDIT.md`; Phase 5 slices 25–45).
 
 ## Next session — start here
 
@@ -15,7 +15,7 @@ Recommended order:
 3. ~~**Round A #1 (S)**~~ — Landed 2026-04-20 as slice 48. See chronological entry below.
 4. ~~**Round A #2 (S)**~~ — Landed 2026-04-20 as slice 49 (user picked: delete outright). See chronological entry below.
 5. ~~**Round C #9 (M)**~~ — Landed 2026-04-20 as slice 50, bundled with **C #10** (customization toggle now lives in the TopAppBar `actions` slot — single style across both paths) and **C #11** (long-press debug-reset gesture deleted along with the inline title). See chronological entry below.
-6. **Rounds D / E / F** — opportunistic, pick one per session as the area is touched. ~~D #12~~ landed 2026-04-20 as slice 51. Five findings left: D #13, E #14, E #15 (may be stale after slice 50 — re-grep), F #16, F #17. F #18 flagged only.
+6. **Rounds D / E / F** — opportunistic, pick one per session as the area is touched. ~~D #12~~ landed 2026-04-20 as slice 51. ~~E #15~~ landed 2026-04-20 as slice 52. Four findings left: D #13, E #14, F #16, F #17. F #18 flagged only.
 
 Older slice plan (slices 37–45) is complete. Entries kept below for history.
 
@@ -36,6 +36,13 @@ Older slice plan (slices 37–45) is complete. Entries kept below for history.
 Backlog spans slices 33–45. Highest priority: slice 36 CTA on Z-Fold inner + outer (active cycle / no active cycle / right after final session logged → CTA should disappear). Then slices 42–45 in order.
 
 ---
+
+**Phase 5 slice 52 landed 2026-04-20** (build + JVM tests green; no schema change):
+
+- **Error-state Retry unified (Round E #15).** `AdaptiveDashboardContent`'s error-branch button at `DashboardScreen.kt:428` was calling `onPullToRefresh()`; the compact-path error card at `:573` was (correctly) calling `refreshDashboard()`. The two are not behaviourally equivalent on `DashboardViewModel` — `onPullToRefresh()` toggles `_isRefreshing` and adds a hard-coded 500ms `kotlinx.coroutines.delay` "to ensure smooth animation", which exists for the pull-to-refresh gesture animation. A tapped `Button` in an error state is not a gesture, so the 500ms delay is pure latency. `refreshDashboard()` toggles `_isLoading` (the path that the screen itself uses at `init{}` for the initial fetch) and has no artificial delay. Tablet error Retry now matches the compact error Retry.
+- **Audit-claim drift check passed.** The handoff flagged E #15 as "likely stale, re-grep before acting" — but both paths were still live at the re-grep and the two methods diverged on the VM side since slice 44 (`refreshDashboard()`'s `_isLoading` vs `onPullToRefresh()`'s `_isRefreshing` and 500ms delay). Not stale; real one-line fix.
+- **Single-line edit.** `onPullToRefresh()` → `refreshDashboard()` at `DashboardScreen.kt:428`. No imports touched.
+- Net +0 / -0 LOC (one identifier swap). JVM test count unchanged at 103.
 
 **Phase 5 slice 51 landed 2026-04-20** (build + JVM tests green; no schema change):
 
