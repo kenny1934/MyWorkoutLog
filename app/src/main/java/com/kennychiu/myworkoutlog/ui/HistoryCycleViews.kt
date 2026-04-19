@@ -5,9 +5,12 @@ package com.kennychiu.myworkoutlog.ui
 import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -15,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -32,6 +36,7 @@ fun MesocycleHistoryMasterView(
     val completedCycles by viewModel.completedCycles.collectAsStateWithLifecycle()
     val orphanedWorkouts by viewModel.orphanedWorkouts.collectAsStateWithLifecycle()
     var renameTarget by remember { mutableStateOf<CycleWithWorkouts?>(null) }
+    var orphanedExpanded by remember { mutableStateOf(false) }
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         // Active cycle section
@@ -67,26 +72,18 @@ fun MesocycleHistoryMasterView(
             }
         }
 
-        // Orphaned workouts section
-        if (orphanedWorkouts.isNotEmpty()) {
-            item {
-                Text(
-                    text = "Individual Workouts",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            }
-
-            items(orphanedWorkouts, key = { it.id }) { workout ->
-                WorkoutCard(
-                    workout = workout,
-                    onNavigateToWorkout = { }, // Empty since we handle selection
-                    showCycleInfo = false,
-                    isSelected = selectedWorkoutId == workout.id,
-                    onWorkoutSelected = onWorkoutSelected
-                )
-            }
+        orphanedWorkoutsSection(
+            workouts = orphanedWorkouts,
+            expanded = orphanedExpanded,
+            onToggle = { orphanedExpanded = !orphanedExpanded },
+        ) { workout ->
+            WorkoutCard(
+                workout = workout,
+                onNavigateToWorkout = { }, // Empty since we handle selection
+                showCycleInfo = false,
+                isSelected = selectedWorkoutId == workout.id,
+                onWorkoutSelected = onWorkoutSelected
+            )
         }
 
         // Empty state
@@ -124,6 +121,7 @@ fun MesocycleHistoryView(
     val completedCycles by viewModel.completedCycles.collectAsStateWithLifecycle()
     val orphanedWorkouts by viewModel.orphanedWorkouts.collectAsStateWithLifecycle()
     var renameTarget by remember { mutableStateOf<CycleWithWorkouts?>(null) }
+    var orphanedExpanded by remember { mutableStateOf(false) }
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         // Active cycle section
@@ -157,24 +155,16 @@ fun MesocycleHistoryView(
             }
         }
 
-        // Orphaned workouts section
-        if (orphanedWorkouts.isNotEmpty()) {
-            item {
-                Text(
-                    text = "Individual Workouts",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            }
-
-            items(orphanedWorkouts, key = { it.id }) { workout ->
-                WorkoutCard(
-                    workout = workout,
-                    onNavigateToWorkout = onNavigateToWorkout,
-                    showCycleInfo = false
-                )
-            }
+        orphanedWorkoutsSection(
+            workouts = orphanedWorkouts,
+            expanded = orphanedExpanded,
+            onToggle = { orphanedExpanded = !orphanedExpanded },
+        ) { workout ->
+            WorkoutCard(
+                workout = workout,
+                onNavigateToWorkout = onNavigateToWorkout,
+                showCycleInfo = false
+            )
         }
 
         // Empty state
@@ -596,5 +586,51 @@ fun ChronologicalHistoryView(
                 )
             }
         }
+    }
+}
+
+private fun LazyListScope.orphanedWorkoutsSection(
+    workouts: List<LoggedWorkout>,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    renderWorkout: @Composable (LoggedWorkout) -> Unit,
+) {
+    if (workouts.isEmpty()) return
+    item {
+        OrphanedWorkoutsHeader(count = workouts.size, expanded = expanded, onToggle = onToggle)
+    }
+    if (expanded) {
+        items(workouts, key = { it.id }) { workout ->
+            renderWorkout(workout)
+        }
+    }
+}
+
+@Composable
+private fun OrphanedWorkoutsHeader(count: Int, expanded: Boolean, onToggle: () -> Unit) {
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(300),
+        label = "orphaned_section_rotation",
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "Individual Workouts · $count",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            imageVector = Icons.Filled.ExpandMore,
+            contentDescription = if (expanded) "Collapse" else "Expand",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.rotate(rotation),
+        )
     }
 }
