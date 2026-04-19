@@ -896,6 +896,47 @@ fun SimpleBodyweightTrendWidgetCard(widget: DashboardWidget.BodyweightTrendWidge
 }
 
 @Composable
+private fun PerformanceTrendMetaRow(timeframe: String, volumeTrend: ProgressTrend) {
+    val (volumeIcon, volumeTint) = when (volumeTrend.direction) {
+        TrendDirection.STRONGLY_IMPROVING,
+        TrendDirection.SLIGHTLY_IMPROVING -> Icons.AutoMirrored.Filled.TrendingUp to MaterialTheme.colorScheme.primary
+        TrendDirection.STRONGLY_DECLINING,
+        TrendDirection.SLIGHTLY_DECLINING -> Icons.AutoMirrored.Filled.TrendingDown to MaterialTheme.colorScheme.error
+        TrendDirection.STABLE -> Icons.AutoMirrored.Filled.TrendingFlat to MaterialTheme.colorScheme.onSurfaceVariant
+        TrendDirection.INSUFFICIENT_DATA -> Icons.Filled.Info to MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = timeframe,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Icon(
+                imageVector = volumeIcon,
+                contentDescription = null,
+                tint = volumeTint,
+                modifier = Modifier.size(14.dp),
+            )
+            Text(
+                text = volumeTrend.description,
+                style = MaterialTheme.typography.labelSmall,
+                color = volumeTint,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
 fun SimplePerformanceTrendWidgetCard(
     widget: DashboardWidget.PerformanceTrendWidget,
     navController: NavHostController
@@ -906,6 +947,16 @@ fun SimplePerformanceTrendWidgetCard(
         collapsedContent = {
             // Collapsed: Show overview with top exercise
             Column {
+                // Header meta — timeframe + overall volume trend. Both fields were
+                // computed in WidgetRepositorySimplified but never displayed
+                // before slice 44; surfacing them gives the card context beyond
+                // the single top-exercise strength summary below.
+                PerformanceTrendMetaRow(
+                    timeframe = widget.timeframe,
+                    volumeTrend = widget.volumeTrend,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+
                 if (widget.strengthGains.isNotEmpty()) {
                     val topExercise = widget.strengthGains.first()
                     Row(
