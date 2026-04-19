@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-20 (Phase 5 slice 55 — Round F #16 of the dashboard audit landed: the static three-dots + arrow "scroll indicator" under the compact-path Quick Actions LazyRow is deleted. It only rendered when `quickActions.size > 3`, was not tied to scroll position, and duplicated signal the LazyRow's own edge clipping already provides. The wrapping `Column` became redundant (LazyRow is now the sole child of `EnhancedDashboardWidgetCard("Quick Actions")`'s slot lambda) and is gone with it; orphan imports `CircleShape` + `ArrowForward` also dropped. Net -35 LOC. Prior entries: slice 54 (Round D #13, trend up/down colors → success / error), slice 53 (Round F #17, widget empty-state copy unified), slice 52 (Round E #15, tablet error Retry now matches compact), slice 51 (Round D #12, streak orange → `extendedColors.accent`), slice 50 (Round C #9/#10/#11, ScreenScaffold migration + unified Edit/Done IconButton + debug-gesture delete), slice 49 (Round A #2, Bodyweight simple card deleted), slice 48 (Round A #1, Welcome streak badge removed), slice 47 (Round A #3, NextSession widget simplified), slice 46 (Round B, four dead composables). Earlier: dashboard UI/UX audit → `docs/DASHBOARD_AUDIT.md`; Phase 5 slices 25–45).
+Last updated: 2026-04-20 (Phase 5 slice 56 — Round E #14 of the dashboard audit landed: insights render as a single priority-sorted stream (URGENT → HIGH → MEDIUM → LOW) on both compact and tablet paths. The bottom `EnhancedDashboardWidgetCard("Insights")` wrapper is gone from the compact path; tablet's two filter passes (urgent/high then low/medium) collapsed into one `sortedByDescending { it.priority }` stream. Net -49 LOC. Prior entries: slice 55 (Round F #16, Quick Actions scroll indicator deleted), slice 54 (Round D #13, trend up/down colors → success / error), slice 53 (Round F #17, widget empty-state copy unified), slice 52 (Round E #15, tablet error Retry now matches compact), slice 51 (Round D #12, streak orange → `extendedColors.accent`), slice 50 (Round C #9/#10/#11, ScreenScaffold migration + unified Edit/Done IconButton + debug-gesture delete), slice 49 (Round A #2, Bodyweight simple card deleted), slice 48 (Round A #1, Welcome streak badge removed), slice 47 (Round A #3, NextSession widget simplified), slice 46 (Round B, four dead composables). Earlier: dashboard UI/UX audit → `docs/DASHBOARD_AUDIT.md`; Phase 5 slices 25–45).
 
 ## Next session — start here
 
@@ -15,7 +15,7 @@ Recommended order:
 3. ~~**Round A #1 (S)**~~ — Landed 2026-04-20 as slice 48. See chronological entry below.
 4. ~~**Round A #2 (S)**~~ — Landed 2026-04-20 as slice 49 (user picked: delete outright). See chronological entry below.
 5. ~~**Round C #9 (M)**~~ — Landed 2026-04-20 as slice 50, bundled with **C #10** (customization toggle now lives in the TopAppBar `actions` slot — single style across both paths) and **C #11** (long-press debug-reset gesture deleted along with the inline title). See chronological entry below.
-6. **Rounds D / E / F** — opportunistic, pick one per session as the area is touched. ~~D #12~~ slice 51. ~~E #15~~ slice 52. ~~F #17~~ slice 53. ~~D #13~~ slice 54. ~~F #16~~ slice 55. One finding left: **E #14 (S, insights consolidation)**. F #18 flagged only (design call). A #4 ("Active Cycle" parent widget, M) is on the table now that A #1–3 landed.
+6. **Rounds D / E / F** — opportunistic, pick one per session as the area is touched. ~~D #12~~ slice 51. ~~E #15~~ slice 52. ~~F #17~~ slice 53. ~~D #13~~ slice 54. ~~F #16~~ slice 55. ~~E #14~~ slice 56. **All D/E/F audit items landed.** Remaining: **F #18 (flatten Welcome widget visuals)** — Kenny greenlit, next slice. A #4 ("Active Cycle" parent widget, M) deliberately deferred after A #1–3 reduced the overlap.
 
 Older slice plan (slices 37–45) is complete. Entries kept below for history.
 
@@ -36,6 +36,14 @@ Older slice plan (slices 37–45) is complete. Entries kept below for history.
 Backlog spans slices 33–45. Highest priority: slice 36 CTA on Z-Fold inner + outer (active cycle / no active cycle / right after final session logged → CTA should disappear). Then slices 42–45 in order.
 
 ---
+
+**Phase 5 slice 56 landed 2026-04-20** (build + JVM tests green; no schema change):
+
+- **Insights consolidated into a single priority-sorted stream (Round E #14).** Before this slice, the compact path rendered urgent/high insights inline near the top (`DashboardScreen.kt:611`) and low/medium inside an `EnhancedDashboardWidgetCard("Insights", icon = Lightbulb)` container at the bottom (`:768`). Tablet (`AdaptiveWidgetGrid`) already rendered both inline but via two separate filter passes. Both paths now use a single `items(insights.sortedByDescending { it.priority }, key = { it.id }) { … EnhancedInsightCard(…) }` block.
+- **Priority ordering.** `InsightPriority` enum is declared as `LOW, MEDIUM, HIGH, URGENT` (ascending urgency), so `sortedByDescending { it.priority }` produces URGENT → HIGH → MEDIUM → LOW. Urgent/high still surface first; low/medium now follow directly instead of appearing at the bottom of the dashboard.
+- **Why this over "wrap all in the Insights container"** — burying urgent/high insights inside a titled container contradicts the priority system's purpose. Tablet path also never used the wrapper, and unifying to the inline form matched tablet without regressing it. UX discussion with user picked Option A (fold into top stream) over Option B (bottom-container everything).
+- **Dropped code.** Two filter passes + separate `items` blocks in tablet path (`:171-209`) collapsed to one. Compact path lost the entire `lowPriorityInsights` block + the `EnhancedDashboardWidgetCard("Insights")` wrapper + its `Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { … forEach }` body. No imports became orphaned — `InsightPriority` came via wildcard `data.*`, `Icons.Default.Lightbulb` came via wildcard `filled.*`.
+- Net -49 LOC in `DashboardScreen.kt` (7 insertions / 56 deletions). JVM test count unchanged at 103.
 
 **Phase 5 slice 55 landed 2026-04-20** (build + JVM tests green; no schema change):
 
