@@ -6,6 +6,10 @@ Last updated: 2026-04-19 (Phase 5 slices 25–35 — UI/UX/perf overhaul: design
 
 ## Next session — start here
 
+**Next task (slice 36): dashboard CTA surfacing.** The "Start next session" action is currently buried 3 taps deep inside an expandable widget. Audit that drove slices 25–31 flagged it as the biggest dashboard UX miss; slice 31 fixed loading/empty states but didn't promote the CTA. Hoist it to a persistent top-of-dashboard row when `nextSession != null`, hide when null. Starting points: `util/CycleProgress.kt::cycleProgress(activeCycle).nextSession` (already exists, slice 1); existing widget surface is `ui/DashboardWidgetCards.kt::SimpleCycleProgressWidgetCard`; dashboard layouts live in `ui/DashboardScreen.kt::AdaptiveDashboardContent` (compact) and `EnhancedDashboardScreen`. New CTA navigates to `WorkoutLogger.createRoute(templateId, cycleId, weekId, sessionId)`. Carry over the Deload / Target-RIR badge pattern from the widget. Keep the existing widget button for now — it's the fallback in the expanded widget view.
+
+---
+
 **Phase 5 slices 34 + 35 landed 2026-04-19** (build + JVM tests green, commits pushed):
 
 - `f42b1ec` slice 34 — **title + list-row text truncation.** Long user-entered names were clipping into icons / off-screen in several spots that never had `maxLines` / `overflow` set. TopAppBar titles with dynamic names (ScreenScaffold, WorkoutLoggerScreens, HistoryDetailScreen, TemplateManagementScreens TemplateDetailScreen, ProgramEditorScreen) now use `maxLines = 1, overflow = Ellipsis, modifier = Modifier.basicMarquee()` — the full name scrolls into view when it exceeds the bar's remaining width. List row names (ProgramListScreen program card, TemplateManagementScreens template card, HistoryComponents WorkoutCard header, AdaptiveWorkoutComponents ExerciseListItem master panel, ProgramEditorScreen template-picker DropdownMenuItem) use `maxLines = 1, overflow = Ellipsis` without marquee — a list of 20 simultaneously-scrolling titles would be visual chaos. Dialog bodies with interpolated names (Delete "X"? etc.) left as-is — they naturally wrap.
