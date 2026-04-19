@@ -2,6 +2,7 @@
 
 package com.kennychiu.myworkoutlog.ui
 
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
@@ -15,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 
 /**
  * Standard screen wrapper with a `TopAppBar` title, optional back button, and the
@@ -36,7 +38,14 @@ fun ScreenScaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(title) },
+                title = {
+                    Text(
+                        text = title,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.basicMarquee()
+                    )
+                },
                 navigationIcon = {
                     if (onNavigateUp != null) {
                         IconButton(onClick = onNavigateUp) {

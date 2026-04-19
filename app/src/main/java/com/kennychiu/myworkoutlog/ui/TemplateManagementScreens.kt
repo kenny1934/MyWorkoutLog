@@ -7,6 +7,7 @@ import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
 import com.kennychiu.myworkoutlog.ui.theme.Dimens
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -104,7 +105,11 @@ private fun TemplateManagementSingleColumnView(
                                         .clickable { onNavigateToTemplate(template.id) }
                                         .padding(vertical = 16.dp)
                                 ) {
-                                    Text(template.name)
+                                    Text(
+                                        text = template.name,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
                                 // OVERFLOW MENU
                                 Box {
@@ -1067,7 +1072,14 @@ fun TemplateDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(editedName) },
+                title = {
+                    Text(
+                        text = editedName,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.basicMarquee()
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateUp) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

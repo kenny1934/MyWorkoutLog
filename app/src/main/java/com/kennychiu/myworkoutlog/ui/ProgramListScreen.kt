@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
@@ -67,7 +68,13 @@ fun ManageProgramsScreen(
                                         .weight(1f)
                                         .clickable { onNavigateToProgram(program.id) }
                                         .padding(vertical = 16.dp)
-                                ) { Text(program.name) }
+                                ) {
+                                    Text(
+                                        text = program.name,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                                 // OVERFLOW MENU
                                 Box {
                                     IconButton(

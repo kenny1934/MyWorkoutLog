@@ -5,6 +5,7 @@ package com.kennychiu.myworkoutlog.ui
 import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -54,7 +55,14 @@ fun ProgramEditorScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(editedName) },
+                title = {
+                    Text(
+                        text = editedName,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.basicMarquee()
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateUp) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -425,7 +433,11 @@ fun SessionCard(
                                 DropdownMenuItem(
                                     text = {
                                         Column {
-                                            Text(template.name)
+                                            Text(
+                                                text = template.name,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
                                             Text(
                                                 text = "${template.templateExercises.size} exercises",
                                                 style = MaterialTheme.typography.bodySmall,
