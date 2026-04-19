@@ -8,13 +8,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -36,73 +30,12 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlin.math.cos
-import kotlin.math.sin
-import java.time.LocalDate
-
-// Stat card component for displaying key metrics
-@Composable
-fun StatCard(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    icon: ImageVector? = null,
-    trend: ProgressTrend? = null,
-    onClick: (() -> Unit)? = null
-) {
-    Card(
-        modifier = modifier
-            .let { if (onClick != null) it.clickable { onClick() } else it },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            icon?.let {
-                Icon(
-                    imageVector = it,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-            
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center
-            )
-            
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            
-            trend?.let {
-                Spacer(modifier = Modifier.height(4.dp))
-                TrendIndicator(trend = it)
-            }
-        }
-    }
-}
 
 // Progress ring component
 @Composable
@@ -199,117 +132,6 @@ fun TrendIndicator(
                 color = color,
                 fontWeight = FontWeight.Medium
             )
-        }
-    }
-}
-
-// Quick action button
-@Composable
-fun QuickActionButton(
-    action: QuickAction,
-    modifier: Modifier = Modifier,
-    onClick: (QuickAction) -> Unit
-) {
-    Button(
-        onClick = { onClick(action) },
-        modifier = modifier,
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = action.icon,
-                contentDescription = action.description,
-                modifier = Modifier.size(16.dp)
-            )
-            Text(
-                text = action.title,
-                style = MaterialTheme.typography.labelMedium
-            )
-        }
-    }
-}
-
-// Insight card component
-@Composable
-fun InsightCard(
-    insight: SmartInsight,
-    modifier: Modifier = Modifier,
-    onDismiss: ((String) -> Unit)? = null,
-    onAction: ((SmartInsight) -> Unit)? = null
-) {
-    val backgroundColor = when (insight.type) {
-        InsightType.WARNING -> MaterialTheme.colorScheme.errorContainer
-        InsightType.CELEBRATION -> Color(0xFFE8F5E8)
-        InsightType.RECOMMENDATION -> MaterialTheme.colorScheme.primaryContainer
-        else -> MaterialTheme.colorScheme.surfaceVariant
-    }
-    
-    val contentColor = when (insight.type) {
-        InsightType.WARNING -> MaterialTheme.colorScheme.onErrorContainer
-        InsightType.CELEBRATION -> Color(0xFF2E7D32)
-        InsightType.RECOMMENDATION -> MaterialTheme.colorScheme.onPrimaryContainer
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    
-    Card(
-        modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor)
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = insight.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = contentColor
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = insight.message,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = contentColor.copy(alpha = 0.8f)
-                    )
-                }
-                
-                onDismiss?.let {
-                    IconButton(
-                        onClick = { it(insight.id) },
-                        modifier = Modifier.size(20.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Dismiss",
-                            modifier = Modifier.size(14.dp),
-                            tint = contentColor.copy(alpha = 0.7f)
-                        )
-                    }
-                }
-            }
-            
-            if (insight.actionable && insight.actionText != null && onAction != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                TextButton(
-                    onClick = { onAction(insight) },
-                    modifier = Modifier.align(Alignment.End)
-                ) {
-                    Text(
-                        text = insight.actionText,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = contentColor
-                    )
-                }
-            }
         }
     }
 }
@@ -452,97 +274,6 @@ fun ActivityHeatmapGrid(
                 }
             }
         }
-    }
-}
-
-// Workout Heatmap Grid Component
-@Composable
-fun WorkoutHeatmapGrid(
-    workoutDays: Map<LocalDate, WorkoutIntensity>,
-    modifier: Modifier = Modifier
-) {
-    val today = LocalDate.now()
-    val startDate = today.minusDays(90) // Show last 90 days for simplicity
-    
-    Column(modifier = modifier) {
-        // Header showing current month
-        Text(
-            text = "Last 90 Days",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        
-        // Create a grid showing the last 90 days
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(7), // 7 days per week
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-            modifier = Modifier.height(120.dp)
-        ) {
-            items(90) { dayOffset ->
-                val date = startDate.plusDays(dayOffset.toLong())
-                val intensity = workoutDays[date]?.intensity ?: 0f
-                
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .background(
-                            color = getIntensityColor(intensity),
-                            shape = RoundedCornerShape(2.dp)
-                        )
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // Legend
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Less",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                for (i in 0..4) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(
-                                color = getIntensityColor(i / 4f),
-                                shape = RoundedCornerShape(1.dp)
-                            )
-                    )
-                }
-            }
-            
-            Text(
-                text = "More",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun getIntensityColor(intensity: Float): Color {
-    val primaryColor = MaterialTheme.colorScheme.primary
-    return when {
-        intensity <= 0f -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f) // More visible empty state
-        intensity <= 0.2f -> primaryColor.copy(alpha = 0.3f)
-        intensity <= 0.4f -> primaryColor.copy(alpha = 0.5f)
-        intensity <= 0.6f -> primaryColor.copy(alpha = 0.7f)
-        intensity <= 0.8f -> primaryColor.copy(alpha = 0.9f)
-        else -> primaryColor
     }
 }
 

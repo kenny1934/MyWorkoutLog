@@ -232,7 +232,7 @@ fun AdaptiveWidgetGrid(
                         contentPadding = PaddingValues(horizontal = 4.dp)
                     ) {
                         items(quickActions) { action ->
-                            QuickActionButton(
+                            EnhancedQuickActionButton(
                                 action = action,
                                 onClick = { clickedAction ->
                                     when (clickedAction.action) {
