@@ -6,11 +6,34 @@ Last updated: 2026-04-19 (Phase 5 slices 25–36 — UI/UX/perf overhaul: design
 
 ## Next session — start here
 
-**Next task: TBD.** Slice 36 landed this session. Candidate follow-ups from the backlog:
+**Audit-driven slice plan (drafted 2026-04-19 after slice 36).** Ordered; each lands independently. XS = ≤30 LOC single file, S = 1–2 files, M = 3+ files / cross-cutting. Verify each claim against the current tree before editing — file line numbers shift with every slice.
 
-- **Device verification** of the Phase 5 slices installed this session (CTA needs eyeballing on the Z Fold — inner + outer screens; make sure the new primaryContainer card reads cleanly against the existing dashboard grid and that the Deload/RIR badges don't push the session name off-screen on narrow widths). Verification backlog now spans slices 5b–36.
-- **Promote-or-demote the old widget button.** The slice-36 CTA keeps the original ElevatedButton inside `SimpleCycleProgressWidgetCard` as a fallback. With the CTA row above, the in-widget button is now visually redundant and competes for attention — could collapse it (leave only the "Analytics" / "Cycle complete" branch) once slice 36 has been lived with.
-- **Design-token migration.** Most `.dp` / `fontSize = N.sp` literals remain across 30+ files — tokens are landed; screens migrate as they're touched.
+### Round 1 — cheap cleanups, low risk
+
+- **Slice 37 — delete dead card wrappers.** XS. `ui/ExpandableWidgetCard.kt::ExpandableWidgetCard` (NOT the Simple* version — Simple is used by 5 widgets and must stay) and `ui/DashboardWidgetComponents.kt::DashboardWidgetCard` are both uncalled. Re-grep `\bExpandableWidgetCard\b|\bDashboardWidgetCard\b` before deleting to confirm still-zero call sites. Also re-check `EnhancedDashboardWidgetCard` in `DashboardHelpers.kt` — that one IS used (compact LazyColumn quick-actions section).
+- **Slice 38 — collapse redundant widget CTA button.** XS. Slice 36 surfaced "Start next session" at the top of the dashboard, but `SimpleCycleProgressWidgetCard` still has the `if (nextWeek != null && nextSession != null) { ElevatedButton("Start <name>") }` branch (post-slice-36, around `DashboardWidgetCards.kt:621–644`). Drop that branch; keep only the `else` Analytics / "Cycle complete" fallback. **Do slice 38 after a device eyeball of slice 36** so the decision is informed.
+- **Slice 39 — elevation tokens + migrate dashboard cards.** S. `SimpleWelcomeWidgetCard` (line 65) and `SimpleQuickStatsWidgetCard` (line 151) use `defaultElevation = 6.dp`; the other 4 cards (+ slice-36's `NextSessionCtaCard`) use `4.dp`. Add `elevation1 = 2.dp`, `elevation2 = 4.dp`, `elevation3 = 6.dp` to `ui/theme/Dimens.kt`. Pick one (likely `elevation2`) for dashboard cards and migrate all 6 sites in `DashboardWidgetCards.kt`.
+
+### Round 2 — logger polish
+
+- **Slice 40 — CycleContextBanner in tablet logger.** S. `WorkoutLoggerScreens.kt` renders `CycleContextBanner` (Deload / Target-RIR row) only as the first `LazyColumn` item in the compact path. The `MasterDetailWorkoutView` branch explicitly skips it. Wire it into the detail pane so the Z-Fold unfolded deload week is visible during a workout.
+- **Slice 41 — suggestion-chip layout stability in set row.** S. `WorkoutLoggerSetRow.kt` — the slice-19 scheme chip only renders for empty sets. Header Row reflows when the chip appears/disappears during typing, shifting the Delete / Start-Rest buttons under the user's finger. Reserve chip slot height always; hide content only.
+- **Slice 42 — consolidate 12 LaunchedEffect blocks in set row.** S but careful. `WorkoutLoggerSetRow.kt:64–155` has 6 field-debounce effects + 6 field-sync effects, identical shapes per field (weight/reps/secs/rir/bands/notes). Extract a `rememberDebouncedField` helper or use `snapshotFlow { … }.debounce(1000).collect { … }`. Run `:app:testDebugUnitTest` before and after — the 11 `WorkoutLoggerViewModelTest` cases pin the fragile timer/edit/resume transitions and MUST stay green (watch for the known `finishWorkout in edit mode` timing flake at `WorkoutLoggerViewModelTest.kt:193` — rerun once if it fails, it's pre-existing).
+
+### Round 3 — information hierarchy
+
+- **Slice 43 — orphan-workouts summary in history.** S. `HistoryCycleViews.kt` renders ad-hoc logged workouts (those not tied to any cycle) inline under the cycle cards. On an account with many ad-hoc logs they dominate the fold. Collapse into a "N ad-hoc workouts" expandable section — or at minimum a section header so the cycle list stays on top.
+- **Slice 44 — dashboard expandable-widget audit.** M. `SimpleAchievementWidgetCard` and `SimplePerformanceTrendWidgetCard` have collapsed + expanded views that largely duplicate each other. Per-widget decision: either (a) populate expanded views with genuinely new data (multi-month Performance Trends chart, full milestone list on Achievements) or (b) flatten them to single-view cards. Do the decision pass together so the two widgets end up consistent.
+- **Slice 45 — customization-mode overlay.** S. `ui/DashboardScreen.kt::ArrowReorderWidgetCard` overlays a row of reorder arrows + visibility toggle on top of the widget's content (semi-transparent black scrim). Obscures titles during edit mode. Move controls to a bottom-right corner chip or a leading edge-gutter so the card stays readable while reordering.
+
+### Round 4 — opportunistic / deferred
+
+- **Font-size token migration (ongoing).** Per slice 25's working style — touch tokens as screens are edited, no dedicated slice.
+- **Not scheduled:** history single-column vs master-detail path consolidation (M, moderate value — both paths duplicate the view-mode picker), program-editor name-field hoist into TopAppBar (S, aesthetic only).
+
+### Device-verification sweep (non-coding, do any time)
+
+Backlog spans slices 33 / 34 / 35 / 36. Top priority after slice 36: the new CTA on Z-Fold inner + outer, with active cycle + with no active cycle + right after logging the final session (CTA should disappear). Expect to surface minor responsive tweaks.
 
 ---
 
