@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 5 slices 25–37 + 39 — UI/UX/perf overhaul, dead-code cleanup, dashboard elevation token migration: design tokens, ScreenScaffold + follow-ups, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression, truncation sweep, dashboard CTA surfacing, deleted dead card wrappers, dashboard cards now use `Dimens.elevationCardRaised`).
+Last updated: 2026-04-19 (Phase 5 slices 25–37 + 39 + 41 — UI/UX/perf overhaul, dead-code cleanup, dashboard elevation token migration, suggestion-chip slot reservation: design tokens, ScreenScaffold + follow-ups, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression, truncation sweep, dashboard CTA surfacing, deleted dead card wrappers, dashboard cards now use `Dimens.elevationCardRaised`, suggestion-chip slot reserved at fixed height).
 
 ## Next session — start here
 
@@ -16,8 +16,8 @@ Last updated: 2026-04-19 (Phase 5 slices 25–37 + 39 — UI/UX/perf overhaul, d
 
 ### Round 2 — logger polish
 
-- **Slice 40 — CycleContextBanner in tablet logger.** S. `WorkoutLoggerScreens.kt` renders `CycleContextBanner` (Deload / Target-RIR row) only as the first `LazyColumn` item in the compact path. The `MasterDetailWorkoutView` branch explicitly skips it. Wire it into the detail pane so the Z-Fold unfolded deload week is visible during a workout.
-- **Slice 41 — suggestion-chip layout stability in set row.** S. `WorkoutLoggerSetRow.kt` — the slice-19 scheme chip only renders for empty sets. Header Row reflows when the chip appears/disappears during typing, shifting the Delete / Start-Rest buttons under the user's finger. Reserve chip slot height always; hide content only.
+- ~~**Slice 40 — CycleContextBanner in tablet logger.**~~ Already done. The audit was wrong: `MasterDetailWorkoutView` already accepts an optional `contextBanner: (@Composable () -> Unit)?` slot (added during the slice 17/18 master-detail extensions, see `ui/AdaptiveWorkoutComponents.kt:58`) and `WorkoutLoggerScreens.kt:393–406` already passes a `CycleContextBanner` into it gated on `currentCycleWeek?.takeIf { it.isDeloadWeek || !it.targetRir.isNullOrBlank() }`. Verify on-device next time the Z Fold unfolded view shows a deload week — no code change required.
+- ~~**Slice 41 — suggestion-chip layout stability in set row.**~~ Landed 2026-04-19 (see chronological entry below). Wrapped the chip in a `Box(heightIn(min = AssistChipDefaults.Height))`.
 - **Slice 42 — consolidate 12 LaunchedEffect blocks in set row.** S but careful. `WorkoutLoggerSetRow.kt:64–155` has 6 field-debounce effects + 6 field-sync effects, identical shapes per field (weight/reps/secs/rir/bands/notes). Extract a `rememberDebouncedField` helper or use `snapshotFlow { … }.debounce(1000).collect { … }`. Run `:app:testDebugUnitTest` before and after — the 11 `WorkoutLoggerViewModelTest` cases pin the fragile timer/edit/resume transitions and MUST stay green (watch for the known `finishWorkout in edit mode` timing flake at `WorkoutLoggerViewModelTest.kt:193` — rerun once if it fails, it's pre-existing).
 
 ### Round 3 — information hierarchy
@@ -36,6 +36,11 @@ Last updated: 2026-04-19 (Phase 5 slices 25–37 + 39 — UI/UX/perf overhaul, d
 Backlog spans slices 33 / 34 / 35 / 36. Top priority after slice 36: the new CTA on Z-Fold inner + outer, with active cycle + with no active cycle + right after logging the final session (CTA should disappear). Expect to surface minor responsive tweaks.
 
 ---
+
+**Phase 5 slice 41 landed 2026-04-19** (build + JVM tests green on retry; no schema change):
+
+- **Suggestion-chip slot in `WorkoutLoggerSetRow.kt` is now reserved at fixed height.** The slice-19 `AssistChip` only renders when `set.weight == null && set.reps == null` (the smart-pre-fill applies only to empty sets), and toggles off the instant the user types into any field. The previously-conditional chip lived inline in the header `Row`; when the chip vanished mid-typing, the row's content height shrank from chip-height (32dp) toward the row's other intrinsics, shifting trailing Delete / Start-Rest buttons vertically under the user's finger. Wrapping the chip in a `Box(heightIn(min = AssistChipDefaults.Height), contentAlignment = Center)` reserves the slot at the chip's natural height regardless of whether the chip's content is rendered. Padding moved from the chip's own `Modifier.padding(horizontal = 4.dp)` onto the wrapping Box so the slot's horizontal contribution stays consistent too.
+- No new tests (pure UI wiring; chip's logic untouched). JVM count unchanged at 103 — the pre-existing `WorkoutLoggerViewModelTest.finishWorkout in edit mode` timing flake fired on the first run and passed on rerun, as documented.
 
 **Phase 5 slice 39 landed 2026-04-19** (build + JVM tests green; no schema change):
 
