@@ -4,6 +4,7 @@ import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
 import com.kennychiu.myworkoutlog.ui.theme.Dimens
+import com.kennychiu.myworkoutlog.ui.theme.extendedColors
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -179,7 +180,7 @@ fun SimpleQuickStatsWidgetCard(widget: DashboardWidget.QuickStatsWidget) {
                         StatCard(
                             value = widget.currentStreak.toString(),
                             label = "Streak",
-                            color = Color(0xFFFF6B35),
+                            color = MaterialTheme.extendedColors.accent,
                             icon = Icons.Default.LocalFireDepartment,
                             modifier = Modifier.weight(1f)
                         )
@@ -209,7 +210,7 @@ fun SimpleQuickStatsWidgetCard(widget: DashboardWidget.QuickStatsWidget) {
                         StatCard(
                             value = widget.currentStreak.toString(),
                             label = "Streak",
-                            color = Color(0xFFFF6B35),
+                            color = MaterialTheme.extendedColors.accent,
                             icon = Icons.Default.LocalFireDepartment,
                             modifier = Modifier.weight(1f)
                         )
