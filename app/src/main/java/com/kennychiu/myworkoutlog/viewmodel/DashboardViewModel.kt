@@ -281,22 +281,7 @@ class DashboardViewModel(
             }
         }
     }
-    
-    // Debug method to reset dismissed insights for testing
-    fun resetDismissedInsights() {
-        viewModelScope.launch {
-            try {
-                _dashboardPreferences.value = _dashboardPreferences.value.copy(
-                    dismissedInsights = emptySet()
-                )
-                saveDashboardPreferences()
-                refreshDashboard()
-            } catch (e: Exception) {
-                println("Error resetting dismissed insights: ${e.message}")
-            }
-        }
-    }
-    
+
     fun executeInsightAction(insight: SmartInsight, onNavigate: (String) -> Unit) {
         viewModelScope.launch {
             try {

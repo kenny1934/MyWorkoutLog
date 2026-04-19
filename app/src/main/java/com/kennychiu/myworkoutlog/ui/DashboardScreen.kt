@@ -13,7 +13,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
@@ -26,7 +25,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 
@@ -399,46 +397,6 @@ fun AdaptiveDashboardContent(
             .fillMaxSize()
             .padding(layoutInfo.contentPadding)
     ) {
-        // Header with customization toggle
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            var showDebugDialog by remember { mutableStateOf(false) }
-
-            Text(
-                text = "Dashboard",
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.combinedClickable(
-                    onClick = { /* Normal click does nothing */ },
-                    onLongClick = { showDebugDialog = true }
-                )
-            )
-
-            OutlinedButton(
-                onClick = { dashboardViewModel.toggleCustomizationMode() },
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = if (isCustomizationMode)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.onSurface
-                )
-            ) {
-                Icon(
-                    imageVector = if (isCustomizationMode) Icons.Default.Done else Icons.Default.Edit,
-                    contentDescription = if (isCustomizationMode) "Done" else "Customize",
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(if (isCustomizationMode) "Done" else "Edit")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(spacing))
-
         // Persistent next-session CTA — same hoist as the compact path. Sits above the
         // widget grid so "Start next session" is visible without scrolling on tablets too.
         val nextCtaCycle = dashboardState.widgets
@@ -525,11 +483,25 @@ fun EnhancedDashboardScreen(
     var showCompleteCycleConfirmation by remember { mutableStateOf(false) }
     var pendingCompleteCycleAction by remember { mutableStateOf<QuickAction?>(null) }
 
-    PullToRefreshBox(
-        isRefreshing = isRefreshing,
-        onRefresh = { dashboardViewModel.onPullToRefresh() },
-        modifier = Modifier.fillMaxSize()
-    ) {
+    ScreenScaffold(
+        title = "Dashboard",
+        actions = {
+            IconButton(onClick = { dashboardViewModel.toggleCustomizationMode() }) {
+                Icon(
+                    imageVector = if (isCustomizationMode) Icons.Default.Done else Icons.Default.Edit,
+                    contentDescription = if (isCustomizationMode) "Exit customization" else "Customize dashboard",
+                    tint = if (isCustomizationMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    ) { paddingValues ->
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { dashboardViewModel.onPullToRefresh() },
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
         if (layoutInfo.useTwoColumns) {
             // Use adaptive grid layout for large screens
             AdaptiveDashboardContent(
@@ -555,62 +527,6 @@ fun EnhancedDashboardScreen(
                 contentPadding = PaddingValues(layoutInfo.contentPadding),
                 verticalArrangement = Arrangement.spacedBy(spacing)
             ) {
-            // Header with customization toggle
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    var showDebugDialog by remember { mutableStateOf(false) }
-
-                    Text(
-                        text = "Dashboard",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.combinedClickable(
-                            onClick = { /* Normal click does nothing */ },
-                            onLongClick = { showDebugDialog = true }
-                        )
-                    )
-
-                    // Debug Dialog
-                    if (showDebugDialog) {
-                        AlertDialog(
-                            onDismissRequest = { showDebugDialog = false },
-                            title = { Text("Debug Options") },
-                            text = { Text("Reset dismissed insights to show them again for testing?") },
-                            confirmButton = {
-                                TextButton(
-                                    onClick = {
-                                        dashboardViewModel.resetDismissedInsights()
-                                        showDebugDialog = false
-                                    }
-                                ) {
-                                    Text("Reset Insights")
-                                }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showDebugDialog = false }) {
-                                    Text("Cancel")
-                                }
-                            }
-                        )
-                    }
-
-                    IconButton(
-                        onClick = { dashboardViewModel.toggleCustomizationMode() }
-                    ) {
-                        Icon(
-                            imageVector = if (isCustomizationMode) Icons.Default.Done else Icons.Default.Edit,
-                            contentDescription = if (isCustomizationMode) "Exit customization" else "Customize dashboard",
-                            tint = if (isCustomizationMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-
             // Persistent next-session CTA — hoists the "Start next session" action out
             // of SimpleCycleProgressWidgetCard's expanded widget (previously buried 3 taps
             // deep) onto the first scroll line. Rendered only when an active cycle has
@@ -911,6 +827,7 @@ fun EnhancedDashboardScreen(
                     }
                 }
             }
+        }
         }
         }
     }
