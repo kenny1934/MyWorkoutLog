@@ -6,6 +6,7 @@ import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -13,8 +14,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
@@ -43,6 +47,9 @@ fun LoggedSetRow(
     // Get performance suggestion for this exercise (scheme-aware when the template has
     // a progression scheme configured; falls back to legacy "maintain last" otherwise).
     val performanceSuggestion = viewModel.getChipSuggestion(exerciseId, setNumber)
+
+    // Keyboard flow: Weight → Reps → Secs → RIR → Done.
+    val focusManager = LocalFocusManager.current
 
     // Local state holds the text as the user types it.
     var weightText by remember { mutableStateOf(set.weight?.toString() ?: "") }
@@ -248,7 +255,14 @@ fun LoggedSetRow(
                     placeholder = if (targetWeightHint != null) {
                         { Text("→ $targetWeightHint") }
                     } else null,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = { focusManager.moveFocus(FocusDirection.Next) }
+                    ),
+                    singleLine = true,
                     modifier = Modifier
                         .weight(1f)
                         .onFocusChanged { focusState ->
@@ -268,7 +282,14 @@ fun LoggedSetRow(
                             }
                         },
                         label = { Text("Reps") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = { focusManager.moveFocus(FocusDirection.Next) }
+                        ),
+                        singleLine = true,
                         modifier = Modifier
                             .weight(1f)
                             .onFocusChanged { focusState ->
@@ -289,7 +310,14 @@ fun LoggedSetRow(
                             }
                         },
                         label = { Text("Secs") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = { focusManager.moveFocus(FocusDirection.Next) }
+                        ),
+                        singleLine = true,
                         modifier = Modifier
                             .weight(1f)
                             .onFocusChanged { focusState ->
@@ -317,7 +345,14 @@ fun LoggedSetRow(
                     }
                 },
                 label = { Text("RIR") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = { focusManager.clearFocus() }
+                ),
+                singleLine = true,
                 modifier = Modifier
                     .weight(1f)
                     .onFocusChanged { focusState ->

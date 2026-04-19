@@ -6,8 +6,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -21,6 +26,20 @@ fun TimerBar(
     onReset: () -> Unit,
     onAddTime: () -> Unit
 ) {
+    // Fire a haptic pulse the moment the rest timer ticks down to zero.
+    // Tracked via remembered prev value rather than a VM event so the effect stays local
+    // to this composable; the phone is usually on silent in the gym, so haptic is the
+    // only rest-is-over signal that actually reaches the user.
+    val hapticFeedback = LocalHapticFeedback.current
+    val prevTime = remember { mutableIntStateOf(currentTime) }
+    LaunchedEffect(currentTime) {
+        val prev = prevTime.intValue
+        prevTime.intValue = currentTime
+        if (prev > 0 && currentTime == 0) {
+            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+    }
+
     AnimatedVisibility(visible = isRunning || currentTime > 0) {
         BottomAppBar(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
