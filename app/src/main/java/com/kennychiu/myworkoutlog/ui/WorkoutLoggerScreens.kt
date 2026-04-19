@@ -326,7 +326,8 @@ private fun WorkoutLoggerScreenContent(
                     }) {
                         Text(if (isEditMode) "Save Changes" else "Finish")
                     }
-                }
+                },
+                windowInsets = WindowInsets(0)
             )
         },
 

@@ -47,7 +47,8 @@ fun ScreenScaffold(
                         }
                     }
                 },
-                actions = actions
+                actions = actions,
+                windowInsets = WindowInsets(0)
             )
         },
         floatingActionButton = floatingActionButton,

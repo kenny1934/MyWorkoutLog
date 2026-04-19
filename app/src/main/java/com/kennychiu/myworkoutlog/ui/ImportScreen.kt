@@ -56,7 +56,8 @@ fun ImportScreen(
                     IconButton(onClick = onNavigateUp) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                windowInsets = WindowInsets(0)
             )
         },
         contentWindowInsets = WindowInsets(0),

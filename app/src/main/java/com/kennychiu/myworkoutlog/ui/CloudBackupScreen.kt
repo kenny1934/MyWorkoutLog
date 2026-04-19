@@ -80,7 +80,8 @@ private fun CloudBackupSingleColumnView(
                     IconButton(onClick = onNavigateUp) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                windowInsets = WindowInsets(0)
             )
         },
         contentWindowInsets = WindowInsets(0),
@@ -932,7 +933,8 @@ private fun CloudBackupMasterDetailView(
                     IconButton(onClick = onNavigateUp) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                windowInsets = WindowInsets(0)
             )
         },
         contentWindowInsets = WindowInsets(0),

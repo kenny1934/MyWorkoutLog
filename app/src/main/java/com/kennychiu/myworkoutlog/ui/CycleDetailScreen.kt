@@ -47,6 +47,7 @@ fun CycleDetailScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                windowInsets = WindowInsets(0)
             )
         },
         // The outer MainActivity Scaffold already consumes the bottom system-nav-bar

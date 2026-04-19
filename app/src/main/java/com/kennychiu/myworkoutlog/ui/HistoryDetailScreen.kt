@@ -50,7 +50,8 @@ fun HistoryDetailScreen(
                             tint = MaterialTheme.colorScheme.error
                         )
                     }
-                }
+                },
+                windowInsets = WindowInsets(0)
             )
         },
         contentWindowInsets = WindowInsets(0),

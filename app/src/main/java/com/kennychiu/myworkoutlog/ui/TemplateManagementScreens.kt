@@ -1092,7 +1092,8 @@ fun TemplateDetailScreen(
                     }) {
                         Text("Save")
                     }
-                }
+                },
+                windowInsets = WindowInsets(0)
             )
         },
         floatingActionButton = {
