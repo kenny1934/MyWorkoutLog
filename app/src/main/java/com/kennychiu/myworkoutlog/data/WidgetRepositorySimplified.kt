@@ -46,7 +46,6 @@ class WidgetRepositorySimplified(
         widgets.add(DashboardWidget.WelcomeWidget(
             greeting = greeting,
             userName = null,
-            currentStreak = streak,
             motivationalMessage = getMotivationalMessage(streak)
         ))
         

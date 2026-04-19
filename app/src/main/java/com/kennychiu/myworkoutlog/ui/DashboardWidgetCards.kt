@@ -107,33 +107,6 @@ fun SimpleWelcomeWidgetCard(widget: DashboardWidget.WelcomeWidget) {
                     maxLines = if (isCompactMode) 3 else 4,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (widget.currentStreak > 0) {
-                    Spacer(modifier = Modifier.height(if (isCompactMode) 12.dp else 16.dp))
-                    Surface(
-                        shape = RoundedCornerShape(if (isCompactMode) 16.dp else 20.dp),
-                        color = Color(0xFFFF6B35).copy(alpha = 0.15f),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = if (isCompactMode) "🔥 ${widget.currentStreak} days" else "🔥 ${widget.currentStreak} day streak - You're on fire!",
-                            fontSize = adaptiveTextSize(
-                                baseSize = MaterialTheme.typography.labelLarge.fontSize,
-                                compactMultiplier = 0.85f,
-                                mediumMultiplier = 0.9f,
-                                expandedMultiplier = 1f
-                            ),
-                            color = Color(0xFFFF6B35),
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(
-                                horizontal = if (isCompactMode) 12.dp else 16.dp,
-                                vertical = if (isCompactMode) 6.dp else 8.dp
-                            ),
-                            textAlign = TextAlign.Center,
-                            maxLines = if (isCompactMode) 2 else 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
             }
         }
     }

@@ -42,7 +42,6 @@ sealed class DashboardWidget(
     data class WelcomeWidget(
         val greeting: String,
         val userName: String?,
-        val currentStreak: Int,
         val motivationalMessage: String
     ) : DashboardWidget("welcome", "Welcome", 1)
     
