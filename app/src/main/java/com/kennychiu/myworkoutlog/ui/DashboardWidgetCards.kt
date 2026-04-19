@@ -3,6 +3,7 @@ package com.kennychiu.myworkoutlog.ui
 import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
+import com.kennychiu.myworkoutlog.ui.theme.Dimens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -62,7 +63,7 @@ fun SimpleWelcomeWidgetCard(widget: DashboardWidget.WelcomeWidget) {
                 scaleX = animatedScale,
                 scaleY = animatedScale
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCardRaised),
         shape = RoundedCornerShape(16.dp)
     ) {
         Box(
@@ -148,7 +149,7 @@ fun SimpleQuickStatsWidgetCard(widget: DashboardWidget.QuickStatsWidget) {
     Card(
         modifier = Modifier
             .fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCardRaised),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
@@ -327,7 +328,7 @@ fun SimpleBodyweightWidgetCard(
     Card(
         modifier = Modifier
             .fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCardRaised)
     ) {
         Column(modifier = Modifier.padding(adaptiveContentPadding())) {
             Text(
@@ -421,7 +422,7 @@ fun NextSessionCtaCard(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCardRaised)
     ) {
         Row(
             modifier = Modifier
@@ -515,7 +516,7 @@ fun SimpleCycleProgressWidgetCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { navController.navigate(Screen.CycleDetail.route) },
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCardRaised)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -793,7 +794,7 @@ fun SimpleActivityHeatmapWidgetCard(widget: DashboardWidget.ActivityHeatmapWidge
 fun SimpleBodyweightTrendWidgetCard(widget: DashboardWidget.BodyweightTrendWidget) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCardRaised)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
