@@ -51,106 +51,42 @@ fun LoggedSetRow(
     // Keyboard flow: Weight → Reps → Secs → RIR → Done.
     val focusManager = LocalFocusManager.current
 
-    // Local state holds the text as the user types it.
-    var weightText by remember { mutableStateOf(set.weight?.toString() ?: "") }
-    var repsText by remember { mutableStateOf(set.reps?.toString() ?: "") }
-    var secsText by remember { mutableStateOf(set.secs?.toString() ?: "") }
-    var rirText by remember { mutableStateOf(set.rir?.toString() ?: "") }
-    var bandsText by remember { mutableStateOf(set.bands ?: "") }
-    var notesText by remember { mutableStateOf(set.notes ?: "") }
+    // Each field is backed by a debounced text state: local edits flush to the
+    // callback after 1s of quiet, and external changes to the underlying set
+    // sync back into the local text. See rememberDebouncedField below.
+    var weightText by rememberDebouncedField(
+        source = set.weight?.toString() ?: "",
+        onDebouncedChange = { onWeightChange(it.toDoubleOrNull()) },
+    )
+    var repsText by rememberDebouncedField(
+        source = set.reps?.toString() ?: "",
+        onDebouncedChange = onRepsChange,
+    )
+    var secsText by rememberDebouncedField(
+        source = set.secs?.toString() ?: "",
+        onDebouncedChange = onSecsChange,
+    )
+    var rirText by rememberDebouncedField(
+        source = set.rir?.toString() ?: "",
+        onDebouncedChange = onRirChange,
+    )
+    var bandsText by rememberDebouncedField(
+        source = set.bands ?: "",
+        onDebouncedChange = onBandsChange,
+    )
+    var notesText by rememberDebouncedField(
+        source = set.notes ?: "",
+        onDebouncedChange = onNotesChange,
+    )
     var showNotes by remember { mutableStateOf(false) }
 
-    // Debounced auto-save for critical fields to handle active typing scenario
-    LaunchedEffect(notesText) {
-        if (notesText != (set.notes ?: "")) {
-            kotlinx.coroutines.delay(1000) // 1 second debounce
-            onNotesChange(notesText)
-        }
-    }
-
-    LaunchedEffect(bandsText) {
-        if (bandsText != (set.bands ?: "")) {
-            kotlinx.coroutines.delay(1000) // 1 second debounce
-            onBandsChange(bandsText)
-        }
-    }
-
-    LaunchedEffect(rirText) {
-        if (rirText != (set.rir?.toString() ?: "")) {
-            kotlinx.coroutines.delay(1000) // 1 second debounce
-            onRirChange(rirText)
-        }
-    }
-
-    // Debounced auto-save for core fields as well
-    LaunchedEffect(weightText) {
-        if (weightText != (set.weight?.toString() ?: "")) {
-            kotlinx.coroutines.delay(1000) // 1 second debounce
-            onWeightChange(weightText.toDoubleOrNull())
-        }
-    }
-
-    LaunchedEffect(repsText) {
-        if (repsText != (set.reps?.toString() ?: "")) {
-            kotlinx.coroutines.delay(1000) // 1 second debounce
-            onRepsChange(repsText)
-        }
-    }
-
-    LaunchedEffect(secsText) {
-        if (secsText != (set.secs?.toString() ?: "")) {
-            kotlinx.coroutines.delay(1000) // 1 second debounce
-            onSecsChange(secsText)
-        }
-    }
-
-    // Function to save all current field values
     fun saveAllCurrentValues() {
         onSetUpdate(repsText, weightText.toDoubleOrNull(), secsText, rirText, bandsText, notesText)
     }
 
-    // Save current values when component is disposed (e.g., when navigating away)
     DisposableEffect(Unit) {
         onDispose {
             saveAllCurrentValues()
-        }
-    }
-
-    // This ensures if the underlying data changes from elsewhere, our text fields update.
-    LaunchedEffect(set.weight) {
-        val currentWeightString = set.weight?.toString() ?: ""
-        if (weightText != currentWeightString) {
-            weightText = currentWeightString
-        }
-    }
-    LaunchedEffect(set.reps) {
-        val currentRepsString = set.reps?.toString() ?: ""
-        if (repsText != currentRepsString) {
-            repsText = currentRepsString
-        }
-    }
-    LaunchedEffect(set.secs) {
-        val currentSecsString = set.secs?.toString() ?: ""
-        if (secsText != currentSecsString) {
-            secsText = currentSecsString
-        }
-    }
-    LaunchedEffect(set.rir) {
-        val currentRirString = set.rir?.toString() ?: ""
-        if (rirText != currentRirString) {
-            rirText = currentRirString
-        }
-    }
-    LaunchedEffect(set.bands) {
-        val currentBandsString = set.bands ?: ""
-        if (bandsText != currentBandsString) {
-            bandsText = currentBandsString
-        }
-    }
-    LaunchedEffect(set.notes) {
-        val currentNotesString = set.notes ?: ""
-        if (notesText != currentNotesString) {
-            notesText = currentNotesString
         }
     }
 
@@ -428,4 +364,24 @@ fun LoggedSetRow(
             )
         }
     }
+}
+
+@Composable
+private fun rememberDebouncedField(
+    source: String,
+    onDebouncedChange: (String) -> Unit,
+): MutableState<String> {
+    val state = remember { mutableStateOf(source) }
+    LaunchedEffect(state.value) {
+        if (state.value != source) {
+            kotlinx.coroutines.delay(1000)
+            onDebouncedChange(state.value)
+        }
+    }
+    LaunchedEffect(source) {
+        if (state.value != source) {
+            state.value = source
+        }
+    }
+    return state
 }
