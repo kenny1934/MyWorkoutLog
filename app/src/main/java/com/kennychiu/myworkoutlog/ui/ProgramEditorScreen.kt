@@ -101,73 +101,25 @@ fun ProgramEditorScreen(
                 state = lazyListState,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                itemsIndexed(editedWeeks, key = { _, w -> w.id }) { index, week ->
+                itemsIndexed(editedWeeks, key = { _, w -> w.id }) { _, week ->
                     ReorderableItem(reorderState, key = week.id) { _ ->
-                        val canMoveUp = index > 0
-                        val canMoveDown = index < editedWeeks.size - 1
                         Card(elevation = CardDefaults.cardElevation(2.dp)) {
                             Column(Modifier.padding(16.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Column {
-                                        IconButton(
-                                            onClick = {},
-                                            modifier = Modifier.size(24.dp).draggableHandle()
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.DragHandle,
-                                                contentDescription = "Drag to reorder week",
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(16.dp)
-                                            )
+                                WeekCardHeader(
+                                    week = week,
+                                    onLabelChange = { newLabel ->
+                                        editedWeeks = editedWeeks.map {
+                                            if (it.id == week.id) it.copy(weekLabel = newLabel) else it
                                         }
-                                        IconButton(
-                                            onClick = { editedWeeks = moveWeek(editedWeeks, index, index - 1) },
-                                            enabled = canMoveUp,
-                                            modifier = Modifier.size(24.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.KeyboardArrowUp,
-                                                contentDescription = "Move week up",
-                                                tint = if (canMoveUp) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                        IconButton(
-                                            onClick = { editedWeeks = moveWeek(editedWeeks, index, index + 1) },
-                                            enabled = canMoveDown,
-                                            modifier = Modifier.size(24.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.KeyboardArrowDown,
-                                                contentDescription = "Move week down",
-                                                tint = if (canMoveDown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                    }
-                                    Spacer(Modifier.width(8.dp))
-                                    OutlinedTextField(
-                                        value = week.weekLabel,
-                                        onValueChange = { newLabel ->
-                                            editedWeeks = editedWeeks.map {
-                                                if (it.id == week.id) it.copy(weekLabel = newLabel) else it
-                                            }
-                                        },
-                                        label = { Text("Week Label") },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    IconButton(onClick = {
+                                    },
+                                    onDuplicate = {
                                         editedWeeks = duplicateWeekInto(editedWeeks, week)
-                                    }) {
-                                        Icon(Icons.Default.ContentCopy, contentDescription = "Duplicate Week")
-                                    }
-                                    IconButton(onClick = {
+                                    },
+                                    onDelete = {
                                         editedWeeks = editedWeeks.filter { it.id != week.id }
-                                    }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Delete Week")
                                     }
-                                }
-                                Spacer(Modifier.height(4.dp))
+                                )
+                                Spacer(Modifier.height(12.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     FilterChip(
                                         selected = week.isDeloadWeek,
@@ -223,14 +175,6 @@ fun ProgramEditorScreen(
                                                 session = session,
                                                 template = allWorkoutTemplates.find { it.id == session.workoutTemplateId },
                                                 allTemplates = allWorkoutTemplates,
-                                                canMoveUp = sIndex > 0,
-                                                canMoveDown = sIndex < sortedSessions.size - 1,
-                                                onMoveUp = {
-                                                    editedWeeks = moveSessionWithinWeek(editedWeeks, week.id, sIndex, sIndex - 1)
-                                                },
-                                                onMoveDown = {
-                                                    editedWeeks = moveSessionWithinWeek(editedWeeks, week.id, sIndex, sIndex + 1)
-                                                },
                                                 onSessionUpdated = { updatedSession ->
                                                     editedWeeks = editedWeeks.map { w ->
                                                         if (w.id == week.id) {
@@ -328,10 +272,6 @@ fun SessionCard(
     allTemplates: List<WorkoutTemplate>,
     onSessionUpdated: (ProgramSessionDefinition) -> Unit,
     onSessionDeleted: (ProgramSessionDefinition) -> Unit,
-    canMoveUp: Boolean = false,
-    canMoveDown: Boolean = false,
-    onMoveUp: (() -> Unit)? = null,
-    onMoveDown: (() -> Unit)? = null,
     otherWeeks: List<ProgramWeekDefinition> = emptyList(),
     onMoveToWeek: ((targetWeekId: String) -> Unit)? = null,
     dragHandle: (@Composable () -> Unit)? = null
@@ -340,6 +280,7 @@ fun SessionCard(
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showMoveDialog by remember { mutableStateOf(false) }
     var showTemplateDropdown by remember { mutableStateOf(false) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -354,40 +295,12 @@ fun SessionCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Arrow + drag reordering
-            Column {
-                if (dragHandle != null) {
-                    dragHandle()
-                }
-                IconButton(
-                    onClick = { onMoveUp?.invoke() },
-                    enabled = canMoveUp,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowUp,
-                        contentDescription = "Move up",
-                        tint = if (canMoveUp) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-                IconButton(
-                    onClick = { onMoveDown?.invoke() },
-                    enabled = canMoveDown,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Move down",
-                        tint = if (canMoveDown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+            if (dragHandle != null) {
+                dragHandle()
+                Spacer(modifier = Modifier.width(8.dp))
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // Session order number
+            // Session order badge
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.primary,
@@ -405,15 +318,12 @@ fun SessionCard(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Session content
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = session.sessionName,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
-
-                // Template name
                 Text(
                     text = template?.name ?: "Unknown Template",
                     style = MaterialTheme.typography.bodySmall,
@@ -422,8 +332,6 @@ fun SessionCard(
                     else MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(top = 2.dp)
                 )
-
-                // Exercise count
                 if (template != null) {
                     Text(
                         text = "${template.templateExercises.size} exercises",
@@ -434,47 +342,59 @@ fun SessionCard(
                 }
             }
 
-            // Action buttons - simplified layout
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                if (onMoveToWeek != null && otherWeeks.isNotEmpty()) {
-                    IconButton(
-                        onClick = { showMoveDialog = true },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SwapHoriz,
-                            contentDescription = "Move session to another week",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-
-                // Edit button
-                IconButton(
-                    onClick = { showEditDialog = true },
-                    modifier = Modifier.size(32.dp)
-                ) {
+            // Single overflow menu collapses the old Edit + Move + Delete icon row.
+            Box {
+                IconButton(onClick = { showOverflowMenu = true }) {
                     Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit Session",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "Session options",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-
-                // Delete button
-                IconButton(
-                    onClick = { showDeleteConfirmation = true },
-                    modifier = Modifier.size(32.dp)
+                DropdownMenu(
+                    expanded = showOverflowMenu,
+                    onDismissRequest = { showOverflowMenu = false }
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete Session",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(16.dp)
+                    DropdownMenuItem(
+                        text = { Text("Edit") },
+                        onClick = {
+                            showOverflowMenu = false
+                            showEditDialog = true
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Outlined.Edit, contentDescription = null)
+                        }
+                    )
+                    if (onMoveToWeek != null && otherWeeks.isNotEmpty()) {
+                        DropdownMenuItem(
+                            text = { Text("Move to another week") },
+                            onClick = {
+                                showOverflowMenu = false
+                                showMoveDialog = true
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.SwapHoriz, contentDescription = null)
+                            }
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "Delete",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        onClick = {
+                            showOverflowMenu = false
+                            showDeleteConfirmation = true
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Outlined.Delete,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
                     )
                 }
             }
@@ -717,81 +637,25 @@ fun EnhancedProgramEditor(
             verticalArrangement = Arrangement.spacedBy(workoutElementSpacing()),
             modifier = Modifier.weight(1f)
         ) {
-            itemsIndexed(editedWeeks, key = { _, w -> w.id }) { index, week ->
+            itemsIndexed(editedWeeks, key = { _, w -> w.id }) { _, week ->
                 ReorderableItem(enhancedReorderState, key = week.id) { _ ->
-                    val canMoveUp = index > 0
-                    val canMoveDown = index < editedWeeks.size - 1
                     Card(elevation = CardDefaults.cardElevation(2.dp)) {
                         Column(Modifier.padding(16.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Column {
-                                    IconButton(
-                                        onClick = {},
-                                        modifier = Modifier.size(24.dp).draggableHandle()
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.DragHandle,
-                                            contentDescription = "Drag to reorder week",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(16.dp)
-                                        )
+                            WeekCardHeader(
+                                week = week,
+                                onLabelChange = { newLabel ->
+                                    editedWeeks = editedWeeks.map {
+                                        if (it.id == week.id) it.copy(weekLabel = newLabel) else it
                                     }
-                                    IconButton(
-                                        onClick = { editedWeeks = moveWeek(editedWeeks, index, index - 1) },
-                                        enabled = canMoveUp,
-                                        modifier = Modifier.size(24.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.KeyboardArrowUp,
-                                            contentDescription = "Move week up",
-                                            tint = if (canMoveUp) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = { editedWeeks = moveWeek(editedWeeks, index, index + 1) },
-                                        enabled = canMoveDown,
-                                        modifier = Modifier.size(24.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.KeyboardArrowDown,
-                                            contentDescription = "Move week down",
-                                            tint = if (canMoveDown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
+                                },
+                                onDuplicate = {
+                                    editedWeeks = duplicateWeekInto(editedWeeks, week)
+                                },
+                                onDelete = {
+                                    editedWeeks = editedWeeks.filter { it.id != week.id }
                                 }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                OutlinedTextField(
-                                    value = week.weekLabel,
-                                    onValueChange = { newLabel ->
-                                        editedWeeks = editedWeeks.map {
-                                            if (it.id == week.id) it.copy(weekLabel = newLabel) else it
-                                        }
-                                    },
-                                    label = { Text("Week Label") },
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                IconButton(
-                                    onClick = {
-                                        editedWeeks = duplicateWeekInto(editedWeeks, week)
-                                    },
-                                    modifier = Modifier.size(workoutTouchTargetSize())
-                                ) {
-                                    Icon(Icons.Default.ContentCopy, contentDescription = "Duplicate Week")
-                                }
-                                IconButton(
-                                    onClick = {
-                                        editedWeeks = editedWeeks.filter { it.id != week.id }
-                                    },
-                                    modifier = Modifier.size(workoutTouchTargetSize())
-                                ) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete Week")
-                                }
-                            }
-
-                            Spacer(Modifier.height(8.dp))
+                            )
+                            Spacer(Modifier.height(12.dp))
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 FilterChip(
@@ -850,14 +714,6 @@ fun EnhancedProgramEditor(
                                             session = session,
                                             template = allTemplates.find { it.id == session.workoutTemplateId },
                                             allTemplates = allTemplates,
-                                            canMoveUp = sIndex > 0,
-                                            canMoveDown = sIndex < sortedSessions.size - 1,
-                                            onMoveUp = {
-                                                editedWeeks = moveSessionWithinWeek(editedWeeks, week.id, sIndex, sIndex - 1)
-                                            },
-                                            onMoveDown = {
-                                                editedWeeks = moveSessionWithinWeek(editedWeeks, week.id, sIndex, sIndex + 1)
-                                            },
                                             onSessionUpdated = { updatedSession ->
                                                 editedWeeks = editedWeeks.map { w ->
                                                     if (w.id == week.id) {
@@ -971,5 +827,86 @@ fun EnhancedProgramEditor(
                 TextButton(onClick = { showAddSessionDialog = null }) { Text("Cancel") }
             }
         )
+    }
+}
+
+/**
+ * Week-card header row: drag handle + label field + overflow menu (Duplicate / Delete).
+ * Up/down arrow buttons removed — the drag handle covers ordering and kept alongside them was
+ * just noise. Must be invoked inside a `ReorderableCollectionItemScope` so `draggableHandle()`
+ * resolves.
+ */
+@Composable
+private fun sh.calvin.reorderable.ReorderableCollectionItemScope.WeekCardHeader(
+    week: ProgramWeekDefinition,
+    onLabelChange: (String) -> Unit,
+    onDuplicate: () -> Unit,
+    onDelete: () -> Unit
+) {
+    var showOverflowMenu by remember { mutableStateOf(false) }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(
+            onClick = {},
+            modifier = Modifier.size(24.dp).draggableHandle()
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.DragHandle,
+                contentDescription = "Drag to reorder week",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        OutlinedTextField(
+            value = week.weekLabel,
+            onValueChange = onLabelChange,
+            label = { Text("Week Label") },
+            singleLine = true,
+            modifier = Modifier.weight(1f)
+        )
+        Box {
+            IconButton(onClick = { showOverflowMenu = true }) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "Week options",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            DropdownMenu(
+                expanded = showOverflowMenu,
+                onDismissRequest = { showOverflowMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Duplicate Week") },
+                    onClick = {
+                        showOverflowMenu = false
+                        onDuplicate()
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Default.ContentCopy, contentDescription = null)
+                    }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            "Delete Week",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    },
+                    onClick = {
+                        showOverflowMenu = false
+                        onDelete()
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                )
+            }
+        }
     }
 }
