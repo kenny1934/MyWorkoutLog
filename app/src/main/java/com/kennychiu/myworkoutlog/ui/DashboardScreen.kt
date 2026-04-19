@@ -94,63 +94,58 @@ fun ArrowReorderWidgetCard(
             is DashboardWidget.AchievementWidget -> SimpleAchievementWidgetCard(widget)
             }
 
-            // Customization overlay (only show in customization mode)
+            // Customization controls — compact chip pinned to bottom-end so the
+            // widget's own title and content stay readable while the user is
+            // reordering / toggling visibility.
             if (isCustomizationMode) {
-                Row(
+                Surface(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Color.Black.copy(alpha = 0.3f),
-                            RoundedCornerShape(12.dp)
-                        )
+                        .align(Alignment.BottomEnd)
                         .padding(8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                    tonalElevation = 4.dp,
+                    shadowElevation = 4.dp,
                 ) {
-                    // Reorder arrow buttons
-                    Column {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         IconButton(
                             onClick = onMoveUp,
                             enabled = canMoveUp,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(36.dp),
                         ) {
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowUp,
                                 contentDescription = "Move up",
                                 tint = if (canMoveUp) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(20.dp),
                             )
                         }
                         IconButton(
                             onClick = onMoveDown,
                             enabled = canMoveDown,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(36.dp),
                         ) {
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowDown,
                                 contentDescription = "Move down",
                                 tint = if (canMoveDown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(20.dp),
                             )
                         }
-                    }
-
-                    Text(
-                        text = widget.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f).padding(horizontal = 16.dp)
-                    )
-
-                    // Visibility toggle
-                    IconButton(
-                        onClick = { onToggleVisibility(widget.id) }
-                    ) {
-                        Icon(
-                            imageVector = if (isWidgetVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                            contentDescription = if (isWidgetVisible) "Hide widget" else "Show widget",
-                            tint = if (isWidgetVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                        )
+                        IconButton(
+                            onClick = { onToggleVisibility(widget.id) },
+                            modifier = Modifier.size(36.dp),
+                        ) {
+                            Icon(
+                                imageVector = if (isWidgetVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = if (isWidgetVisible) "Hide widget" else "Show widget",
+                                tint = if (isWidgetVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
                     }
                 }
             }
