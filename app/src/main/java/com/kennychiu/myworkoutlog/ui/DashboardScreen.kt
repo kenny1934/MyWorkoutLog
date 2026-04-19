@@ -168,31 +168,8 @@ fun AdaptiveWidgetGrid(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(spacing)
     ) {
-        // High priority insights (same as compact mode)
-        val urgentInsights = insights.filter {
-            it.priority == InsightPriority.URGENT || it.priority == InsightPriority.HIGH
-        }
-        items(urgentInsights, key = { it.id }) { insight ->
-            Box(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                EnhancedInsightCard(
-                    insight = insight,
-                    onDismiss = { insightId -> dashboardViewModel.dismissInsight(insightId) },
-                    onAction = { insight ->
-                        dashboardViewModel.executeInsightAction(insight) { route ->
-                            navController.navigate(route)
-                        }
-                    }
-                )
-            }
-        }
-
-        // Low priority insights (same as compact mode)
-        val lowPriorityInsights = insights.filter {
-            it.priority == InsightPriority.LOW || it.priority == InsightPriority.MEDIUM
-        }
-        items(lowPriorityInsights, key = { it.id }) { insight ->
+        // Insights — single priority-sorted stream (URGENT → HIGH → MEDIUM → LOW)
+        items(insights.sortedByDescending { it.priority }, key = { it.id }) { insight ->
             Box(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -608,11 +585,11 @@ fun EnhancedDashboardScreen(
 
             // Content (when not loading)
             if (!isLoading) {
-                // High priority insights
-                val urgentInsights = dashboardState.insights.filter {
-                    it.priority == InsightPriority.URGENT || it.priority == InsightPriority.HIGH
-                }
-                items(urgentInsights, key = { it.id }) { insight ->
+                // Insights — single priority-sorted stream (URGENT → HIGH → MEDIUM → LOW)
+                items(
+                    dashboardState.insights.sortedByDescending { it.priority },
+                    key = { it.id }
+                ) { insight ->
                     EnhancedInsightCard(
                         insight = insight,
                         onDismiss = { insightId -> dashboardViewModel.dismissInsight(insightId) },
@@ -765,32 +742,6 @@ fun EnhancedDashboardScreen(
                     }
                 }
 
-                // Low priority insights
-                val lowPriorityInsights = dashboardState.insights.filter {
-                    it.priority == InsightPriority.LOW || it.priority == InsightPriority.MEDIUM
-                }
-                if (lowPriorityInsights.isNotEmpty()) {
-                    item {
-                        EnhancedDashboardWidgetCard(
-                        title = "Insights",
-                        icon = Icons.Default.Lightbulb
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            lowPriorityInsights.forEach { insight ->
-                                EnhancedInsightCard(
-                                    insight = insight,
-                                    onDismiss = { insightId -> dashboardViewModel.dismissInsight(insightId) },
-                                    onAction = { insight ->
-                                        dashboardViewModel.executeInsightAction(insight) { route ->
-                                            navController.navigate(route)
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                        }
-                    }
-                }
             }
         }
         }
