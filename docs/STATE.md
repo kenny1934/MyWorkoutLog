@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-20 (Phase 5 slice 54 — Round D #13 of the dashboard audit landed: trend up/down color literals (`0xFF4CAF50` green / `0xFFF44336` red) in `TrendIndicator` and `SimpleBodyweightTrendWidgetCard`'s change row now use `MaterialTheme.extendedColors.success` + `MaterialTheme.colorScheme.error`. Four sites migrated. Audit scope held — the `SessionDifficulty` 4-color ramp (which also uses those two literals among four) is left intact; migrating only the green/red while leaving MODERATE/HARD amber/orange literals would split the ramp. Prior entries: slice 53 (Round F #17, widget empty-state copy unified), slice 52 (Round E #15, tablet error Retry now matches compact), slice 51 (Round D #12, streak orange → `extendedColors.accent`), slice 50 (Round C #9/#10/#11, ScreenScaffold migration + unified Edit/Done IconButton + debug-gesture delete), slice 49 (Round A #2, Bodyweight simple card deleted), slice 48 (Round A #1, Welcome streak badge removed), slice 47 (Round A #3, NextSession widget simplified), slice 46 (Round B, four dead composables). Earlier: dashboard UI/UX audit → `docs/DASHBOARD_AUDIT.md`; Phase 5 slices 25–45).
+Last updated: 2026-04-20 (Phase 5 slice 55 — Round F #16 of the dashboard audit landed: the static three-dots + arrow "scroll indicator" under the compact-path Quick Actions LazyRow is deleted. It only rendered when `quickActions.size > 3`, was not tied to scroll position, and duplicated signal the LazyRow's own edge clipping already provides. The wrapping `Column` became redundant (LazyRow is now the sole child of `EnhancedDashboardWidgetCard("Quick Actions")`'s slot lambda) and is gone with it; orphan imports `CircleShape` + `ArrowForward` also dropped. Net -35 LOC. Prior entries: slice 54 (Round D #13, trend up/down colors → success / error), slice 53 (Round F #17, widget empty-state copy unified), slice 52 (Round E #15, tablet error Retry now matches compact), slice 51 (Round D #12, streak orange → `extendedColors.accent`), slice 50 (Round C #9/#10/#11, ScreenScaffold migration + unified Edit/Done IconButton + debug-gesture delete), slice 49 (Round A #2, Bodyweight simple card deleted), slice 48 (Round A #1, Welcome streak badge removed), slice 47 (Round A #3, NextSession widget simplified), slice 46 (Round B, four dead composables). Earlier: dashboard UI/UX audit → `docs/DASHBOARD_AUDIT.md`; Phase 5 slices 25–45).
 
 ## Next session — start here
 
@@ -15,7 +15,7 @@ Recommended order:
 3. ~~**Round A #1 (S)**~~ — Landed 2026-04-20 as slice 48. See chronological entry below.
 4. ~~**Round A #2 (S)**~~ — Landed 2026-04-20 as slice 49 (user picked: delete outright). See chronological entry below.
 5. ~~**Round C #9 (M)**~~ — Landed 2026-04-20 as slice 50, bundled with **C #10** (customization toggle now lives in the TopAppBar `actions` slot — single style across both paths) and **C #11** (long-press debug-reset gesture deleted along with the inline title). See chronological entry below.
-6. **Rounds D / E / F** — opportunistic, pick one per session as the area is touched. ~~D #12~~ slice 51. ~~E #15~~ slice 52. ~~F #17~~ slice 53. ~~D #13~~ slice 54. Two findings left: E #14 (S, insights consolidation), F #16 (S, quick-actions scroll indicator). F #18 flagged only. A #4 ("Active Cycle" parent widget, M) is also on the table now that A #1–3 landed.
+6. **Rounds D / E / F** — opportunistic, pick one per session as the area is touched. ~~D #12~~ slice 51. ~~E #15~~ slice 52. ~~F #17~~ slice 53. ~~D #13~~ slice 54. ~~F #16~~ slice 55. One finding left: **E #14 (S, insights consolidation)**. F #18 flagged only (design call). A #4 ("Active Cycle" parent widget, M) is on the table now that A #1–3 landed.
 
 Older slice plan (slices 37–45) is complete. Entries kept below for history.
 
@@ -36,6 +36,14 @@ Older slice plan (slices 37–45) is complete. Entries kept below for history.
 Backlog spans slices 33–45. Highest priority: slice 36 CTA on Z-Fold inner + outer (active cycle / no active cycle / right after final session logged → CTA should disappear). Then slices 42–45 in order.
 
 ---
+
+**Phase 5 slice 55 landed 2026-04-20** (build + JVM tests green; no schema change):
+
+- **Quick Actions "scroll indicator" deleted (Round F #16).** The block that rendered three static dots + a right-arrow under the compact-path Quick Actions LazyRow (only when `dashboardState.quickActions.size > 3`) was never tied to scroll position — it was a purely decorative "there is more to the right" hint. The audit's two options were "replace with a real page indicator" (would need `lazyListState` snapshot plumbing) or "drop entirely". Went with drop: the LazyRow's own edge clipping already signals overflow, and static dots that don't move are worse than no indicator (they suggest a page count that doesn't exist).
+- **Wrapping `Column` went with it.** After the indicator block went, the `Column { LazyRow(…) … indicator }` around the LazyRow had a single child and was redundant. The LazyRow is now the direct child of `EnhancedDashboardWidgetCard("Quick Actions")`'s slot lambda.
+- **Two orphan imports dropped.** `androidx.compose.foundation.shape.CircleShape` (only used for the dot `Box.background(shape = CircleShape)`) and `androidx.compose.material.icons.automirrored.filled.ArrowForward` (only used for the right-arrow Icon). Both became unused after the deletion; removed.
+- **Tablet path already had no indicator.** `AdaptiveDashboardContent`'s own Quick Actions LazyRow at `DashboardScreen.kt:220` has always had no indicator — so there's no parallel deletion, just the one compact-path block.
+- Net -35 LOC in `DashboardScreen.kt` (17 insertions / 52 deletions from the rewrap + block deletion + import prune). JVM test count unchanged at 103.
 
 **Phase 5 slice 54 landed 2026-04-20** (build + JVM tests green; no schema change):
 
