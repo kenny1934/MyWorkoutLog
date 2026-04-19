@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 4 slice 20 — true drag-reorder for weeks and sessions).
+Last updated: 2026-04-19 (Phase 4 slices 21 + 22 — AnalyticsViewModel OptIn cleanup and AndroidHttp → NetHttpTransport).
 
 ## Next session — start here
 
@@ -43,6 +43,15 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 - Secondary fix on the compact WorkoutLogger `LazyColumn`: `.padding(paddingValues).padding(16.dp)` → `.padding(paddingValues)` with `contentPadding = PaddingValues(16.dp)`. This lets the last set scroll fully into view instead of being pinned inside a shrunk viewport. Same anti-pattern also exists in several other screens' `Column(.padding(paddingValues).padding(16.dp))` wrappers but isn't clipping anything visible there (Columns aren't scrollable), so left alone.
 - Dashboard compact-layout `LazyColumn`: `.padding(layoutInfo.contentPadding)` → `contentPadding = PaddingValues(layoutInfo.contentPadding)` so widgets scroll through the bottom padding instead of the whole list being pinned.
 - JVM tests still 36; no new tests (layout bug).
+
+**Phase 4 slice 22 landed 2026-04-19** (build + JVM tests green; no schema change):
+- `data/GoogleDriveCloudProvider.kt` migrated off the deprecated `com.google.api.client.extensions.android.http.AndroidHttp` wrapper. `AndroidHttp.newCompatibleTransport()` at the `Drive.Builder` call site is now `NetHttpTransport()` (from `com.google.api.client.http.javanet.NetHttpTransport`). Single call site; import swap + one-line constructor swap. `google-http-client-android` already pulled this transport in transitively, so no dependency change.
+- Removes the last two non-Compose deprecation warnings from the build. Remaining warnings are all in `ImportRepository` (unchecked Gson `Map<String, Any>` casts) and one always-true instance check in `CloudBackupRepository` — both out of scope.
+- Behaviour parity: `NetHttpTransport` is the standard JVM/Android HTTP transport Google recommends since `AndroidHttp` was deprecated. The only thing `AndroidHttp.newCompatibleTransport()` did on modern Android was return `NetHttpTransport` anyway (the Gingerbread branch it once had is long gone).
+
+**Phase 4 slice 21 landed 2026-04-19** (build + JVM tests green; no schema change):
+- `viewmodel/AnalyticsViewModel.kt` gets a file-level `@file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)`. Covers all six `flatMapLatest` call sites in one annotation — silences the six opt-in warnings the build had been carrying since the ViewModel was first written.
+- No behaviour change, no new tests. Last Kotlin opt-in warning in the project.
 
 **Phase 4 slice 20 landed 2026-04-19** (build + JVM tests green; no schema change):
 - Added `sh.calvin.reorderable:reorderable:3.0.0` in `gradle/libs.versions.toml` and `app/build.gradle.kts`.
@@ -306,7 +315,9 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-19, slice 18): per-exercise progression scheme (LINEAR/DOUBLE/RPE/TOP_SET/NONE) + optional per-scheme params on `TemplateExercise`. Fourth real Room migration (v24 → v25, no-op). Template editor picker, template preview hint, and workout logger passive hint on both layouts. Pure `util/ProgressionHint.kt::formatProgressionHint` with 15 JVM tests. Smart-pre-fill chip stays scheme-agnostic in this slice; slice 19 makes it scheme-aware.
   - Done (2026-04-19, slice 19): scheme-aware smart-pre-fill chip. Pure `util/ProgressionChip.kt::suggestForScheme` with 18 JVM tests. `PerformanceSuggestion` gains an optional `suggestionLabel`; `WorkoutLoggerViewModel` caches per-exercise `TemplateExercise` + representative recent set and exposes `getChipSuggestion(exerciseId, setNumber)` that runs the helper and falls back to legacy. Template editor gains "Weight bump at max" input for DOUBLE and "Top-set bump" input for TOP_SET.
   - Done (2026-04-19, slice 20): true drag-reorder via `sh.calvin.reorderable:3.0.0`. `ReorderableLazyColumn` for weeks, `ReorderableColumn` for sessions in both program editors. Drag handle renders above the existing arrow buttons; move-to-week dialog and AlertDialog stay as fallbacks. New `SessionCard.dragHandle` slot + new `util/ProgramEditorHelpers.kt::moveSessionWithinWeek` helper with 6 JVM tests (97 → 103).
-  - Further candidates: AnalyticsViewModel `@OptIn(ExperimentalCoroutinesApi)` cleanup.
+  - Done (2026-04-19, slice 21): file-level `@OptIn(ExperimentalCoroutinesApi)` on `AnalyticsViewModel`. Six `flatMapLatest` call sites; last Kotlin opt-in warning cleared.
+  - Done (2026-04-19, slice 22): `GoogleDriveCloudProvider` migrated from deprecated `AndroidHttp.newCompatibleTransport()` to `NetHttpTransport()`. Last non-Compose deprecation warning cleared.
+  - Further candidates: none gating. Workout-logger and program-management paths are feature-complete for now; device-verification sweep across slices 5b–22 is the natural next session.
 
 ## Deleted during cleanup
 
