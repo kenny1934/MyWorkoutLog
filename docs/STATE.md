@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 5 slices 25–36 — UI/UX/perf overhaul: design tokens, ScreenScaffold + follow-ups, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression, truncation sweep, dashboard CTA surfacing).
+Last updated: 2026-04-19 (Phase 5 slices 25–37 — UI/UX/perf overhaul + slice 37 dead-code cleanup: design tokens, ScreenScaffold + follow-ups, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression, truncation sweep, dashboard CTA surfacing, deleted dead card wrappers).
 
 ## Next session — start here
 
@@ -10,7 +10,7 @@ Last updated: 2026-04-19 (Phase 5 slices 25–36 — UI/UX/perf overhaul: design
 
 ### Round 1 — cheap cleanups, low risk
 
-- **Slice 37 — delete dead card wrappers.** XS. `ui/ExpandableWidgetCard.kt::ExpandableWidgetCard` (NOT the Simple* version — Simple is used by 5 widgets and must stay) and `ui/DashboardWidgetComponents.kt::DashboardWidgetCard` are both uncalled. Re-grep `\bExpandableWidgetCard\b|\bDashboardWidgetCard\b` before deleting to confirm still-zero call sites. Also re-check `EnhancedDashboardWidgetCard` in `DashboardHelpers.kt` — that one IS used (compact LazyColumn quick-actions section).
+- ~~**Slice 37 — delete dead card wrappers.**~~ Landed 2026-04-19 (see chronological entry below). 166 LOC removed.
 - **Slice 38 — collapse redundant widget CTA button.** XS. Slice 36 surfaced "Start next session" at the top of the dashboard, but `SimpleCycleProgressWidgetCard` still has the `if (nextWeek != null && nextSession != null) { ElevatedButton("Start <name>") }` branch (post-slice-36, around `DashboardWidgetCards.kt:621–644`). Drop that branch; keep only the `else` Analytics / "Cycle complete" fallback. **Do slice 38 after a device eyeball of slice 36** so the decision is informed.
 - **Slice 39 — elevation tokens + migrate dashboard cards.** S. `SimpleWelcomeWidgetCard` (line 65) and `SimpleQuickStatsWidgetCard` (line 151) use `defaultElevation = 6.dp`; the other 4 cards (+ slice-36's `NextSessionCtaCard`) use `4.dp`. Add `elevation1 = 2.dp`, `elevation2 = 4.dp`, `elevation3 = 6.dp` to `ui/theme/Dimens.kt`. Pick one (likely `elevation2`) for dashboard cards and migrate all 6 sites in `DashboardWidgetCards.kt`.
 
@@ -36,6 +36,12 @@ Last updated: 2026-04-19 (Phase 5 slices 25–36 — UI/UX/perf overhaul: design
 Backlog spans slices 33 / 34 / 35 / 36. Top priority after slice 36: the new CTA on Z-Fold inner + outer, with active cycle + with no active cycle + right after logging the final session (CTA should disappear). Expect to surface minor responsive tweaks.
 
 ---
+
+**Phase 5 slice 37 landed 2026-04-19** (build + JVM tests green; no schema change; -166 LOC):
+
+- **Dead card wrappers removed.** Re-grep before edit confirmed both targets had zero remaining call sites: `ui/ExpandableWidgetCard.kt::ExpandableWidgetCard` (the original `widget: DashboardWidget`-keyed variant — `SimpleExpandableWidgetCard`, used by 5 widget cards, stays) and `ui/DashboardWidgetComponents.kt::DashboardWidgetCard` (the base header+content card that nothing in the live tree consumed; the dashboard widgets all use `SimpleExpandableWidgetCard` or one-off `Card { … }` blocks). Net 81 LOC out of `DashboardWidgetComponents.kt` and 85 LOC out of `ExpandableWidgetCard.kt`. `EnhancedDashboardWidgetCard` in `ui/DashboardHelpers.kt` remains in use (compact `LazyColumn` quick-actions section) and was NOT touched.
+- **No imports to clean.** `ColumnScope`/`RowScope` referenced only inside the deleted `DashboardWidgetCard`'s lambda type signatures came in via the existing `androidx.compose.foundation.layout.*` star import — nothing explicit to remove. `ExpandableWidgetCard.kt` star-import block also stayed put: removing it would surface stale-import noise into the slice diff and Kotlin doesn't warn on star-import unused symbols.
+- JVM test count unchanged at 103 (CycleAggregates 8, CycleProgress 8, LastPerformance 8, ProgramEditorHelpers 26, ProgressionChip 18, ProgressionHint 15, ActiveCycleViewModel 4, HistoryViewModel 5, WorkoutLoggerViewModel 11). No new tests — pure deletion of unreachable code.
 
 **Phase 5 slice 36 landed 2026-04-19** (build + JVM tests green on retry; no schema change):
 
