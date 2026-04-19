@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 5 slices 25–37 + 39 + 41 + 42 — UI/UX/perf overhaul, dead-code cleanup, dashboard elevation token migration, suggestion-chip slot reservation, set-row effect consolidation: design tokens, ScreenScaffold + follow-ups, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression, truncation sweep, dashboard CTA surfacing, deleted dead card wrappers, dashboard cards now use `Dimens.elevationCardRaised`, suggestion-chip slot reserved at fixed height, 12 set-row LaunchedEffects collapsed into one `rememberDebouncedField` helper).
+Last updated: 2026-04-19 (Phase 5 slices 25–37 + 39 + 41 + 42 + 43 — UI/UX/perf overhaul, dead-code cleanup, dashboard elevation token migration, suggestion-chip slot reservation, set-row effect consolidation, orphan-workouts collapsible: design tokens, ScreenScaffold + follow-ups, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression, truncation sweep, dashboard CTA surfacing, deleted dead card wrappers, dashboard cards now use `Dimens.elevationCardRaised`, suggestion-chip slot reserved at fixed height, 12 set-row LaunchedEffects collapsed into one `rememberDebouncedField` helper, orphan-workouts section collapsed by default with count in header).
 
 ## Next session — start here
 
@@ -22,7 +22,7 @@ Last updated: 2026-04-19 (Phase 5 slices 25–37 + 39 + 41 + 42 — UI/UX/perf o
 
 ### Round 3 — information hierarchy
 
-- **Slice 43 — orphan-workouts summary in history.** S. `HistoryCycleViews.kt` renders ad-hoc logged workouts (those not tied to any cycle) inline under the cycle cards. On an account with many ad-hoc logs they dominate the fold. Collapse into a "N ad-hoc workouts" expandable section — or at minimum a section header so the cycle list stays on top.
+- ~~**Slice 43 — orphan-workouts summary in history.**~~ Landed 2026-04-19 (see chronological entry below). Added a collapsible "Individual Workouts · N" section header; items collapsed by default. Shared helper so both `MesocycleHistoryView` and `MesocycleHistoryMasterView` stay in sync.
 - **Slice 44 — dashboard expandable-widget audit.** M. `SimpleAchievementWidgetCard` and `SimplePerformanceTrendWidgetCard` have collapsed + expanded views that largely duplicate each other. Per-widget decision: either (a) populate expanded views with genuinely new data (multi-month Performance Trends chart, full milestone list on Achievements) or (b) flatten them to single-view cards. Do the decision pass together so the two widgets end up consistent.
 - **Slice 45 — customization-mode overlay.** S. `ui/DashboardScreen.kt::ArrowReorderWidgetCard` overlays a row of reorder arrows + visibility toggle on top of the widget's content (semi-transparent black scrim). Obscures titles during edit mode. Move controls to a bottom-right corner chip or a leading edge-gutter so the card stays readable while reordering.
 
@@ -36,6 +36,12 @@ Last updated: 2026-04-19 (Phase 5 slices 25–37 + 39 + 41 + 42 — UI/UX/perf o
 Backlog spans slices 33 / 34 / 35 / 36. Top priority after slice 36: the new CTA on Z-Fold inner + outer, with active cycle + with no active cycle + right after logging the final session (CTA should disappear). Expect to surface minor responsive tweaks.
 
 ---
+
+**Phase 5 slice 43 landed 2026-04-19** (build + JVM tests green; no schema change):
+
+- **Orphan-workouts section in History is now collapsible.** `ui/HistoryCycleViews.kt` already rendered ad-hoc workouts (those with no `activeProgramCycleId`) under a separate `"Individual Workouts"` header below Completed Cycles — not inline under cycle cards as the audit claimed — but the list was always expanded and, on accounts with many ad-hoc logs, still dominated the fold. Replaced the plain header-plus-items pattern with a `clickable` Row header: "Individual Workouts · N" + rotating `Icons.Filled.ExpandMore`, with the full `WorkoutCard` list gated on a local `orphanedExpanded` state that defaults to `false`. Completed-cycles list now stays on top; users reveal ad-hoc logs with one tap, and the count in the header surfaces the size of the hidden list before expansion.
+- **Shared between both history paths.** Both `MesocycleHistoryMasterView` (single-column-compact + master pane of tablet master-detail) and `MesocycleHistoryView` (chronological single-column) dispatch through a new private `LazyListScope.orphanedWorkoutsSection(workouts, expanded, onToggle, renderWorkout)` extension + private `OrphanedWorkoutsHeader(count, expanded, onToggle)` composable at the bottom of the file. Each call site owns its own `orphanedExpanded` `remember { mutableStateOf(false) }`, so the two paths don't share state; the visual + interaction pattern stays consistent. Chevron rotation animated with `animateFloatAsState(tween(300))` — mirrors the dashboard `SimpleExpandableWidgetCard` idiom without pulling that card's padding / elevation assumptions into a plain section header.
+- JVM test count unchanged at 103 (no behavior covered by tests touched — purely UI state + composable layout). No new tests.
 
 **Phase 5 slice 42 landed 2026-04-19** (build + JVM tests green on retry; no schema change):
 
