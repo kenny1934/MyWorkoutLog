@@ -2,13 +2,24 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 5 slices 25–35 — UI/UX/perf overhaul: design tokens, ScreenScaffold + follow-ups, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression, truncation sweep).
+Last updated: 2026-04-19 (Phase 5 slices 25–36 — UI/UX/perf overhaul: design tokens, ScreenScaffold + follow-ups, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression, truncation sweep, dashboard CTA surfacing).
 
 ## Next session — start here
 
-**Next task (slice 36): dashboard CTA surfacing.** The "Start next session" action is currently buried 3 taps deep inside an expandable widget. Audit that drove slices 25–31 flagged it as the biggest dashboard UX miss; slice 31 fixed loading/empty states but didn't promote the CTA. Hoist it to a persistent top-of-dashboard row when `nextSession != null`, hide when null. Starting points: `util/CycleProgress.kt::cycleProgress(activeCycle).nextSession` (already exists, slice 1); existing widget surface is `ui/DashboardWidgetCards.kt::SimpleCycleProgressWidgetCard`; dashboard layouts live in `ui/DashboardScreen.kt::AdaptiveDashboardContent` (compact) and `EnhancedDashboardScreen`. New CTA navigates to `WorkoutLogger.createRoute(templateId, cycleId, weekId, sessionId)`. Carry over the Deload / Target-RIR badge pattern from the widget. Keep the existing widget button for now — it's the fallback in the expanded widget view.
+**Next task: TBD.** Slice 36 landed this session. Candidate follow-ups from the backlog:
+
+- **Device verification** of the Phase 5 slices installed this session (CTA needs eyeballing on the Z Fold — inner + outer screens; make sure the new primaryContainer card reads cleanly against the existing dashboard grid and that the Deload/RIR badges don't push the session name off-screen on narrow widths). Verification backlog now spans slices 5b–36.
+- **Promote-or-demote the old widget button.** The slice-36 CTA keeps the original ElevatedButton inside `SimpleCycleProgressWidgetCard` as a fallback. With the CTA row above, the in-widget button is now visually redundant and competes for attention — could collapse it (leave only the "Analytics" / "Cycle complete" branch) once slice 36 has been lived with.
+- **Design-token migration.** Most `.dp` / `fontSize = N.sp` literals remain across 30+ files — tokens are landed; screens migrate as they're touched.
 
 ---
+
+**Phase 5 slice 36 landed 2026-04-19** (build + JVM tests green on retry; no schema change):
+
+- **Dashboard CTA surfacing.** "Start next session" was buried 3 taps deep inside the expanded `SimpleCycleProgressWidgetCard`; the prior-session audit flagged it as the biggest dashboard UX miss. New `ui/DashboardWidgetCards.kt::NextSessionCtaCard(cycle, navController)` — primary-container `Card` with a square PlayArrow chip + "Start next session" label + session name + week label, plus Deload / Target-RIR badges mirroring the widget's existing treatment (tertiaryContainer / secondaryContainer). Click fires `Screen.WorkoutLogger.createRoute(templateId = nextSession.workoutTemplateId, cycleId = cycle.cycleUuid, weekId = nextWeek.id, sessionId = nextSession.id)`. Renders nothing when the active cycle has no current week / no next session — the `cycleProgress(cycle)` helper (slice 1) returns null for completed cycles.
+- **Wired into both dashboard paths.** `ui/DashboardScreen.kt::EnhancedDashboardScreen` (compact `LazyColumn`) adds a new `item {}` between the header row and the error/loading branches, gated on `dashboardState.widgets.filterIsInstance<CycleProgressWidget>().firstOrNull()?.cycle.takeIf { cycleProgress(it).nextSession != null }`. Same gate in the `AdaptiveDashboardContent` tablet path — sits between the "Dashboard" title row and `AdaptiveWidgetGrid`. Sources the cycle from the existing `CycleProgressWidget` so no new VM plumbing / factory change is needed.
+- **Widget fallback kept.** `SimpleCycleProgressWidgetCard`'s ElevatedButton is unchanged — still reads "Start <nextSession.sessionName>" in the expanded widget view. Two surfaces is fine for a hobby app; a dedicated slice can collapse the widget button once the CTA row has been lived with on-device.
+- No new tests (pure UI wiring over the existing `cycleProgress` helper — already covered by `CycleProgressTest`). JVM count unchanged at 103.
 
 **Phase 5 slices 34 + 35 landed 2026-04-19** (build + JVM tests green, commits pushed):
 
