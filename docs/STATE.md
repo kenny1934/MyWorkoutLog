@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-20 (Phase 5 slice 46 — Round B of the dashboard audit landed: four dead composables + one orphaned helper deleted from `ui/DashboardWidgetComponents.kt`. Prior entry: dashboard UI/UX audit drafted → `docs/DASHBOARD_AUDIT.md`. Earlier: Phase 5 slices 25–45 — UI/UX/perf overhaul, dead-code cleanup, dashboard elevation token migration, suggestion-chip slot reservation, set-row effect consolidation, orphan-workouts collapsible, performance-trend meta row, customization-mode chip, redundant widget-CTA removed).
+Last updated: 2026-04-20 (Phase 5 slice 47 — Round A #3 of the dashboard audit landed: `SimpleNextSessionWidgetCard` lost its redundant Start Session button + collapsed-view session-name restatement, mirror of slice 38. Prior entry: Phase 5 slice 46 — Round B, four dead composables deleted. Earlier: dashboard UI/UX audit drafted → `docs/DASHBOARD_AUDIT.md`; Phase 5 slices 25–45).
 
 ## Next session — start here
 
@@ -11,7 +11,7 @@ Last updated: 2026-04-20 (Phase 5 slice 46 — Round B of the dashboard audit la
 Recommended order:
 
 1. ~~**Round B (dead-code, XS × 4)**~~ — Landed 2026-04-20 as slice 46 (bundled). See chronological entry below.
-2. **Round A #3 (XS)** — mirror of slice 38: drop `SimpleNextSessionWidgetCard`'s Start Session button + collapsed session-name restatement, since the top `NextSessionCtaCard` covers both.
+2. ~~**Round A #3 (XS)**~~ — Landed 2026-04-20 as slice 47. See chronological entry below.
 3. **Round A #1 (S)** — drop the streak badge from `SimpleWelcomeWidgetCard`; `SimpleQuickStatsWidgetCard` already owns that number.
 4. **Round A #2 (S)** — decide whether to deprecate `SimpleBodyweightWidgetCard` in favour of `SimpleBodyweightTrendWidgetCard` (strict superset). User decision before starting.
 5. **Round C #9 (M, probably its own session)** — `ScreenScaffold` migration for the dashboard (slice 26 skipped it).
@@ -36,6 +36,13 @@ Older slice plan (slices 37–45) is complete. Entries kept below for history.
 Backlog spans slices 33–45. Highest priority: slice 36 CTA on Z-Fold inner + outer (active cycle / no active cycle / right after final session logged → CTA should disappear). Then slices 42–45 in order.
 
 ---
+
+**Phase 5 slice 47 landed 2026-04-20** (build + JVM tests green; no schema change):
+
+- **`SimpleNextSessionWidgetCard`'s redundant surfaces removed.** Round A #3 of the dashboard audit; mirrors slice 38 one widget over. The top-of-dashboard `NextSessionCtaCard` (slice 36, `DashboardWidgetCards.kt:401`) already shows `nextSession.sessionName` + `nextWeek.weekLabel` and invokes `Screen.WorkoutLogger.createRoute(templateId, cycleId, weekId, sessionId)` on tap via a `clickable` Card wrapper. The widget's expanded-view Start Session `Button` was calling the exact same route builder with the same four ids (with a Library fallback that can't trigger — `getNextSessionWithNavigation` in `WidgetRepositorySimplified.kt:316` only emits the widget when all four ids are non-null). Deleted the button + its preceding `Spacer(12.dp)`. Widget's unique value — session header + up to 5 `ExercisePreviewCard`s + overflow count — stays intact.
+- **Collapsed-view session restatement dropped.** `widget.session.name` + `widget.session.weekLabel` in the collapsed `Column` were byte-identical to what the CTA card shows above (same data source, same gating on active-cycle + next-session). The duration + `DifficultyBadge` row stays — that row is the collapsed widget's actual novel content. Flattened the `Column` to a single `Row` since only one row of content remains.
+- **`navController` parameter removed.** Only the deleted Start Session button used it; the call site at `DashboardScreen.kt:86` was flipped from `SimpleNextSessionWidgetCard(widget = widget, navController = navController)` to `SimpleNextSessionWidgetCard(widget)`. Other widget call sites in the same `when` branch (`SimplePerformanceTrendWidgetCard`, `SimpleVolumeProgressWidgetCard`) still take `navController` for their own drill-down navigation, so the param isn't being deprecated repo-wide — just for this one widget.
+- Net -72 LOC across `DashboardWidgetCards.kt` + `DashboardScreen.kt`. JVM test count unchanged at 103. No new tests — pure UI deletion; no VM/data-layer logic touched. On-device verification on the Z-Fold should confirm the widget reads coherently with only duration + difficulty in collapsed form now that name + week live solely on the top CTA card.
 
 **Phase 5 slice 46 landed 2026-04-20** (build + JVM tests green; no schema change):
 
