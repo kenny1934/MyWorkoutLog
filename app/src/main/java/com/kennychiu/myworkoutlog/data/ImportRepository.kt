@@ -81,6 +81,17 @@ class ImportRepository(
 
     private val gson = Gson()
 
+    private val jsonMapType = object : TypeToken<Map<String, Any>>() {}.type
+
+    private fun parseJsonAsMap(json: String): Map<String, Any> = gson.fromJson(json, jsonMapType)
+
+    @Suppress("UNCHECKED_CAST")
+    private fun Map<String, Any>.mapField(key: String): Map<String, Any>? = this[key] as? Map<String, Any>
+
+    @Suppress("UNCHECKED_CAST")
+    private fun Map<String, Any>.listOfMapsField(key: String): List<Map<String, Any>>? =
+        this[key] as? List<Map<String, Any>>
+
     // Helper methods for file/URI handling
     private fun createReader(context: Context?, filePath: String?, uri: Uri?): BufferedReader {
         return when {
@@ -261,10 +272,10 @@ class ImportRepository(
     private fun validateJSONFile(file: File, expectedType: ImportDataType): ValidationReport {
         return try {
             val jsonContent = file.readText()
-            val jsonObject = gson.fromJson(jsonContent, Map::class.java) as Map<String, Any>
-            
+            val jsonObject = parseJsonAsMap(jsonContent)
+
             // Extract metadata
-            val metadata = jsonObject["metadata"] as? Map<String, Any>
+            val metadata = jsonObject.mapField("metadata")
             val exportType = metadata?.get("exportType") as? String
             val schemaVersion = metadata?.get("schemaVersion") as? String
             val appVersion = metadata?.get("appVersion") as? String
@@ -354,15 +365,15 @@ class ImportRepository(
                 inputStream.bufferedReader().readText()
             } ?: throw Exception("Cannot read from URI: $uri")
             
-            val jsonObject = gson.fromJson(jsonContent, Map::class.java) as Map<String, Any>
-            
+            val jsonObject = parseJsonAsMap(jsonContent)
+
             // Extract metadata
-            val metadata = jsonObject["metadata"] as? Map<String, Any>
+            val metadata = jsonObject.mapField("metadata")
             val exportType = metadata?.get("exportType") as? String
             val schemaVersion = metadata?.get("schemaVersion") as? String
             val appVersion = metadata?.get("appVersion") as? String
             val exportDate = metadata?.get("exportDate") as? String
-            
+
             // Determine data type
             val detectedType = when (exportType) {
                 "workouts" -> ImportDataType.WORKOUTS
@@ -556,9 +567,9 @@ class ImportRepository(
 
     private suspend fun importWorkouts(options: ImportOptions): ImportResult {
         try {
-            val jsonContent = File(options.filePath).readText()
-            val jsonObject = gson.fromJson(jsonContent, Map::class.java) as Map<String, Any>
-            val workoutsData = jsonObject["workouts"] as List<Map<String, Any>>
+            val jsonContent = File(options.filePath!!).readText()
+            val jsonObject = parseJsonAsMap(jsonContent)
+            val workoutsData = jsonObject.listOfMapsField("workouts")!!
             
             var imported = 0
             var skipped = 0
@@ -615,9 +626,9 @@ class ImportRepository(
 
     private suspend fun importExercises(options: ImportOptions): ImportResult {
         try {
-            val jsonContent = File(options.filePath).readText()
-            val jsonObject = gson.fromJson(jsonContent, Map::class.java) as Map<String, Any>
-            val exercisesData = jsonObject["exercises"] as List<Map<String, Any>>
+            val jsonContent = File(options.filePath!!).readText()
+            val jsonObject = parseJsonAsMap(jsonContent)
+            val exercisesData = jsonObject.listOfMapsField("exercises")!!
             
             var imported = 0
             var skipped = 0
@@ -675,9 +686,9 @@ class ImportRepository(
 
     private suspend fun importPersonalRecords(options: ImportOptions): ImportResult {
         try {
-            val jsonContent = File(options.filePath).readText()
-            val jsonObject = gson.fromJson(jsonContent, Map::class.java) as Map<String, Any>
-            val prsData = jsonObject["personalRecords"] as List<Map<String, Any>>
+            val jsonContent = File(options.filePath!!).readText()
+            val jsonObject = parseJsonAsMap(jsonContent)
+            val prsData = jsonObject.listOfMapsField("personalRecords")!!
             
             var imported = 0
             var skipped = 0
@@ -738,9 +749,9 @@ class ImportRepository(
 
     private suspend fun importProgramTemplates(options: ImportOptions): ImportResult {
         try {
-            val jsonContent = File(options.filePath).readText()
-            val jsonObject = gson.fromJson(jsonContent, Map::class.java) as Map<String, Any>
-            val programsData = jsonObject["programTemplates"] as List<Map<String, Any>>
+            val jsonContent = File(options.filePath!!).readText()
+            val jsonObject = parseJsonAsMap(jsonContent)
+            val programsData = jsonObject.listOfMapsField("programTemplates")!!
             
             var imported = 0
             var skipped = 0
@@ -798,9 +809,9 @@ class ImportRepository(
 
     private suspend fun importWorkoutTemplates(options: ImportOptions): ImportResult {
         try {
-            val jsonContent = File(options.filePath).readText()
-            val jsonObject = gson.fromJson(jsonContent, Map::class.java) as Map<String, Any>
-            val templatesData = jsonObject["workoutTemplates"] as List<Map<String, Any>>
+            val jsonContent = File(options.filePath!!).readText()
+            val jsonObject = parseJsonAsMap(jsonContent)
+            val templatesData = jsonObject.listOfMapsField("workoutTemplates")!!
             
             var imported = 0
             var skipped = 0
@@ -858,16 +869,16 @@ class ImportRepository(
 
     private suspend fun importCompleteBackup(options: ImportOptions): ImportResult {
         try {
-            val jsonContent = File(options.filePath).readText()
-            val jsonObject = gson.fromJson(jsonContent, Map::class.java) as Map<String, Any>
-            
+            val jsonContent = File(options.filePath!!).readText()
+            val jsonObject = parseJsonAsMap(jsonContent)
+
             var totalImported = 0
             var totalSkipped = 0
             var totalErrors = 0
             val allErrorMessages = mutableListOf<String>()
 
             // Import workouts if present
-            (jsonObject["workouts"] as? List<Map<String, Any>>)?.let { workoutsData ->
+            jsonObject.listOfMapsField("workouts")?.let { workoutsData ->
                 val workoutOptions = options.copy(dataType = ImportDataType.WORKOUTS)
                 val workoutResult = importWorkoutsFromData(workoutsData, workoutOptions)
                 totalImported += workoutResult.importedRecords
@@ -877,7 +888,7 @@ class ImportRepository(
             }
 
             // Import exercises if present
-            (jsonObject["exercises"] as? List<Map<String, Any>>)?.let { exercisesData ->
+            jsonObject.listOfMapsField("exercises")?.let { exercisesData ->
                 val exerciseOptions = options.copy(dataType = ImportDataType.EXERCISES)
                 val exerciseResult = importExercisesFromData(exercisesData, exerciseOptions)
                 totalImported += exerciseResult.importedRecords
@@ -887,7 +898,7 @@ class ImportRepository(
             }
 
             // Import personal records if present
-            (jsonObject["personalRecords"] as? List<Map<String, Any>>)?.let { prsData ->
+            jsonObject.listOfMapsField("personalRecords")?.let { prsData ->
                 val prOptions = options.copy(dataType = ImportDataType.PERSONAL_RECORDS)
                 val prResult = importPersonalRecordsFromData(prsData, prOptions)
                 totalImported += prResult.importedRecords
@@ -897,7 +908,7 @@ class ImportRepository(
             }
 
             // Import workout templates if present (before program templates)
-            (jsonObject["workoutTemplates"] as? List<Map<String, Any>>)?.let { templatesData ->
+            jsonObject.listOfMapsField("workoutTemplates")?.let { templatesData ->
                 val templateOptions = options.copy(dataType = ImportDataType.WORKOUT_TEMPLATES)
                 val templateResult = importWorkoutTemplatesFromData(templatesData, templateOptions)
                 totalImported += templateResult.importedRecords
@@ -907,7 +918,7 @@ class ImportRepository(
             }
 
             // Import program templates if present
-            (jsonObject["programTemplates"] as? List<Map<String, Any>>)?.let { programsData ->
+            jsonObject.listOfMapsField("programTemplates")?.let { programsData ->
                 val programOptions = options.copy(dataType = ImportDataType.PROGRAM_TEMPLATES)
                 val programResult = importProgramTemplatesFromData(programsData, programOptions)
                 totalImported += programResult.importedRecords
