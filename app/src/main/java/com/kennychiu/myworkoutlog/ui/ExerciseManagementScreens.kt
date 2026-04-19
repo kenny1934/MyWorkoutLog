@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -366,7 +367,11 @@ fun AddExerciseDialog(
                     Text("Uses Bodyweight")
                     Switch(checked = newExerciseUsesBodyweight, onCheckedChange = { newExerciseUsesBodyweight = it })
                 }
-                Text("Target Muscles: ${selectedMuscleGroups.joinToString { it.name }}")
+                Text(
+                    text = "Target Muscles: ${selectedMuscleGroups.joinToString { it.name }}",
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Button(onClick = { showMuscleGroupDialog = true }, modifier = Modifier.fillMaxWidth()) {
                     Text("Select Muscle Groups")
                 }
@@ -432,7 +437,11 @@ fun EditExerciseDialog(
                     Text("Uses Bodyweight")
                     Switch(checked = editedUsesBodyweight, onCheckedChange = { editedUsesBodyweight = it })
                 }
-                Text("Target Muscles: ${editedMuscleGroups.joinToString { it.name }}")
+                Text(
+                    text = "Target Muscles: ${editedMuscleGroups.joinToString { it.name }}",
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Button(onClick = { showMuscleGroupDialog = true }, modifier = Modifier.fillMaxWidth()) {
                     Text("Select Muscle Groups")
                 }

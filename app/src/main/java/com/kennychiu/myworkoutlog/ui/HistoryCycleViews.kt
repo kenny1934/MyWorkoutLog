@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -238,7 +239,9 @@ fun ActiveCycleSectionMaster(
             Text(
                 text = cycle.programTemplateName,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
 
             Text(
@@ -326,7 +329,9 @@ fun ActiveCycleSection(
             Text(
                 text = cycle.programTemplateName,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
 
             Text(
@@ -388,6 +393,8 @@ fun CycleCardMaster(
                     text = cycleWithWorkouts.userCycleName ?: "Cycle ${cycleWithWorkouts.cycleId}",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = onRenameClick) {
@@ -476,6 +483,8 @@ fun CycleCard(
                     text = cycleWithWorkouts.userCycleName ?: "Cycle ${cycleWithWorkouts.cycleId}",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = onRenameClick) {

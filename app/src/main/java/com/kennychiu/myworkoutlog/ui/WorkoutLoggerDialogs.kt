@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
@@ -46,7 +47,11 @@ fun AddExerciseToWorkoutDialog(
                 )
             } else {
                 Column {
-                    Text("Exercise: ${selectedExercise?.name}")
+                    Text(
+                        text = "Exercise: ${selectedExercise?.name}",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(
                         value = numberOfSets,
@@ -229,8 +234,16 @@ fun SubstituteExerciseDialog(
                 }
             } else {
                 Column {
-                    Text("Current: ${currentExercise.exerciseName}")
-                    Text("Substitute with: ${selectedExercise?.name}")
+                    Text(
+                        text = "Current: ${currentExercise.exerciseName}",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Substitute with: ${selectedExercise?.name}",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "This will replace the exercise while keeping all current set data.",

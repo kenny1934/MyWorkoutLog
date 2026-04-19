@@ -340,7 +340,13 @@ fun StartCycleSheet(
                 value = cycleName,
                 onValueChange = onCycleNameChange,
                 label = { Text("Give this cycle a name") },
-                placeholder = { Text(program.name) },
+                placeholder = {
+                    Text(
+                        text = program.name,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )

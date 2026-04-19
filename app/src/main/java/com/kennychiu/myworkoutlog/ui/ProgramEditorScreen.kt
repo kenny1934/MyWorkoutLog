@@ -303,7 +303,9 @@ fun SessionCard(
                 Text(
                     text = session.sessionName,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = template?.name ?: "Unknown Template",
@@ -311,6 +313,8 @@ fun SessionCard(
                     color = if (template != null)
                         MaterialTheme.colorScheme.onSurfaceVariant
                     else MaterialTheme.colorScheme.error,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 2.dp)
                 )
                 if (template != null) {
@@ -487,6 +491,8 @@ fun SessionCard(
                     Text(
                         text = "Move \"${session.sessionName}\" to:",
                         style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                     otherWeeks.forEach { targetWeek ->

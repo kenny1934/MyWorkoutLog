@@ -1126,7 +1126,13 @@ fun TemplateDetailScreen(
                 items(editedExercises, key = { it.id }) { templateExercise ->
                     Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text(templateExercise.exerciseName, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text(
+                                text = templateExercise.exerciseName,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                             ProgressionSchemePicker(

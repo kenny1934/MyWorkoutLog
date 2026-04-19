@@ -808,7 +808,9 @@ fun SimplePerformanceTrendWidgetCard(
                             Text(
                                 text = topExercise.exerciseName,
                                 style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                             Text(
                                 text = "${topExercise.formatCurrentWeight()} (${if (topExercise.improvementPercentage >= 0) "+" else ""}${topExercise.improvementPercentage.toInt()}%)",
