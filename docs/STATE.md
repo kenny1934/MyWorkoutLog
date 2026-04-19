@@ -2,9 +2,15 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 5 slices 25–33 — UI/UX/perf overhaul: design tokens, ScreenScaffold + 2 follow-ups, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression).
+Last updated: 2026-04-19 (Phase 5 slices 25–35 — UI/UX/perf overhaul: design tokens, ScreenScaffold + follow-ups, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression, truncation sweep).
 
 ## Next session — start here
+
+**Phase 5 slices 34 + 35 landed 2026-04-19** (build + JVM tests green, commits pushed):
+
+- `f42b1ec` slice 34 — **title + list-row text truncation.** Long user-entered names were clipping into icons / off-screen in several spots that never had `maxLines` / `overflow` set. TopAppBar titles with dynamic names (ScreenScaffold, WorkoutLoggerScreens, HistoryDetailScreen, TemplateManagementScreens TemplateDetailScreen, ProgramEditorScreen) now use `maxLines = 1, overflow = Ellipsis, modifier = Modifier.basicMarquee()` — the full name scrolls into view when it exceeds the bar's remaining width. List row names (ProgramListScreen program card, TemplateManagementScreens template card, HistoryComponents WorkoutCard header, AdaptiveWorkoutComponents ExerciseListItem master panel, ProgramEditorScreen template-picker DropdownMenuItem) use `maxLines = 1, overflow = Ellipsis` without marquee — a list of 20 simultaneously-scrolling titles would be visual chaos. Dialog bodies with interpolated names (Delete "X"? etc.) left as-is — they naturally wrap.
+
+- `33dec0f` slice 35 — **second-pass truncation sweep.** Defensive pass catching sites the slice-34 audit missed. Same class of bug. `ProgramEditorScreen` SessionCard session + template names (weighted Column next to overflow menu), `DashboardWidgetCards` Performance-Trends top-exercise row (weighted Column next to trend Icon), `HistoryCycleViews` CycleCard + CycleCardMaster user-entered cycle names (next to Rename pencil), `HistoryCycleViews` ActiveCycleSection + master variant `programTemplateName`, `TemplateManagementScreens` TemplateDetailScreen exercise card header (18sp bold). Label-style lines in dialogs (identifier, not wrappable sentences): `WorkoutLoggerDialogs` "Exercise: <name>" + "Current: <name>" + "Substitute with: <name>", `ProgramEditorScreen` "Move '<sessionName>' to:" heading. Defensive caps where wrapping is correct but could run away: `ExerciseManagementScreens` AddExercise + EditExercise "Target Muscles: a, b, c, ..." joined list at `maxLines = 3`, `ProgramCardsAndDialogs` StartCycleSheet OutlinedTextField placeholder at `maxLines = 1`.
 
 **Phase 5 slices 32 + 33 landed 2026-04-19** (build + JVM tests green, commits pushed):
 
@@ -30,7 +36,7 @@ Last updated: 2026-04-19 (Phase 5 slices 25–33 — UI/UX/perf overhaul: design
 
 ### Still to do / not in Phase 5
 
-- **Device verification.** Backlog now spans slices 5b–33 — particularly worth eyeballing on the Z Fold unfolded: master-detail back-button behaviour + Add-in-TopBar (slice 33), and all screens now that the top inset isn't doubled (slice 32). Prior-session priorities carry: drag-reorder after slice 28, bottom sheets (slice 30), logger IME chain (slice 27).
+- **Device verification.** Backlog now spans slices 5b–35. Slices 32 + 34 + 35 were installed this session (Tailscale adb over WSL) and the top-inset fix was eyeballed; the truncation pass is untested beyond "it builds and runs". Prior-session priorities still carry: drag-reorder after slice 28, bottom sheets (slice 30), logger IME chain (slice 27).
 - **Dashboard CTA surfacing.** Audit flagged "Start next session" as being buried 3 taps deep inside an expandable widget. Slice 31 addressed loading/empty states but didn't promote the CTA — a dedicated slice could hoist the primary action out of the widget and into a persistent row at the top of the dashboard.
 - **Design-token migration opportunistic.** Most `.dp` / `fontSize = N.sp` literals remain in place across 30+ files — tokens are landed, screens migrate as they're touched. No big-bang rewrite scheduled.
 
