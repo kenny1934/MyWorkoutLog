@@ -83,10 +83,7 @@ fun ArrowReorderWidgetCard(
                 widget = widget,
                 navController = navController
             )
-            is DashboardWidget.NextSessionWidget -> SimpleNextSessionWidgetCard(
-                widget = widget,
-                navController = navController
-            )
+            is DashboardWidget.NextSessionWidget -> SimpleNextSessionWidgetCard(widget)
             is DashboardWidget.VolumeProgressWidget -> SimpleVolumeProgressWidgetCard(
                 widget = widget,
                 navController = navController

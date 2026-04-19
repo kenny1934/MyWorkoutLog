@@ -1029,71 +1029,41 @@ fun SimplePerformanceTrendWidgetCard(
 }
 
 @Composable
-fun SimpleNextSessionWidgetCard(widget: DashboardWidget.NextSessionWidget, navController: NavHostController) {
+fun SimpleNextSessionWidgetCard(widget: DashboardWidget.NextSessionWidget) {
     SimpleExpandableWidgetCard(
         title = "Next Session",
         isExpandable = widget.isExpandable,
         collapsedContent = {
-            // Collapsed: Show session overview
+            // Collapsed: duration + difficulty. Session name + week label are
+            // already on NextSessionCtaCard at the top of the dashboard.
             val isCompactMode = isCompactWidgetMode()
 
-            Column {
-                Text(
-                    text = widget.session.name,
-                    fontSize = adaptiveTextSize(
-                        baseSize = MaterialTheme.typography.titleMedium.fontSize,
-                        compactMultiplier = 0.8f,
-                        mediumMultiplier = 0.9f,
-                        expandedMultiplier = 1f
-                    ),
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = if (isCompactMode) 2 else 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(if (isCompactMode) 2.dp else 4.dp))
-                Text(
-                    text = widget.session.weekLabel,
-                    fontSize = adaptiveTextSize(
-                        baseSize = MaterialTheme.typography.bodySmall.fontSize,
-                        compactMultiplier = 0.85f,
-                        mediumMultiplier = 0.9f,
-                        expandedMultiplier = 1f
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(if (isCompactMode) 6.dp else 8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Filled.Timer,
-                            contentDescription = null,
-                            modifier = Modifier.size(if (isCompactMode) 14.dp else 16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.width(if (isCompactMode) 2.dp else 4.dp))
-                        Text(
-                            text = "${widget.estimatedDuration} min",
-                            fontSize = adaptiveTextSize(
-                                baseSize = MaterialTheme.typography.bodySmall.fontSize,
-                                compactMultiplier = 0.8f,
-                                mediumMultiplier = 0.9f,
-                                expandedMultiplier = 1f
-                            ),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    DifficultyBadge(difficulty = widget.difficulty)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Filled.Timer,
+                        contentDescription = null,
+                        modifier = Modifier.size(if (isCompactMode) 14.dp else 16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(if (isCompactMode) 2.dp else 4.dp))
+                    Text(
+                        text = "${widget.estimatedDuration} min",
+                        fontSize = adaptiveTextSize(
+                            baseSize = MaterialTheme.typography.bodySmall.fontSize,
+                            compactMultiplier = 0.8f,
+                            mediumMultiplier = 0.9f,
+                            expandedMultiplier = 1f
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
+
+                DifficultyBadge(difficulty = widget.difficulty)
             }
         },
         expandedContent = {
@@ -1153,37 +1123,6 @@ fun SimpleNextSessionWidgetCard(widget: DashboardWidget.NextSessionWidget, navCo
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
                     )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Start session button
-                Button(
-                    onClick = {
-                        // Navigate to workout logger with proper session details
-                        if (widget.cycleId != null && widget.weekId != null &&
-                            widget.sessionId != null && widget.templateId != null) {
-                            val route = Screen.WorkoutLogger.createRoute(
-                                templateId = widget.templateId,
-                                cycleId = widget.cycleId,
-                                weekId = widget.weekId,
-                                sessionId = widget.sessionId
-                            )
-                            navController.navigate(route)
-                        } else {
-                            // Fallback to library if navigation data is missing
-                            navController.navigate("library")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.PlayArrow,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Start Session")
                 }
             }
         }
