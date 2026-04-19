@@ -425,7 +425,7 @@ fun AdaptiveDashboardContent(
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { dashboardViewModel.onPullToRefresh() }) {
+                        Button(onClick = { dashboardViewModel.refreshDashboard() }) {
                             Text("Retry")
                         }
                     }
