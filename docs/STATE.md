@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 5 slices 25–37 + 39 + 41 + 42 + 43 — UI/UX/perf overhaul, dead-code cleanup, dashboard elevation token migration, suggestion-chip slot reservation, set-row effect consolidation, orphan-workouts collapsible: design tokens, ScreenScaffold + follow-ups, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression, truncation sweep, dashboard CTA surfacing, deleted dead card wrappers, dashboard cards now use `Dimens.elevationCardRaised`, suggestion-chip slot reserved at fixed height, 12 set-row LaunchedEffects collapsed into one `rememberDebouncedField` helper, orphan-workouts section collapsed by default with count in header).
+Last updated: 2026-04-19 (Phase 5 slices 25–37 + 39 + 41 + 42 + 43 + 45 — UI/UX/perf overhaul, dead-code cleanup, dashboard elevation token migration, suggestion-chip slot reservation, set-row effect consolidation, orphan-workouts collapsible, customization-mode chip: design tokens, ScreenScaffold + follow-ups, logger ergonomics, program-editor declutter, perf pass, dialogs → bottom sheets, dashboard first-impression, truncation sweep, dashboard CTA surfacing, deleted dead card wrappers, dashboard cards now use `Dimens.elevationCardRaised`, suggestion-chip slot reserved at fixed height, 12 set-row LaunchedEffects collapsed into one `rememberDebouncedField` helper, orphan-workouts section collapsed by default with count in header, customization-mode controls moved off widget titles into a bottom-end chip).
 
 ## Next session — start here
 
@@ -24,7 +24,7 @@ Last updated: 2026-04-19 (Phase 5 slices 25–37 + 39 + 41 + 42 + 43 — UI/UX/p
 
 - ~~**Slice 43 — orphan-workouts summary in history.**~~ Landed 2026-04-19 (see chronological entry below). Added a collapsible "Individual Workouts · N" section header; items collapsed by default. Shared helper so both `MesocycleHistoryView` and `MesocycleHistoryMasterView` stay in sync.
 - **Slice 44 — dashboard expandable-widget audit.** M. `SimpleAchievementWidgetCard` and `SimplePerformanceTrendWidgetCard` have collapsed + expanded views that largely duplicate each other. Per-widget decision: either (a) populate expanded views with genuinely new data (multi-month Performance Trends chart, full milestone list on Achievements) or (b) flatten them to single-view cards. Do the decision pass together so the two widgets end up consistent.
-- **Slice 45 — customization-mode overlay.** S. `ui/DashboardScreen.kt::ArrowReorderWidgetCard` overlays a row of reorder arrows + visibility toggle on top of the widget's content (semi-transparent black scrim). Obscures titles during edit mode. Move controls to a bottom-right corner chip or a leading edge-gutter so the card stays readable while reordering.
+- ~~**Slice 45 — customization-mode overlay.**~~ Landed 2026-04-19 (see chronological entry below). Replaced the full-width black-scrim overlay with a compact bottom-end pill (`Surface(shape = RoundedCornerShape(24.dp))`) holding the three IconButtons. Widget titles stay readable in edit mode; the redundant inline title the scrim was compensating for is gone.
 
 ### Round 4 — opportunistic / deferred
 
@@ -36,6 +36,12 @@ Last updated: 2026-04-19 (Phase 5 slices 25–37 + 39 + 41 + 42 + 43 — UI/UX/p
 Backlog spans slices 33 / 34 / 35 / 36. Top priority after slice 36: the new CTA on Z-Fold inner + outer, with active cycle + with no active cycle + right after logging the final session (CTA should disappear). Expect to surface minor responsive tweaks.
 
 ---
+
+**Phase 5 slice 45 landed 2026-04-19** (build + JVM tests green; no schema change):
+
+- **Customization-mode controls moved off widget titles.** `ui/DashboardScreen.kt::ArrowReorderWidgetCard`'s customization overlay used to be a full-width `Row` pinned to the top of each widget with a `Color.Black.copy(alpha = 0.3f)` scrim, holding the up / down arrows on the left, the widget's title redundantly repeated in the middle (to compensate for the scrim covering the widget's own title), and the visibility toggle on the right. In edit mode every widget's own title was obscured by the scrim. Replaced with a compact `Surface(shape = RoundedCornerShape(24.dp), tonalElevation = 4.dp, shadowElevation = 4.dp, color = surface.copy(alpha = 0.95f))` anchored via `Modifier.align(Alignment.BottomEnd)` inside the enclosing `Box`. Surface contains a tight `Row` of three 36dp `IconButton`s (20dp icons) — up / down / visibility, same callbacks as before. The widget's own title now renders unobscured, so the redundant scrim-side title was deleted.
+- **Click behavior unchanged.** Only the IconButtons consumed pointer events in the prior design (the scrim `Modifier.background(...)` doesn't intercept pointers), so moving from a top-full-width overlay to a bottom-end chip doesn't change what is / isn't tappable on the underlying widget — only the footprint of where the customization controls live. No widget's interactive bottom-right corner is currently critical (next-session CTA lives top-center on its card, cycle progress lives center, etc.), so the bottom-end anchor doesn't collide with any widget-internal CTA. Revisit per-widget if a future widget puts content in the bottom-right.
+- Net -5 LOC. JVM test count unchanged at 103. No new tests — pure UI reshape.
 
 **Phase 5 slice 43 landed 2026-04-19** (build + JVM tests green; no schema change):
 
