@@ -8,7 +8,6 @@ import com.kennychiu.myworkoutlog.ui.theme.extendedColors
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
@@ -19,16 +18,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.navigation.NavHostController
 
 // Helper function to format weight with appropriate decimal precision
@@ -49,66 +44,41 @@ private fun formatWeightValue(weight: Float): String {
 
 @Composable
 fun SimpleWelcomeWidgetCard(widget: DashboardWidget.WelcomeWidget) {
-    val animatedScale by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = 100f),
-        label = "welcome_scale"
-    )
-
     val isCompactMode = isCompactWidgetMode()
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .graphicsLayer(
-                scaleX = animatedScale,
-                scaleY = animatedScale
-            ),
+        modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCardRaised),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primaryContainer,
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
-                            MaterialTheme.colorScheme.surface
-                        )
-                    )
-                )
-        ) {
-            Column(modifier = Modifier.padding(adaptiveContentPadding())) {
-                Text(
-                    text = widget.greeting,
-                    fontSize = adaptiveTextSize(
-                        baseSize = MaterialTheme.typography.headlineMedium.fontSize,
-                        compactMultiplier = 0.75f,
-                        mediumMultiplier = 0.85f,
-                        expandedMultiplier = 1f
-                    ),
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary,
-                    maxLines = if (isCompactMode) 2 else 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(if (isCompactMode) 8.dp else 12.dp))
-                Text(
-                    text = widget.motivationalMessage,
-                    fontSize = adaptiveTextSize(
-                        baseSize = MaterialTheme.typography.bodyLarge.fontSize,
-                        compactMultiplier = 0.8f,
-                        mediumMultiplier = 0.9f,
-                        expandedMultiplier = 1f
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = if (isCompactMode) 18.sp else 22.sp,
-                    maxLines = if (isCompactMode) 3 else 4,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+        Column(modifier = Modifier.padding(adaptiveContentPadding())) {
+            Text(
+                text = widget.greeting,
+                fontSize = adaptiveTextSize(
+                    baseSize = MaterialTheme.typography.headlineMedium.fontSize,
+                    compactMultiplier = 0.75f,
+                    mediumMultiplier = 0.85f,
+                    expandedMultiplier = 1f
+                ),
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = if (isCompactMode) 2 else 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(if (isCompactMode) 8.dp else 12.dp))
+            Text(
+                text = widget.motivationalMessage,
+                fontSize = adaptiveTextSize(
+                    baseSize = MaterialTheme.typography.bodyLarge.fontSize,
+                    compactMultiplier = 0.8f,
+                    mediumMultiplier = 0.9f,
+                    expandedMultiplier = 1f
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                lineHeight = if (isCompactMode) 18.sp else 22.sp,
+                maxLines = if (isCompactMode) 3 else 4,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
