@@ -67,11 +67,6 @@ fun ArrowReorderWidgetCard(
             when (widget) {
             is DashboardWidget.WelcomeWidget -> SimpleWelcomeWidgetCard(widget)
             is DashboardWidget.QuickStatsWidget -> SimpleQuickStatsWidgetCard(widget)
-            is DashboardWidget.BodyweightWidget -> SimpleBodyweightWidgetCard(
-                currentWeight = widget.currentWeight,
-                lastRecordedDate = widget.lastRecordedDate,
-                unit = widget.unit
-            )
             is DashboardWidget.CycleProgressWidget -> SimpleCycleProgressWidgetCard(
                 widget = widget,
                 navController = navController,

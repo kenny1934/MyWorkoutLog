@@ -36,10 +36,7 @@ class WidgetRepositorySimplified(
     
     private suspend fun getNoActiveCycleDashboardState(dismissedInsights: Set<String> = emptySet()): Flow<DashboardState> = flow {
         val widgets = mutableListOf<DashboardWidget>()
-        
-        // Get bodyweight info
-        val bodyweightInfo = getLatestBodyweightInfo()
-        
+
         // Welcome widget
         val greeting = getTimeBasedGreeting()
         val streak = calculateBasicStreak()
@@ -65,15 +62,6 @@ class WidgetRepositorySimplified(
             recentPRs = recentPRs
         ))
         
-        // Bodyweight widget
-        bodyweightInfo?.let { info ->
-            widgets.add(DashboardWidget.BodyweightWidget(
-                currentWeight = info.weight,
-                lastRecordedDate = info.date,
-                unit = info.unit
-            ))
-        }
-        
         // Bodyweight trend chart
         val bodyweightData = getBodyweightTrendData()
         if (bodyweightData.isNotEmpty()) {
@@ -82,7 +70,7 @@ class WidgetRepositorySimplified(
                 trend = calculateBodyweightTrend(bodyweightData)
             ))
         }
-        
+
         // Performance trends widget - always show with sample data if no real data
         val performanceTrends = getTopPerformanceTrends()
         val finalPerformanceTrends = if (performanceTrends.isNotEmpty()) {
@@ -177,10 +165,7 @@ class WidgetRepositorySimplified(
     
     private suspend fun getActiveCycleDashboardState(activeCycle: ActiveProgramCycle, dismissedInsights: Set<String> = emptySet()): Flow<DashboardState> = flow {
         val widgets = mutableListOf<DashboardWidget>()
-        
-        // Get bodyweight info
-        val bodyweightInfo = getLatestBodyweightInfo()
-        
+
         // Quick stats (same as no-cycle dashboard)
         val streak = calculateBasicStreak()
         val totalWorkouts = try {
@@ -218,15 +203,6 @@ class WidgetRepositorySimplified(
             daysUntilNext = null
         ))
         
-        // Bodyweight widget
-        bodyweightInfo?.let { info ->
-            widgets.add(DashboardWidget.BodyweightWidget(
-                currentWeight = info.weight,
-                lastRecordedDate = info.date,
-                unit = info.unit
-            ))
-        }
-        
         // Bodyweight trend chart
         val bodyweightData = getBodyweightTrendData()
         if (bodyweightData.isNotEmpty()) {
@@ -235,7 +211,7 @@ class WidgetRepositorySimplified(
                 trend = calculateBodyweightTrend(bodyweightData)
             ))
         }
-        
+
         // Performance trends widget for active cycle - always show with sample data if no real data
         val performanceTrends = getTopPerformanceTrends()
         val finalPerformanceTrends = if (performanceTrends.isNotEmpty()) {
@@ -446,21 +422,6 @@ class WidgetRepositorySimplified(
         ))
         
         return actions
-    }
-    
-    private suspend fun getLatestBodyweightInfo(): BodyweightInfo? {
-        return try {
-            val latestWorkout = loggedWorkoutDao.getLatestLoggedWorkoutWithBodyweight()
-            latestWorkout?.let { workout ->
-                BodyweightInfo(
-                    weight = workout.bodyweight ?: 0.0,
-                    date = workout.date,
-                    unit = "kg" // Default unit, could be made configurable
-                )
-            }
-        } catch (e: Exception) {
-            null
-        }
     }
     
     private suspend fun getBodyweightTrendData(): List<BodyweightPoint> {
@@ -1341,8 +1302,3 @@ class WidgetRepositorySimplified(
     }
 }
 
-data class BodyweightInfo(
-    val weight: Double,
-    val date: String,
-    val unit: String
-)
