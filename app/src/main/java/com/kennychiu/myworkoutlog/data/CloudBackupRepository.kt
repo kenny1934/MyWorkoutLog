@@ -64,21 +64,20 @@ class CloudBackupRepository(
             val backupData = exportResult.fileContent ?: throw Exception("No export data generated")
             val encryptionResult = EncryptionUtils.encryptBackupData(context, backupData)
             
-            val encryptedData = when (encryptionResult) {
-                is EncryptionResult.Success -> encryptionResult.encryptedData
+            val encryptedData: String
+            val dataHash: String
+            when (encryptionResult) {
+                is EncryptionResult.Success -> {
+                    encryptedData = encryptionResult.encryptedData
+                    dataHash = encryptionResult.dataHash
+                }
                 is EncryptionResult.Error -> {
                     emit(CloudResult.Error(
-                        Exception("Encryption failed"), 
+                        Exception("Encryption failed"),
                         encryptionResult.message
                     ))
                     return@flow
                 }
-            }
-            
-            val dataHash = if (encryptionResult is EncryptionResult.Success) {
-                encryptionResult.dataHash
-            } else {
-                ""
             }
             
             emit(CloudResult.Loading(0.6f))
