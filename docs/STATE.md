@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-20 (Phase 5 slice 50 — Round C #9 + #11 of the dashboard audit landed: dashboard wraps in `ScreenScaffold(title = "Dashboard")` with a unified Edit/Done IconButton in the TopAppBar `actions` slot; both compact and tablet paths drop their hand-rolled "Dashboard" header rows; the hidden long-press debug-reset gesture is gone (it lost its host when the title moved to the TopAppBar). Prior entries: slice 49 (Round A #2, Bodyweight simple card deleted), slice 48 (Round A #1, Welcome streak badge removed), slice 47 (Round A #3, NextSession widget simplified), slice 46 (Round B, four dead composables). Earlier: dashboard UI/UX audit → `docs/DASHBOARD_AUDIT.md`; Phase 5 slices 25–45).
+Last updated: 2026-04-20 (Phase 5 slice 51 — Round D #12 of the dashboard audit landed: hardcoded streak orange `Color(0xFFFF6B35)` in `SimpleQuickStatsWidgetCard` is now `MaterialTheme.extendedColors.accent`, which provides a light- and dark-mode-tuned orange out of the existing extended-color palette. Two call sites migrated; `Color` import stays (still used by the `StatCard.color: Color` param + the D #13 change-color sites). Prior entries: slice 50 (Round C #9/#10/#11, ScreenScaffold migration + unified Edit/Done IconButton + debug-gesture delete), slice 49 (Round A #2, Bodyweight simple card deleted), slice 48 (Round A #1, Welcome streak badge removed), slice 47 (Round A #3, NextSession widget simplified), slice 46 (Round B, four dead composables). Earlier: dashboard UI/UX audit → `docs/DASHBOARD_AUDIT.md`; Phase 5 slices 25–45).
 
 ## Next session — start here
 
@@ -15,7 +15,7 @@ Recommended order:
 3. ~~**Round A #1 (S)**~~ — Landed 2026-04-20 as slice 48. See chronological entry below.
 4. ~~**Round A #2 (S)**~~ — Landed 2026-04-20 as slice 49 (user picked: delete outright). See chronological entry below.
 5. ~~**Round C #9 (M)**~~ — Landed 2026-04-20 as slice 50, bundled with **C #10** (customization toggle now lives in the TopAppBar `actions` slot — single style across both paths) and **C #11** (long-press debug-reset gesture deleted along with the inline title). See chronological entry below.
-6. **Rounds D / E / F** — opportunistic, pick one per session as the area is touched.
+6. **Rounds D / E / F** — opportunistic, pick one per session as the area is touched. ~~D #12~~ landed 2026-04-20 as slice 51. Five findings left: D #13, E #14, E #15 (may be stale after slice 50 — re-grep), F #16, F #17. F #18 flagged only.
 
 Older slice plan (slices 37–45) is complete. Entries kept below for history.
 
@@ -36,6 +36,13 @@ Older slice plan (slices 37–45) is complete. Entries kept below for history.
 Backlog spans slices 33–45. Highest priority: slice 36 CTA on Z-Fold inner + outer (active cycle / no active cycle / right after final session logged → CTA should disappear). Then slices 42–45 in order.
 
 ---
+
+**Phase 5 slice 51 landed 2026-04-20** (build + JVM tests green; no schema change):
+
+- **Streak orange promoted to `ExtendedColors.accent` (Round D #12).** `SimpleQuickStatsWidgetCard` was the last remaining consumer of the hardcoded `Color(0xFFFF6B35)` after slice 48 dropped the Welcome usage. Both occurrences (`DashboardWidgetCards.kt:182` in compact-mode and `:212` in normal-mode branches) now pass `MaterialTheme.extendedColors.accent` to `StatCard`. The existing `accent` slot is already light-mode (`0xFFEA580C`) and dark-mode (`0xFFFB923C`) tuned in `ui/theme/ExtendedColors.kt`, so this also fixes a subtle dark-mode readability issue where the original `0xFFFF6B35` was picked purely for light backgrounds.
+- **No new token added.** The audit said "existing `accent` slot or a new `streak` token". Picked `accent` — semantically it's the attention color across the app, and adding a single-use `streak`/`onStreak` pair would double the cost for one call site.
+- **`Color` import retained.** Still needed by the `StatCard(color: Color, …)` parameter type + the two `0xFF4CAF50`/`0xFFF44336` change-color call sites at `DashboardWidgetCards.kt:720–721` which are Round D #13 (not touched this slice).
+- Net +1 / -2 LOC (1 new import, 2 color literals replaced). JVM test count unchanged at 103; build passed on first run.
 
 **Phase 5 slice 50 landed 2026-04-20** (build + JVM tests green; no schema change):
 
