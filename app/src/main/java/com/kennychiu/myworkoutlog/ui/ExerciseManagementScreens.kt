@@ -35,7 +35,8 @@ fun ManageExercisesScreen(
         // Large screen: Master-detail layout
         ExerciseManagementMasterDetailView(
             viewModel = viewModel,
-            layoutInfo = layoutInfo
+            layoutInfo = layoutInfo,
+            onNavigateUp = onNavigateUp
         )
     } else {
         // Small screen: Original single-column layout
@@ -132,29 +133,31 @@ private fun ExerciseManagementSingleColumnView(
 @Composable
 private fun ExerciseManagementMasterDetailView(
     viewModel: ExerciseViewModel,
-    layoutInfo: AdaptiveLayoutInfo
+    layoutInfo: AdaptiveLayoutInfo,
+    onNavigateUp: (() -> Unit)?
 ) {
     val exercises by viewModel.allExercises.collectAsStateWithLifecycle()
-    
+
     var selectedExercise by remember { mutableStateOf<Exercise?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedMuscleGroupFilter by remember { mutableStateOf<MuscleGroup?>(null) }
     var selectedEquipmentFilter by remember { mutableStateOf<Equipment?>(null) }
-    
+    var showAddDialog by remember { mutableStateOf(false) }
+
     // Filter exercises based on search and filters
     val filteredExercises = remember(exercises, searchQuery, selectedMuscleGroupFilter, selectedEquipmentFilter) {
         exercises.filter { exercise ->
-            val matchesSearch = searchQuery.isBlank() || 
+            val matchesSearch = searchQuery.isBlank() ||
                 exercise.name.contains(searchQuery, ignoreCase = true)
             val matchesMuscleGroup = selectedMuscleGroupFilter == null ||
                 exercise.targetMuscleGroups.contains(selectedMuscleGroupFilter)
             val matchesEquipment = selectedEquipmentFilter == null ||
                 exercise.equipment.contains(selectedEquipmentFilter)
-            
+
             matchesSearch && matchesMuscleGroup && matchesEquipment
         }
     }
-    
+
     // Auto-select first exercise when filtered list changes or when selected exercise is no longer available
     LaunchedEffect(filteredExercises) {
         when {
@@ -167,169 +170,153 @@ private fun ExerciseManagementMasterDetailView(
             }
         }
     }
-    
-    Row(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(layoutInfo.contentPadding)
-    ) {
-        // Master Panel (Left side - 40%)
-        Card(
+
+    ScreenScaffold(
+        title = "Manage Exercises",
+        onNavigateUp = onNavigateUp,
+        actions = {
+            IconButton(onClick = { showAddDialog = true }) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add Exercise"
+                )
+            }
+        }
+    ) { paddingValues ->
+        Row(
             modifier = Modifier
-                .fillMaxHeight()
-                .weight(0.4f)
-                .heightIn(min = 400.dp), // Ensure consistent minimum height
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(layoutInfo.contentPadding)
         ) {
-            Column(
+            // Master Panel (Left side - 40%)
+            Card(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
+                    .fillMaxHeight()
+                    .weight(0.4f)
+                    .heightIn(min = 400.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
-                // Header with title and add button
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
                 ) {
-                    Text(
-                        text = "Exercises",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
+                    // Search bar
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        label = { Text("Search exercises") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Search, contentDescription = "Search")
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
-                    
-                    var showAddDialog by remember { mutableStateOf(false) }
-                    
-                    IconButton(
-                        onClick = { 
-                            showAddDialog = true
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Add Exercise",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    
-                    // Add Exercise Dialog
-                    if (showAddDialog) {
-                        AddExerciseDialog(
-                            onDismiss = { showAddDialog = false },
-                            onConfirm = { name, equipment, usesBodyweight, muscleGroups ->
-                                viewModel.insert(name, equipment, usesBodyweight, muscleGroups)
-                                showAddDialog = false
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Filter chips
+                    ExerciseFilterChips(
+                        selectedMuscleGroup = selectedMuscleGroupFilter,
+                        selectedEquipment = selectedEquipmentFilter,
+                        onMuscleGroupSelected = { selectedMuscleGroupFilter = it },
+                        onEquipmentSelected = { selectedEquipmentFilter = it }
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Exercise count
+                    Text(
+                        text = "${filteredExercises.size} exercises",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Exercise list
+                    if (filteredExercises.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FitnessCenter,
+                                    contentDescription = "No exercises",
+                                    modifier = Modifier.size(48.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "No exercises found",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Search bar
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    label = { Text("Search exercises") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = "Search")
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Clear search")
-                            }
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                // Filter chips
-                ExerciseFilterChips(
-                    selectedMuscleGroup = selectedMuscleGroupFilter,
-                    selectedEquipment = selectedEquipmentFilter,
-                    onMuscleGroupSelected = { selectedMuscleGroupFilter = it },
-                    onEquipmentSelected = { selectedEquipmentFilter = it }
-                )
-                
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                // Exercise count
-                Text(
-                    text = "${filteredExercises.size} exercises",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Exercise list
-                if (filteredExercises.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                    } else {
+                        LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.FitnessCenter,
-                                contentDescription = "No exercises",
-                                modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = "No exercises found",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(filteredExercises) { exercise ->
-                            ExerciseListItem(
-                                exercise = exercise,
-                                isSelected = selectedExercise == exercise,
-                                onExerciseSelected = { selectedExercise = exercise }
-                            )
+                            items(filteredExercises, key = { it.id }) { exercise ->
+                                ExerciseListItem(
+                                    exercise = exercise,
+                                    isSelected = selectedExercise == exercise,
+                                    onExerciseSelected = { selectedExercise = exercise }
+                                )
+                            }
                         }
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Detail Panel (Right side - 60%)
+            Card(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(0.6f)
+                    .heightIn(min = 400.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                ExerciseDetailPanel(
+                    selectedExercise = selectedExercise,
+                    onExerciseUpdated = { updatedExercise ->
+                        viewModel.update(updatedExercise)
+                        selectedExercise = updatedExercise
+                    },
+                    onExerciseDeleted = { exerciseToDelete ->
+                        viewModel.delete(exerciseToDelete)
+                        selectedExercise = null
+                    },
+                    onCreateNewExercise = { name, equipment, usesBodyweight, muscleGroups ->
+                        viewModel.insert(name, equipment, usesBodyweight, muscleGroups)
+                    }
+                )
+            }
         }
-        
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        // Detail Panel (Right side - 60%)
-        Card(
-            modifier = Modifier
-                .fillMaxHeight()
-                .weight(0.6f)
-                .heightIn(min = 400.dp), // Ensure consistent minimum height
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            ExerciseDetailPanel(
-                selectedExercise = selectedExercise,
-                onExerciseUpdated = { updatedExercise ->
-                    viewModel.update(updatedExercise)
-                    selectedExercise = updatedExercise
-                },
-                onExerciseDeleted = { exerciseToDelete ->
-                    viewModel.delete(exerciseToDelete)
-                    selectedExercise = null
-                },
-                onCreateNewExercise = { name, equipment, usesBodyweight, muscleGroups ->
-                    viewModel.insert(name, equipment, usesBodyweight, muscleGroups)
-                }
-            )
-        }
+    }
+
+    if (showAddDialog) {
+        AddExerciseDialog(
+            onDismiss = { showAddDialog = false },
+            onConfirm = { name, equipment, usesBodyweight, muscleGroups ->
+                viewModel.insert(name, equipment, usesBodyweight, muscleGroups)
+                showAddDialog = false
+            }
+        )
     }
 }
 

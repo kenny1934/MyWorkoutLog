@@ -43,7 +43,8 @@ fun ManageTemplatesScreen(
             viewModel = viewModel,
             layoutInfo = layoutInfo,
             onNavigateToTemplate = onNavigateToTemplate,
-            onStartWorkout = onStartWorkout
+            onStartWorkout = onStartWorkout,
+            onNavigateUp = onNavigateUp
         )
     } else {
         // Small screen: Original single-column layout
@@ -244,17 +245,18 @@ private fun TemplateManagementMasterDetailView(
     viewModel: WorkoutTemplateViewModel,
     layoutInfo: AdaptiveLayoutInfo,
     onNavigateToTemplate: (String) -> Unit,
-    onStartWorkout: (String) -> Unit
+    onStartWorkout: (String) -> Unit,
+    onNavigateUp: (() -> Unit)?
 ) {
     val templates by viewModel.allTemplates.collectAsStateWithLifecycle()
     val allExercises by viewModel.allMasterExercises.collectAsStateWithLifecycle()
-    
+
     var selectedTemplate by remember { mutableStateOf<WorkoutTemplate?>(null) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var templateName by remember { mutableStateOf("") }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var templateToDelete by remember { mutableStateOf<WorkoutTemplate?>(null) }
-    
+
     // Auto-select first template when data loads or when selected template is no longer available
     LaunchedEffect(templates) {
         when {
@@ -267,120 +269,112 @@ private fun TemplateManagementMasterDetailView(
             }
         }
     }
-    
-    Row(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(layoutInfo.contentPadding)
-    ) {
-        // Master Panel (Left side - 40%)
-        Card(
+
+    ScreenScaffold(
+        title = "Workout Templates",
+        onNavigateUp = onNavigateUp,
+        actions = {
+            IconButton(onClick = { showCreateDialog = true }) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Create Template"
+                )
+            }
+        }
+    ) { paddingValues ->
+        Row(
             modifier = Modifier
-                .fillMaxHeight()
-                .weight(0.4f)
-                .heightIn(min = 400.dp), // Ensure consistent minimum height
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(layoutInfo.contentPadding)
         ) {
-            Column(
+            // Master Panel (Left side - 40%)
+            Card(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
+                    .fillMaxHeight()
+                    .weight(0.4f)
+                    .heightIn(min = 400.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
                 ) {
-                    Text(
-                        text = "Workout Templates",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    IconButton(onClick = { showCreateDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Create Template",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Templates list
-                if (templates.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                    // Templates list
+                    if (templates.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FitnessCenter,
+                                    contentDescription = "No Templates",
+                                    modifier = Modifier.size(48.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "No templates yet",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "Create your first template",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.FitnessCenter,
-                                contentDescription = "No Templates",
-                                modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = "No templates yet",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = "Create your first template",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(templates, key = { it.id }) { template ->
-                            TemplateListItem(
-                                template = template,
-                                isSelected = selectedTemplate?.id == template.id,
-                                onTemplateSelected = { selectedTemplate = template },
-                                onStartWorkout = { onStartWorkout(template.id) },
-                                onEditTemplate = { onNavigateToTemplate(template.id) },
-                                onDeleteTemplate = { 
-                                    templateToDelete = template
-                                    showDeleteConfirmation = true 
-                                }
-                            )
+                            items(templates, key = { it.id }) { template ->
+                                TemplateListItem(
+                                    template = template,
+                                    isSelected = selectedTemplate?.id == template.id,
+                                    onTemplateSelected = { selectedTemplate = template },
+                                    onStartWorkout = { onStartWorkout(template.id) },
+                                    onEditTemplate = { onNavigateToTemplate(template.id) },
+                                    onDeleteTemplate = {
+                                        templateToDelete = template
+                                        showDeleteConfirmation = true
+                                    }
+                                )
+                            }
                         }
                     }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
-        // Detail Panel (Right side - 60%)
-        Card(
-            modifier = Modifier
-                .fillMaxHeight()
-                .weight(0.6f)
-                .heightIn(min = 400.dp), // Ensure consistent minimum height
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            TemplateDetailPanel(
-                selectedTemplate = selectedTemplate,
-                allExercises = allExercises,
-                onStartWorkout = onStartWorkout,
-                onEditTemplate = onNavigateToTemplate,
-                onDeleteTemplate = { templateId ->
-                    val template = templates.find { it.id == templateId }
-                    if (template != null) {
-                        templateToDelete = template
-                        showDeleteConfirmation = true
+            // Detail Panel (Right side - 60%)
+            Card(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(0.6f)
+                    .heightIn(min = 400.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                TemplateDetailPanel(
+                    selectedTemplate = selectedTemplate,
+                    allExercises = allExercises,
+                    onStartWorkout = onStartWorkout,
+                    onEditTemplate = onNavigateToTemplate,
+                    onDeleteTemplate = { templateId ->
+                        val template = templates.find { it.id == templateId }
+                        if (template != null) {
+                            templateToDelete = template
+                            showDeleteConfirmation = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
     }
     

@@ -15,7 +15,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
@@ -40,7 +39,8 @@ fun AdaptiveProgramManagementScreen(
             programViewModel = programViewModel,
             activeCycleViewModel = activeCycleViewModel,
             templateViewModel = templateViewModel,
-            onNavigateToDashboard = onNavigateToDashboard
+            onNavigateToDashboard = onNavigateToDashboard,
+            onNavigateUp = onNavigateUp
         )
     } else {
         // Use traditional navigation-based screens for compact devices
@@ -73,7 +73,8 @@ private fun ProgramMasterDetailLayout(
     programViewModel: ProgramViewModel,
     activeCycleViewModel: ActiveCycleViewModel,
     templateViewModel: WorkoutTemplateViewModel,
-    onNavigateToDashboard: () -> Unit
+    onNavigateToDashboard: () -> Unit,
+    onNavigateUp: (() -> Unit)?
 ) {
     val layoutInfo = rememberAdaptiveLayoutInfo()
 
@@ -82,65 +83,71 @@ private fun ProgramMasterDetailLayout(
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var programIdToDelete by remember { mutableStateOf<String?>(null) }
 
-    Row(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(layoutInfo.contentPadding)
-    ) {
-        // Master Panel - Program List (40% of width)
-        Surface(
+    ScreenScaffold(
+        title = "Program Blueprints",
+        onNavigateUp = onNavigateUp
+    ) { paddingValues ->
+        Row(
             modifier = Modifier
-                .weight(0.4f)
-                .fillMaxHeight(),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 1.dp,
-            shape = RoundedCornerShape(12.dp)
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(layoutInfo.contentPadding)
         ) {
-            ProgramMasterPanel(
-                programViewModel = programViewModel,
-                activeCycleViewModel = activeCycleViewModel,
-                selectedProgramId = selectedProgramId,
-                onProgramSelected = { programId ->
-                    selectedProgramId = programId
-                    isEditing = false
-                },
-                onNavigateToDashboard = onNavigateToDashboard,
-                modifier = Modifier.padding(16.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        // Detail Panel - Program Details/Editor (60% of width)
-        Surface(
-            modifier = Modifier
-                .weight(0.6f)
-                .fillMaxHeight(),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 1.dp,
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            if (selectedProgramId != null) {
-                ProgramDetailPanel(
-                    programId = selectedProgramId!!,
+            // Master Panel - Program List (40% of width)
+            Surface(
+                modifier = Modifier
+                    .weight(0.4f)
+                    .fillMaxHeight(),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 1.dp,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                ProgramMasterPanel(
                     programViewModel = programViewModel,
-                    templateViewModel = templateViewModel,
                     activeCycleViewModel = activeCycleViewModel,
-                    isEditing = isEditing,
-                    onEditModeChanged = { isEditing = it },
-                    onNavigateToDashboard = onNavigateToDashboard,
-                    onDeleteProgram = { programId ->
-                        programIdToDelete = programId
-                        showDeleteConfirmation = true
+                    selectedProgramId = selectedProgramId,
+                    onProgramSelected = { programId ->
+                        selectedProgramId = programId
+                        isEditing = false
                     },
+                    onNavigateToDashboard = onNavigateToDashboard,
                     modifier = Modifier.padding(16.dp)
                 )
-            } else {
-                ProgramDetailEmptyState(
-                    onCreateProgram = {
-                        // This will be handled by the master panel
-                    }
-                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Detail Panel - Program Details/Editor (60% of width)
+            Surface(
+                modifier = Modifier
+                    .weight(0.6f)
+                    .fillMaxHeight(),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 1.dp,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                if (selectedProgramId != null) {
+                    ProgramDetailPanel(
+                        programId = selectedProgramId!!,
+                        programViewModel = programViewModel,
+                        templateViewModel = templateViewModel,
+                        activeCycleViewModel = activeCycleViewModel,
+                        isEditing = isEditing,
+                        onEditModeChanged = { isEditing = it },
+                        onNavigateToDashboard = onNavigateToDashboard,
+                        onDeleteProgram = { programId ->
+                            programIdToDelete = programId
+                            showDeleteConfirmation = true
+                        },
+                        modifier = Modifier.padding(16.dp)
+                    )
+                } else {
+                    ProgramDetailEmptyState(
+                        onCreateProgram = {
+                            // This will be handled by the master panel
+                        }
+                    )
+                }
             }
         }
     }
@@ -242,14 +249,6 @@ private fun ProgramMasterPanel(
     }
 
     Column(modifier = modifier) {
-        // Header with search
-        Text(
-            text = "Program Blueprints",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
         // Search Bar
         OutlinedTextField(
             value = searchQuery,

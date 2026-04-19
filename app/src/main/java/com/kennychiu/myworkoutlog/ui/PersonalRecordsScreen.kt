@@ -7,6 +7,7 @@ import com.kennychiu.myworkoutlog.ui.theme.Dimens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -35,7 +36,8 @@ fun PersonalRecordsScreen(
             viewModel = viewModel,
             layoutInfo = layoutInfo,
             onNavigateToWorkout = onNavigateToWorkout,
-            onNavigateToExerciseAnalytics = onNavigateToExerciseAnalytics
+            onNavigateToExerciseAnalytics = onNavigateToExerciseAnalytics,
+            onNavigateUp = onNavigateUp
         )
     } else {
         // Small screen: Original single-column layout
@@ -164,71 +166,68 @@ private fun PersonalRecordsMasterDetailView(
     viewModel: PrViewModel,
     layoutInfo: AdaptiveLayoutInfo,
     onNavigateToWorkout: (String) -> Unit,
-    onNavigateToExerciseAnalytics: (String) -> Unit
+    onNavigateToExerciseAnalytics: (String) -> Unit,
+    onNavigateUp: (() -> Unit)?
 ) {
     val exerciseGroups by viewModel.exerciseGroups.collectAsStateWithLifecycle()
     val selectedExerciseId by viewModel.selectedExerciseId.collectAsStateWithLifecycle()
     val selectedExercisePRs by viewModel.selectedExercisePRs.collectAsStateWithLifecycle()
-    
+
     // Auto-select first exercise when data loads
     LaunchedEffect(exerciseGroups) {
         if (exerciseGroups.isNotEmpty() && selectedExerciseId == null) {
             viewModel.autoSelectFirstExercise()
         }
     }
-    
-    Row(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(layoutInfo.contentPadding)
-    ) {
-        // Master Panel (Left side - 40%)
-        Card(
+
+    ScreenScaffold(
+        title = "Personal Records",
+        onNavigateUp = onNavigateUp
+    ) { paddingValues ->
+        Row(
             modifier = Modifier
-                .fillMaxHeight()
-                .weight(0.4f),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(layoutInfo.contentPadding)
         ) {
-            Column(
+            // Master Panel (Left side - 40%)
+            Card(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
+                    .fillMaxHeight()
+                    .weight(0.4f),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
-                Text(
-                    text = "Personal Records",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Search bar
-                val searchText by viewModel.searchText.collectAsStateWithLifecycle()
-                OutlinedTextField(
-                    value = searchText,
-                    onValueChange = viewModel::onSearchTextChanged,
-                    label = { Text("Search Exercise...") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") }
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Exercise list
-                if (exerciseGroups.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("No exercises found.", style = MaterialTheme.typography.bodyLarge)
-                    }
-                } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        exerciseGroups.forEach { exerciseGroup ->
-                            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    // Search bar
+                    val searchText by viewModel.searchText.collectAsStateWithLifecycle()
+                    OutlinedTextField(
+                        value = searchText,
+                        onValueChange = viewModel::onSearchTextChanged,
+                        label = { Text("Search Exercise...") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") }
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Exercise list
+                    if (exerciseGroups.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("No exercises found.", style = MaterialTheme.typography.bodyLarge)
+                        }
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(exerciseGroups, key = { it.exerciseId }) { exerciseGroup ->
                                 ExerciseListItem(
                                     exerciseGroup = exerciseGroup,
                                     isSelected = selectedExerciseId == exerciseGroup.exerciseId,
@@ -240,24 +239,24 @@ private fun PersonalRecordsMasterDetailView(
                     }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
-        // Detail Panel (Right side - 60%)
-        Card(
-            modifier = Modifier
-                .fillMaxHeight()
-                .weight(0.6f),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            PersonalRecordsDetailPanel(
-                selectedExerciseId = selectedExerciseId,
-                selectedExercisePRs = selectedExercisePRs,
-                exerciseGroups = exerciseGroups,
-                onNavigateToWorkout = onNavigateToWorkout,
-                onNavigateToExerciseAnalytics = onNavigateToExerciseAnalytics
-            )
+            // Detail Panel (Right side - 60%)
+            Card(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(0.6f),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                PersonalRecordsDetailPanel(
+                    selectedExerciseId = selectedExerciseId,
+                    selectedExercisePRs = selectedExercisePRs,
+                    exerciseGroups = exerciseGroups,
+                    onNavigateToWorkout = onNavigateToWorkout,
+                    onNavigateToExerciseAnalytics = onNavigateToExerciseAnalytics
+                )
+            }
         }
     }
 }
