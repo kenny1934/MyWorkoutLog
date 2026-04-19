@@ -3,6 +3,7 @@ package com.kennychiu.myworkoutlog.ui
 import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
+import com.kennychiu.myworkoutlog.ui.theme.extendedColors
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -106,9 +107,9 @@ fun TrendIndicator(
 ) {
     val (icon, color) = when (trend.direction) {
         TrendDirection.STRONGLY_IMPROVING, TrendDirection.SLIGHTLY_IMPROVING ->
-            Icons.AutoMirrored.Filled.TrendingUp to Color(0xFF4CAF50)
+            Icons.AutoMirrored.Filled.TrendingUp to MaterialTheme.extendedColors.success
         TrendDirection.STRONGLY_DECLINING, TrendDirection.SLIGHTLY_DECLINING ->
-            Icons.AutoMirrored.Filled.TrendingDown to Color(0xFFF44336)
+            Icons.AutoMirrored.Filled.TrendingDown to MaterialTheme.colorScheme.error
         TrendDirection.STABLE -> Icons.AutoMirrored.Filled.TrendingFlat to MaterialTheme.colorScheme.onSurfaceVariant
         TrendDirection.INSUFFICIENT_DATA -> Icons.AutoMirrored.Filled.ShowChart to Color(0xFFFF9800)
     }

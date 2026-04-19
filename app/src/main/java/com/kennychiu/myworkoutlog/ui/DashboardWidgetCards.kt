@@ -718,8 +718,8 @@ fun SimpleBodyweightTrendWidgetCard(widget: DashboardWidget.BodyweightTrendWidge
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = when {
-                                    change > 0 -> Color(0xFF4CAF50)
-                                    change < 0 -> Color(0xFFF44336)
+                                    change > 0 -> MaterialTheme.extendedColors.success
+                                    change < 0 -> MaterialTheme.colorScheme.error
                                     else -> MaterialTheme.colorScheme.onSurface
                                 }
                             )
