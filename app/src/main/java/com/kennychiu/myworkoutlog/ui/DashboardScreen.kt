@@ -454,13 +454,7 @@ fun AdaptiveDashboardContent(
 
         when {
             isLoading && dashboardState.widgets.isEmpty() -> {
-                // Loading state
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+                DashboardSkeletonGrid()
             }
             error != null -> {
                 // Error state
@@ -480,6 +474,11 @@ fun AdaptiveDashboardContent(
                         }
                     }
                 }
+            }
+            !isLoading && dashboardState.widgets.isEmpty() -> {
+                DashboardEmptyState(
+                    onGoToLibrary = { navController.navigate(Screen.Library.route) }
+                )
             }
             else -> {
                 // Content with adaptive layout
@@ -662,15 +661,21 @@ fun EnhancedDashboardScreen(
                 }
             }
 
-            // Loading state
-            if (isLoading) {
+            // Loading state — skeleton cards instead of a bare spinner so the user
+            // sees the shape of the dashboard arriving.
+            if (isLoading && dashboardState.widgets.isEmpty()) {
                 item {
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
+                    DashboardSkeletonGrid()
+                }
+            }
+
+            // Empty state — fresh install / no widgets configured yet.
+            if (!isLoading && dashboardState.widgets.isEmpty() &&
+                dashboardState.insights.isEmpty() && dashboardState.quickActions.isEmpty()) {
+                item {
+                    DashboardEmptyState(
+                        onGoToLibrary = { navController.navigate(Screen.Library.route) }
+                    )
                 }
             }
 
