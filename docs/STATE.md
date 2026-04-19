@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-19 (Phase 4 slices 21 + 22 — AnalyticsViewModel OptIn cleanup and AndroidHttp → NetHttpTransport).
+Last updated: 2026-04-19 (Phase 4 slices 23 + 24 — ImportRepository cast helpers + CloudBackupRepository always-true fix; build now warning-clean).
 
 ## Next session — start here
 
@@ -43,6 +43,18 @@ As of 2026-04-18 the Linux Android SDK is installed, `./gradlew assembleDebug` i
 - Secondary fix on the compact WorkoutLogger `LazyColumn`: `.padding(paddingValues).padding(16.dp)` → `.padding(paddingValues)` with `contentPadding = PaddingValues(16.dp)`. This lets the last set scroll fully into view instead of being pinned inside a shrunk viewport. Same anti-pattern also exists in several other screens' `Column(.padding(paddingValues).padding(16.dp))` wrappers but isn't clipping anything visible there (Columns aren't scrollable), so left alone.
 - Dashboard compact-layout `LazyColumn`: `.padding(layoutInfo.contentPadding)` → `contentPadding = PaddingValues(layoutInfo.contentPadding)` so widgets scroll through the bottom padding instead of the whole list being pinned.
 - JVM tests still 36; no new tests (layout bug).
+
+**Phase 4 slice 24 landed 2026-04-19** (build + JVM tests green on retry; no schema change):
+- `data/CloudBackupRepository.kt:78` — folded the redundant `if (encryptionResult is EncryptionResult.Success)` branch into the existing `when`. The preceding `when` already `return@flow`s on `EncryptionResult.Error`, so the later instance check was always true. `encryptedData` and `dataHash` are now both assigned inside the `when`'s Success branch (one `val` declaration each outside the `when` for scope).
+- Behaviour unchanged — on Error the flow still emits `CloudResult.Error` and returns.
+
+**Phase 4 slice 23 landed 2026-04-19** (build + JVM tests green on retry; no schema change):
+- `data/ImportRepository.kt` — 25 unchecked-cast + 6 Java-type-mismatch warnings cleared.
+- Added three private helpers on the repo: `jsonMapType = TypeToken<Map<String, Any>>() {}`, `parseJsonAsMap(json)`, `Map<String, Any>.mapField(key)`, `Map<String, Any>.listOfMapsField(key)`. The two extension helpers carry `@Suppress("UNCHECKED_CAST")` — that suppress now lives in exactly two places in the codebase instead of 17 scattered throughout every import function.
+- Both `validateJSONFile` overloads and all six `importX` functions (workouts, exercises, PRs, program templates, workout templates, complete backup) now go through `parseJsonAsMap` + `listOfMapsField` / `mapField`.
+- `options.filePath!!` replaces `options.filePath` in the six `File(…)` constructor call sites — `ImportOptions.filePath` is `String?` but the Java `File(String)` constructor is non-null. Existing runtime behaviour (NPE on null) preserved; the warning is cleared.
+- Behaviour unchanged. No new tests — purely cosmetic refactor of already-warning-suppressed cast patterns.
+- Net warning count: build went from 26 → 0. Remaining Kotlin warnings: none.
 
 **Phase 4 slice 22 landed 2026-04-19** (build + JVM tests green; no schema change):
 - `data/GoogleDriveCloudProvider.kt` migrated off the deprecated `com.google.api.client.extensions.android.http.AndroidHttp` wrapper. `AndroidHttp.newCompatibleTransport()` at the `Drive.Builder` call site is now `NetHttpTransport()` (from `com.google.api.client.http.javanet.NetHttpTransport`). Single call site; import swap + one-line constructor swap. `google-http-client-android` already pulled this transport in transitively, so no dependency change.
@@ -317,7 +329,9 @@ The four stale `feature/*` branches (dashboard-enhancements, enhanced-history-di
   - Done (2026-04-19, slice 20): true drag-reorder via `sh.calvin.reorderable:3.0.0`. `ReorderableLazyColumn` for weeks, `ReorderableColumn` for sessions in both program editors. Drag handle renders above the existing arrow buttons; move-to-week dialog and AlertDialog stay as fallbacks. New `SessionCard.dragHandle` slot + new `util/ProgramEditorHelpers.kt::moveSessionWithinWeek` helper with 6 JVM tests (97 → 103).
   - Done (2026-04-19, slice 21): file-level `@OptIn(ExperimentalCoroutinesApi)` on `AnalyticsViewModel`. Six `flatMapLatest` call sites; last Kotlin opt-in warning cleared.
   - Done (2026-04-19, slice 22): `GoogleDriveCloudProvider` migrated from deprecated `AndroidHttp.newCompatibleTransport()` to `NetHttpTransport()`. Last non-Compose deprecation warning cleared.
-  - Further candidates: none gating. Workout-logger and program-management paths are feature-complete for now; device-verification sweep across slices 5b–22 is the natural next session.
+  - Done (2026-04-19, slice 23): `ImportRepository` unchecked-cast cleanup via three private helpers (`parseJsonAsMap`, `Map.mapField`, `Map.listOfMapsField`); `@Suppress("UNCHECKED_CAST")` now lives in two central spots instead of 17 call sites. `options.filePath!!` clears the six Java-type-mismatch warnings. Build now warning-clean.
+  - Done (2026-04-19, slice 24): `CloudBackupRepository` always-true instance check folded into the existing `when` on `EncryptionResult`.
+  - Further candidates: none gating. Workout-logger and program-management paths are feature-complete for now; device-verification sweep across slices 5b–24 is the natural next session.
 
 ## Deleted during cleanup
 
