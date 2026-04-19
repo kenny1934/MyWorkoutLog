@@ -165,46 +165,56 @@ fun LoggedSetRow(
                 fontWeight = FontWeight.Bold
             )
 
-            // Pre-fill suggestion chip
-            if (performanceSuggestion != null && performanceSuggestion.confidence > 0.3f &&
-                set.weight == null && set.reps == null) { // Only show for empty sets
-                AssistChip(
-                    onClick = {
-                        // Apply suggestions: Update local state first, then trigger saves
-                        performanceSuggestion.suggestedWeight?.let { weight ->
-                            weightText = weight.toString()
-                        }
-                        performanceSuggestion.suggestedReps?.let { reps ->
-                            repsText = reps.toString()
-                        }
-                        performanceSuggestion.suggestedRir?.let { rir ->
-                            rirText = rir.toString()
-                        }
+            // Pre-fill suggestion chip — slot height is reserved at
+            // AssistChipDefaults.Height (32dp) even when the chip is hidden,
+            // so the header row doesn't reflow as the user types and the chip
+            // vanishes (which would otherwise shift the trailing Delete /
+            // Start-Rest buttons under the user's finger).
+            Box(
+                modifier = Modifier
+                    .heightIn(min = AssistChipDefaults.Height)
+                    .padding(horizontal = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (performanceSuggestion != null && performanceSuggestion.confidence > 0.3f &&
+                    set.weight == null && set.reps == null) { // Only show for empty sets
+                    AssistChip(
+                        onClick = {
+                            // Apply suggestions: Update local state first, then trigger saves
+                            performanceSuggestion.suggestedWeight?.let { weight ->
+                                weightText = weight.toString()
+                            }
+                            performanceSuggestion.suggestedReps?.let { reps ->
+                                repsText = reps.toString()
+                            }
+                            performanceSuggestion.suggestedRir?.let { rir ->
+                                rirText = rir.toString()
+                            }
 
-                        // Save all current values immediately after updating UI state
-                        saveAllCurrentValues()
-                    },
-                    label = {
-                        Text(
-                            text = performanceSuggestion.suggestionLabel ?: buildString {
-                                performanceSuggestion.suggestedWeight?.let { append("${it}$weightUnit ") }
-                                performanceSuggestion.suggestedReps?.let { append("${it}r ") }
-                                performanceSuggestion.daysAgo?.let {
-                                    append("(${it}d ago)")
-                                }
-                            }.trim(),
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Filled.AutoAwesome,
-                            contentDescription = "Smart suggestion",
-                            modifier = Modifier.size(16.dp)
-                        )
-                    },
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
+                            // Save all current values immediately after updating UI state
+                            saveAllCurrentValues()
+                        },
+                        label = {
+                            Text(
+                                text = performanceSuggestion.suggestionLabel ?: buildString {
+                                    performanceSuggestion.suggestedWeight?.let { append("${it}$weightUnit ") }
+                                    performanceSuggestion.suggestedReps?.let { append("${it}r ") }
+                                    performanceSuggestion.daysAgo?.let {
+                                        append("(${it}d ago)")
+                                    }
+                                }.trim(),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.AutoAwesome,
+                                contentDescription = "Smart suggestion",
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.weight(1f))
