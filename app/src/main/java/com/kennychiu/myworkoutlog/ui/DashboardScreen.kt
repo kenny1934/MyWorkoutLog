@@ -189,7 +189,7 @@ fun AdaptiveWidgetGrid(
         val urgentInsights = insights.filter {
             it.priority == InsightPriority.URGENT || it.priority == InsightPriority.HIGH
         }
-        items(urgentInsights) { insight ->
+        items(urgentInsights, key = { it.id }) { insight ->
             Box(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -209,7 +209,7 @@ fun AdaptiveWidgetGrid(
         val lowPriorityInsights = insights.filter {
             it.priority == InsightPriority.LOW || it.priority == InsightPriority.MEDIUM
         }
-        items(lowPriorityInsights) { insight ->
+        items(lowPriorityInsights, key = { it.id }) { insight ->
             Box(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -680,7 +680,7 @@ fun EnhancedDashboardScreen(
                 val urgentInsights = dashboardState.insights.filter {
                     it.priority == InsightPriority.URGENT || it.priority == InsightPriority.HIGH
                 }
-                items(urgentInsights) { insight ->
+                items(urgentInsights, key = { it.id }) { insight ->
                     EnhancedInsightCard(
                         insight = insight,
                         onDismiss = { insightId -> dashboardViewModel.dismissInsight(insightId) },
@@ -704,7 +704,7 @@ fun EnhancedDashboardScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     contentPadding = PaddingValues(horizontal = 4.dp)
                                 ) {
-                                    items(dashboardState.quickActions) { action ->
+                                    items(dashboardState.quickActions, key = { it.id }) { action ->
                                         EnhancedQuickActionButton(
                                             action = action,
                                             onClick = { selectedAction ->

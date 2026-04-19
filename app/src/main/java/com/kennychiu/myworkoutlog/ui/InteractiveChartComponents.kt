@@ -1000,27 +1000,22 @@ fun SparklineChart(
     fillArea: Boolean = false
 ) {
     if (data.isEmpty()) return
-    
-    val animatedData = data.map { value ->
-        animateFloatAsState(
-            targetValue = value,
-            animationSpec = tween(durationMillis = 800, easing = EaseOutCubic),
-            label = "sparkline_data"
-        ).value
-    }
-    
+
+    // Previously each point had its own animateFloatAsState — N animation objects per frame,
+    // no stable identity across recompositions. Canvas reads the raw list directly; snap
+    // transitions beat the per-frame allocation cost.
     Canvas(modifier = modifier) {
-        if (animatedData.size < 2) return@Canvas
-        
-        val maxValue = animatedData.maxOrNull() ?: 1f
-        val minValue = animatedData.minOrNull() ?: 0f
+        if (data.size < 2) return@Canvas
+
+        val maxValue = data.maxOrNull() ?: 1f
+        val minValue = data.minOrNull() ?: 0f
         val range = maxValue - minValue
-        
+
         if (range == 0f) return@Canvas
-        
-        val stepX = size.width / (animatedData.size - 1)
-        
-        val points = animatedData.mapIndexed { index, value ->
+
+        val stepX = size.width / (data.size - 1)
+
+        val points = data.mapIndexed { index, value ->
             val x = index * stepX
             val y = size.height - ((value - minValue) / range) * size.height
             Offset(x, y)

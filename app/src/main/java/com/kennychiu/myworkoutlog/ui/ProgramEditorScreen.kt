@@ -147,7 +147,7 @@ fun ProgramEditorScreen(
                                     )
                                 }
                                 Spacer(Modifier.height(8.dp))
-                                val sortedSessions = week.sessions.sortedBy { it.order }
+                                val sortedSessions = remember(week.sessions) { week.sessions.sortedBy { it.order } }
 
                                 ReorderableColumn(
                                     list = sortedSessions,
@@ -686,7 +686,7 @@ fun EnhancedProgramEditor(
 
                             Spacer(Modifier.height(12.dp))
 
-                            val sortedSessions = week.sessions.sortedBy { it.order }
+                            val sortedSessions = remember(week.sessions) { week.sessions.sortedBy { it.order } }
 
                             ReorderableColumn(
                                 list = sortedSessions,

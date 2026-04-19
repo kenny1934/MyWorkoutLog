@@ -86,7 +86,7 @@ private fun TemplateManagementSingleColumnView(
                 )
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(templates) { template ->
+                    items(templates, key = { it.id }) { template ->
                         var showOverflowMenu by remember { mutableStateOf(false) }
                         
                         Card(
@@ -340,7 +340,7 @@ private fun TemplateManagementMasterDetailView(
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(templates) { template ->
+                        items(templates, key = { it.id }) { template ->
                             TemplateListItem(
                                 template = template,
                                 isSelected = selectedTemplate?.id == template.id,

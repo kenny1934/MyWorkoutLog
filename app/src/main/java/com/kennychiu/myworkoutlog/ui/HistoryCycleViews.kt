@@ -56,7 +56,7 @@ fun MesocycleHistoryMasterView(
                 )
             }
 
-            items(completedCycles) { cycleWithWorkouts ->
+            items(completedCycles, key = { it.cycleId }) { cycleWithWorkouts ->
                 CycleCardMaster(
                     cycleWithWorkouts = cycleWithWorkouts,
                     selectedWorkoutId = selectedWorkoutId,
@@ -77,7 +77,7 @@ fun MesocycleHistoryMasterView(
                 )
             }
 
-            items(orphanedWorkouts) { workout ->
+            items(orphanedWorkouts, key = { it.id }) { workout ->
                 WorkoutCard(
                     workout = workout,
                     onNavigateToWorkout = { }, // Empty since we handle selection
@@ -147,7 +147,7 @@ fun MesocycleHistoryView(
                 )
             }
 
-            items(completedCycles) { cycleWithWorkouts ->
+            items(completedCycles, key = { it.cycleId }) { cycleWithWorkouts ->
                 CycleCard(
                     cycleWithWorkouts = cycleWithWorkouts,
                     onNavigateToWorkout = onNavigateToWorkout,
@@ -167,7 +167,7 @@ fun MesocycleHistoryView(
                 )
             }
 
-            items(orphanedWorkouts) { workout ->
+            items(orphanedWorkouts, key = { it.id }) { workout ->
                 WorkoutCard(
                     workout = workout,
                     onNavigateToWorkout = onNavigateToWorkout,
@@ -553,7 +553,7 @@ fun ChronologicalHistoryMasterView(
         }
     } else {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(loggedWorkouts) { workout ->
+            items(loggedWorkouts, key = { it.id }) { workout ->
                 WorkoutCard(
                     workout = workout,
                     onNavigateToWorkout = { }, // Empty since we handle selection
@@ -579,7 +579,7 @@ fun ChronologicalHistoryView(
         }
     } else {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(loggedWorkouts) { workout ->
+            items(loggedWorkouts, key = { it.id }) { workout ->
                 WorkoutCard(
                     workout = workout,
                     onNavigateToWorkout = onNavigateToWorkout,

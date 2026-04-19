@@ -144,7 +144,7 @@ fun HistoryDetailScreen(
                     WorkoutSummaryCard(workout = currentWorkout)
                 }
 
-                items(currentWorkout.loggedExercises) { exercise ->
+                items(currentWorkout.loggedExercises, key = { it.id }) { exercise ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),

@@ -73,7 +73,7 @@ private fun ExerciseManagementSingleColumnView(
                 .padding(Dimens.screenPadding)
         ) {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(Dimens.spacing8)) {
-                items(exercises) { exercise ->
+                items(exercises, key = { it.id }) { exercise ->
                     ExerciseItem(
                         exercise = exercise,
                         onEditClick = { exerciseToEdit = exercise },

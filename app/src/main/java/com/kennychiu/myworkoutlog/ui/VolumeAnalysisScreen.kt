@@ -77,7 +77,9 @@ private fun VolumeAnalysisSingleColumnView(
         }
     }
 
-    val sortedVolumeList = volumeData.entries.toList().sortedByDescending { it.value }
+    val sortedVolumeList = remember(volumeData) {
+        volumeData.entries.toList().sortedByDescending { it.value }
+    }
 
     val chartModelProducer = remember { ChartEntryModelProducer() }
     val chartScrollState = rememberChartScrollState()
@@ -98,7 +100,7 @@ private fun VolumeAnalysisSingleColumnView(
         }
     }
 
-    LaunchedEffect(sortedVolumeList) {
+    LaunchedEffect(volumeData) {
         val entries = sortedVolumeList.mapIndexed { index, entry ->
             entryOf(index.toFloat(), entry.value)
         }
@@ -250,8 +252,10 @@ private fun VolumeAnalysisMasterDetailView(
     }
     
     // Auto-select first muscle group when data loads or when selected group is no longer available
-    val sortedVolumeList = volumeData.entries.toList().sortedByDescending { it.value }
-    LaunchedEffect(sortedVolumeList) {
+    val sortedVolumeList = remember(volumeData) {
+        volumeData.entries.toList().sortedByDescending { it.value }
+    }
+    LaunchedEffect(volumeData) {
         when {
             selectedMuscleGroup == null && sortedVolumeList.isNotEmpty() -> {
                 selectedMuscleGroup = sortedVolumeList.first().key

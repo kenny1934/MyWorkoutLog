@@ -115,15 +115,17 @@ fun ExerciseSelectorContent(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        val filteredExercises = remember(exercises, searchText) {
+            exercises.filter { exercise ->
+                exercise.name.contains(searchText, ignoreCase = true)
+            }
+        }
+
         LazyColumn(
             modifier = Modifier.height(300.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            val filteredExercises = exercises.filter { exercise ->
-                exercise.name.contains(searchText, ignoreCase = true)
-            }
-
-            items(filteredExercises) { exercise ->
+            items(filteredExercises, key = { it.id }) { exercise ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()

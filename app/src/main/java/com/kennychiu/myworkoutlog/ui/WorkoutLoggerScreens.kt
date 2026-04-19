@@ -542,7 +542,7 @@ private fun WorkoutLoggerScreenContent(
                         }
                     }
                 }
-                items(activeWorkout!!.loggedExercises) { exercise ->
+                items(activeWorkout!!.loggedExercises, key = { it.id }) { exercise ->
                     // Calculate completion metrics for enhanced display
                     val setsCompleted = exercise.sets.count { set ->
                         (set.weight != null && set.reps != null) || set.secs != null

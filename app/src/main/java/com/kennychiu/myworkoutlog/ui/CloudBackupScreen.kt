@@ -416,7 +416,7 @@ private fun BackupListCard(
                 modifier = Modifier.heightIn(max = 400.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(backups) { backup ->
+                items(backups, key = { it.id }) { backup ->
                     BackupItemCard(
                         backup = backup,
                         onRestore = { onRestoreBackup(backup.id) },
@@ -997,7 +997,7 @@ private fun CloudBackupMasterDetailView(
                             }
                         }
                     } else if (backups.isNotEmpty()) {
-                        items(backups) { backup ->
+                        items(backups, key = { it.id }) { backup ->
                             BackupListItem(
                                 backup = backup,
                                 isSelected = selectedBackup?.id == backup.id,

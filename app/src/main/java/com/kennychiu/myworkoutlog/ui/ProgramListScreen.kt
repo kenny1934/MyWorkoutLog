@@ -54,7 +54,7 @@ fun ManageProgramsScreen(
                 )
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(programs) { program ->
+                    items(programs, key = { it.id }) { program ->
                         var showOverflowMenu by remember { mutableStateOf(false) }
 
                         Card(elevation = CardDefaults.cardElevation(2.dp)) {
