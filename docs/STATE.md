@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-20 (Phase 5 slice 49 — Round A #2 of the dashboard audit landed: `SimpleBodyweightWidgetCard` deleted; `SimpleBodyweightTrendWidgetCard` is the sole bodyweight surface. Prior entries: slice 48 (Round A #1, Welcome streak badge removed), slice 47 (Round A #3, NextSession widget simplified), slice 46 (Round B, four dead composables). Earlier: dashboard UI/UX audit drafted → `docs/DASHBOARD_AUDIT.md`; Phase 5 slices 25–45).
+Last updated: 2026-04-20 (Phase 5 slice 50 — Round C #9 + #11 of the dashboard audit landed: dashboard wraps in `ScreenScaffold(title = "Dashboard")` with a unified Edit/Done IconButton in the TopAppBar `actions` slot; both compact and tablet paths drop their hand-rolled "Dashboard" header rows; the hidden long-press debug-reset gesture is gone (it lost its host when the title moved to the TopAppBar). Prior entries: slice 49 (Round A #2, Bodyweight simple card deleted), slice 48 (Round A #1, Welcome streak badge removed), slice 47 (Round A #3, NextSession widget simplified), slice 46 (Round B, four dead composables). Earlier: dashboard UI/UX audit → `docs/DASHBOARD_AUDIT.md`; Phase 5 slices 25–45).
 
 ## Next session — start here
 
@@ -14,7 +14,7 @@ Recommended order:
 2. ~~**Round A #3 (XS)**~~ — Landed 2026-04-20 as slice 47. See chronological entry below.
 3. ~~**Round A #1 (S)**~~ — Landed 2026-04-20 as slice 48. See chronological entry below.
 4. ~~**Round A #2 (S)**~~ — Landed 2026-04-20 as slice 49 (user picked: delete outright). See chronological entry below.
-5. **Round C #9 (M, probably its own session)** — `ScreenScaffold` migration for the dashboard (slice 26 skipped it).
+5. ~~**Round C #9 (M)**~~ — Landed 2026-04-20 as slice 50, bundled with **C #10** (customization toggle now lives in the TopAppBar `actions` slot — single style across both paths) and **C #11** (long-press debug-reset gesture deleted along with the inline title). See chronological entry below.
 6. **Rounds D / E / F** — opportunistic, pick one per session as the area is touched.
 
 Older slice plan (slices 37–45) is complete. Entries kept below for history.
@@ -36,6 +36,14 @@ Older slice plan (slices 37–45) is complete. Entries kept below for history.
 Backlog spans slices 33–45. Highest priority: slice 36 CTA on Z-Fold inner + outer (active cycle / no active cycle / right after final session logged → CTA should disappear). Then slices 42–45 in order.
 
 ---
+
+**Phase 5 slice 50 landed 2026-04-20** (build + JVM tests green; no schema change):
+
+- **Dashboard now uses `ScreenScaffold`.** Round C #9 of the dashboard audit; slice 26 migrated 6 screens to the shared scaffold but skipped the dashboard, leaving both compact and tablet paths to hand-roll `Text(text = "Dashboard", fontSize = 28/32.sp, FontWeight.Bold)` headers inside their own scroll containers. `EnhancedDashboardScreen` is now wrapped in `ScreenScaffold(title = "Dashboard", actions = { … })` and `PullToRefreshBox` lives inside the scaffold's content slot with `Modifier.padding(paddingValues)` applied. Both the compact `LazyColumn` header `item {}` and the tablet `AdaptiveDashboardContent` header `Row` (with their own customization toggles, `combinedClickable` long-press handler, and embedded `AlertDialog`) are deleted. Dashboard now picks up the slice-32 `windowInsets = WindowInsets(0)` fix automatically + the marquee/back-button conventions from `ScreenScaffold`.
+- **Customization toggle unified across paths (Round C #10).** Compact previously had a tinted `IconButton`; tablet had an `OutlinedButton(icon + "Edit"/"Done" text, contentColor = primary when active)` — different shape, different size, different on-state semantics for what is the same action. Replaced both with a single `IconButton` in the scaffold's `actions` slot that paints the icon `MaterialTheme.colorScheme.primary` when in customization mode and `onSurfaceVariant` otherwise. `IconButton` is the canonical M3 idiom for `TopAppBar.actions`, so this is more consistent with the other six `ScreenScaffold` consumers (`ExerciseManagementScreens`, `TemplateManagementScreens`, `ProgramListScreen`, etc.) than the `OutlinedButton` would have been.
+- **Hidden debug gesture deleted (Round C #11).** The audit flagged the dashboard title's `combinedClickable(onClick = { /* Normal click does nothing */ }, onLongClick = { showDebugDialog = true })` — long-press opened a "Reset dismissed insights?" `AlertDialog`, no visible affordance, the no-op `onClick` was misleading. Once the inline title moves to the TopAppBar (which is just a `Text` with no clickable wrapper inside `ScreenScaffold`), the gesture has no host to attach to. Rather than re-wire it through a TopAppBar action or gate it behind `BuildConfig.DEBUG` (which the project doesn't enable today and which would require a `build.gradle.kts` toggle for a single hobby debug action), the gesture + the showDebugDialog state + the `AlertDialog` block + `DashboardViewModel.resetDismissedInsights()` are all gone. If the user ever needs to un-dismiss insights, an explicit Settings entry would be the discoverable home — slice for another session.
+- **Imports tidied.** `androidx.compose.foundation.combinedClickable` and `androidx.compose.ui.unit.sp` both became orphaned in `DashboardScreen.kt` after the inline-title deletions and were removed; `FontWeight` survives because the Complete-Cycle `AlertDialog` title still uses `FontWeight.Bold`.
+- Net -107 LOC. JVM test count unchanged at 103 (passed on first run, no flake this slice). On-device verification on the Z-Fold should confirm the TopAppBar + Edit/Done IconButton render with the right top-inset on both inner + outer screens, and that scrolling + pull-to-refresh + customization-mode reorder all behave as before.
 
 **Phase 5 slice 49 landed 2026-04-20** (build + JVM tests green; no schema change):
 
