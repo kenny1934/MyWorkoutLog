@@ -452,6 +452,17 @@ fun AdaptiveDashboardContent(
 
         Spacer(modifier = Modifier.height(spacing))
 
+        // Persistent next-session CTA — same hoist as the compact path. Sits above the
+        // widget grid so "Start next session" is visible without scrolling on tablets too.
+        val nextCtaCycle = dashboardState.widgets
+            .filterIsInstance<DashboardWidget.CycleProgressWidget>()
+            .firstOrNull()?.cycle
+            ?.takeIf { cycleProgress(it).nextSession != null }
+        if (nextCtaCycle != null) {
+            NextSessionCtaCard(cycle = nextCtaCycle, navController = navController)
+            Spacer(modifier = Modifier.height(spacing))
+        }
+
         when {
             isLoading && dashboardState.widgets.isEmpty() -> {
                 DashboardSkeletonGrid()
@@ -610,6 +621,21 @@ fun EnhancedDashboardScreen(
                             tint = if (isCustomizationMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+            }
+
+            // Persistent next-session CTA — hoists the "Start next session" action out
+            // of SimpleCycleProgressWidgetCard's expanded widget (previously buried 3 taps
+            // deep) onto the first scroll line. Rendered only when an active cycle has
+            // an unfinished session; source the cycle from the CycleProgressWidget so no
+            // new VM plumbing is needed.
+            val nextCtaCycle = dashboardState.widgets
+                .filterIsInstance<DashboardWidget.CycleProgressWidget>()
+                .firstOrNull()?.cycle
+                ?.takeIf { cycleProgress(it).nextSession != null }
+            if (nextCtaCycle != null) {
+                item {
+                    NextSessionCtaCard(cycle = nextCtaCycle, navController = navController)
                 }
             }
 

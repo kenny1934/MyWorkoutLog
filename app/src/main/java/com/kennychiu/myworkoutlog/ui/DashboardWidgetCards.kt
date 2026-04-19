@@ -390,6 +390,118 @@ fun SimpleBodyweightWidgetCard(
     }
 }
 
+/**
+ * Persistent top-of-dashboard CTA for the next unfinished session in the active cycle.
+ * Renders nothing when no active cycle, no current week, or no next session — the cycle
+ * is complete or unseeded. Mirrors the Deload / Target-RIR badges from
+ * `SimpleCycleProgressWidgetCard` so both surfaces agree visually.
+ */
+@Composable
+fun NextSessionCtaCard(
+    cycle: ActiveProgramCycle,
+    navController: NavHostController
+) {
+    val info = remember(cycle) { cycleProgress(cycle) }
+    val nextWeek = info.currentWeek ?: return
+    val nextSession = info.nextSession ?: return
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                val route = Screen.WorkoutLogger.createRoute(
+                    templateId = nextSession.workoutTemplateId,
+                    cycleId = cycle.cycleUuid,
+                    weekId = nextWeek.id,
+                    sessionId = nextSession.id
+                )
+                navController.navigate(route)
+            },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(44.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Filled.PlayArrow,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Start next session",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = nextSession.sessionName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = nextWeek.weekLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            if (nextWeek.isDeloadWeek) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer
+                ) {
+                    Text(
+                        text = "Deload",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+            }
+            val targetRir = nextWeek.targetRir?.takeIf { it.isNotBlank() }
+            if (targetRir != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Text(
+                        text = "RIR $targetRir",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun SimpleCycleProgressWidgetCard(
     widget: DashboardWidget.CycleProgressWidget,
