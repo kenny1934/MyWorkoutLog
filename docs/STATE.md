@@ -2,7 +2,7 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-20 (Phase 5 slice 53 — Round F #17 of the dashboard audit landed: empty-state widget copy unified to "No X yet" across 7 dashboard sites (4 strings: "No performance data yet", "No volume data yet", "No bodyweight data yet", "No achievements yet"). Replaces three variants of "No X data available" plus the lone motivational "Keep training to unlock achievements!". `AnalyticsScreen.kt` kept its own "No X data available" wording — out of audit scope. Prior entries: slice 52 (Round E #15, tablet error Retry now matches compact — both call `refreshDashboard()`), slice 51 (Round D #12, streak orange → `extendedColors.accent`), slice 50 (Round C #9/#10/#11, ScreenScaffold migration + unified Edit/Done IconButton + debug-gesture delete), slice 49 (Round A #2, Bodyweight simple card deleted), slice 48 (Round A #1, Welcome streak badge removed), slice 47 (Round A #3, NextSession widget simplified), slice 46 (Round B, four dead composables). Earlier: dashboard UI/UX audit → `docs/DASHBOARD_AUDIT.md`; Phase 5 slices 25–45).
+Last updated: 2026-04-20 (Phase 5 slice 54 — Round D #13 of the dashboard audit landed: trend up/down color literals (`0xFF4CAF50` green / `0xFFF44336` red) in `TrendIndicator` and `SimpleBodyweightTrendWidgetCard`'s change row now use `MaterialTheme.extendedColors.success` + `MaterialTheme.colorScheme.error`. Four sites migrated. Audit scope held — the `SessionDifficulty` 4-color ramp (which also uses those two literals among four) is left intact; migrating only the green/red while leaving MODERATE/HARD amber/orange literals would split the ramp. Prior entries: slice 53 (Round F #17, widget empty-state copy unified), slice 52 (Round E #15, tablet error Retry now matches compact), slice 51 (Round D #12, streak orange → `extendedColors.accent`), slice 50 (Round C #9/#10/#11, ScreenScaffold migration + unified Edit/Done IconButton + debug-gesture delete), slice 49 (Round A #2, Bodyweight simple card deleted), slice 48 (Round A #1, Welcome streak badge removed), slice 47 (Round A #3, NextSession widget simplified), slice 46 (Round B, four dead composables). Earlier: dashboard UI/UX audit → `docs/DASHBOARD_AUDIT.md`; Phase 5 slices 25–45).
 
 ## Next session — start here
 
@@ -15,7 +15,7 @@ Recommended order:
 3. ~~**Round A #1 (S)**~~ — Landed 2026-04-20 as slice 48. See chronological entry below.
 4. ~~**Round A #2 (S)**~~ — Landed 2026-04-20 as slice 49 (user picked: delete outright). See chronological entry below.
 5. ~~**Round C #9 (M)**~~ — Landed 2026-04-20 as slice 50, bundled with **C #10** (customization toggle now lives in the TopAppBar `actions` slot — single style across both paths) and **C #11** (long-press debug-reset gesture deleted along with the inline title). See chronological entry below.
-6. **Rounds D / E / F** — opportunistic, pick one per session as the area is touched. ~~D #12~~ landed 2026-04-20 as slice 51. ~~E #15~~ landed 2026-04-20 as slice 52. ~~F #17~~ landed 2026-04-20 as slice 53. Three findings left: D #13, E #14, F #16. F #18 flagged only.
+6. **Rounds D / E / F** — opportunistic, pick one per session as the area is touched. ~~D #12~~ slice 51. ~~E #15~~ slice 52. ~~F #17~~ slice 53. ~~D #13~~ slice 54. Two findings left: E #14 (S, insights consolidation), F #16 (S, quick-actions scroll indicator). F #18 flagged only. A #4 ("Active Cycle" parent widget, M) is also on the table now that A #1–3 landed.
 
 Older slice plan (slices 37–45) is complete. Entries kept below for history.
 
@@ -36,6 +36,16 @@ Older slice plan (slices 37–45) is complete. Entries kept below for history.
 Backlog spans slices 33–45. Highest priority: slice 36 CTA on Z-Fold inner + outer (active cycle / no active cycle / right after final session logged → CTA should disappear). Then slices 42–45 in order.
 
 ---
+
+**Phase 5 slice 54 landed 2026-04-20** (build + JVM tests green; no schema change):
+
+- **Trend up/down colors promoted to theme tokens (Round D #13).** Four literal `Color(0xFF4CAF50)` / `Color(0xFFF44336)` call sites migrated:
+  - `DashboardWidgetCards.kt:721–722` — `SimpleBodyweightTrendWidgetCard`'s change row (`change > 0` / `change < 0`).
+  - `DashboardWidgetComponents.kt:109, 111` — `TrendIndicator`'s up/down icon/text color based on `TrendDirection`.
+- **Green → `extendedColors.success`, red → `colorScheme.error`.** The audit suggested "success / warning or primary / error". Picked `success` (green, light `0xFF15803D` / dark `0xFF22C55E`) for the improving side and `colorScheme.error` (red) for the declining side. `warning` was rejected — it resolves to amber in both themes, which would have visibly shifted the declining-trend color from the current red. `colorScheme.error` keeps red as red.
+- **`SessionDifficulty` ramp deliberately not touched.** `DashboardWidgetComponents.kt:185, 188, 481, 484` also use those same two color literals, but as part of a 4-value difficulty ramp (LIGHT green / MODERATE amber `0xFFFFC107` / HARD orange `0xFFFF9800` / VERY_HARD red). Migrating only green + red and leaving the amber/orange middle as literals would have fragmented the ramp across tokens and literals. The ramp stays intact and out of scope for D #13; a later slice can redesign the ramp holistically if worthwhile.
+- **`TrendIndicator.INSUFFICIENT_DATA` amber also untouched.** Same line block uses `Color(0xFFFF9800)` for `INSUFFICIENT_DATA` — not in D #13 scope (the audit only flagged the green/red pair). Left as-is.
+- **One import added** (`extendedColors`) to `DashboardWidgetComponents.kt`. `DashboardWidgetCards.kt` already had it from slice 51. Net +1 / -0 LOC (+1 insertion for the import; literal substitutions are same-line).
 
 **Phase 5 slice 53 landed 2026-04-20** (build + JVM tests green; no schema change):
 
