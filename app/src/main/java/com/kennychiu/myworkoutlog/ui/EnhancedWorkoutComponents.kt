@@ -677,7 +677,6 @@ fun EnhancedSetRow(
     weightUnit: String,
     showWeightReps: Boolean = true,
     showSecs: Boolean = false,
-    showTimer: Boolean = true,
     showDeleteButton: Boolean = false,
     performanceSuggestion: PerformanceSuggestion? = null,
     isLargeScreen: Boolean = false,
@@ -788,20 +787,18 @@ fun EnhancedSetRow(
                     }
                     
                     // Timer button
-                    if (showTimer) {
-                        FilledTonalIconButton(
-                            onClick = {
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onStartRest()
-                            },
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Timer,
-                                contentDescription = "Start Rest Timer",
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+                    FilledTonalIconButton(
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onStartRest()
+                        },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Timer,
+                            contentDescription = "Start Rest Timer",
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
             }

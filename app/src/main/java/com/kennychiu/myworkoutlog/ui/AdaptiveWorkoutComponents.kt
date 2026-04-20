@@ -299,7 +299,7 @@ fun WorkoutNavigationRail(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = if (sessionElapsedTime < 0) "--:--" else "${sessionElapsedTime / 60}:${String.format("%02d", sessionElapsedTime % 60)}",
+                    text = "${sessionElapsedTime / 60}:${String.format("%02d", sessionElapsedTime % 60)}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
