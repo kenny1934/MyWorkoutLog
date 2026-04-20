@@ -238,30 +238,23 @@ class WorkoutLoggerViewModel(
     fun loadWorkoutForEdit(workoutId: String) {
         isEditMode = true
         originalWorkoutId = workoutId
-        
+
+        // One-shot load. Using .collect on this hot Room Flow would re-fire on every
+        // subsequent DB update of the same row and clobber in-memory edits (including
+        // the re-emission that finishWorkout itself triggers after an update).
         viewModelScope.launch(Dispatchers.IO) {
-            // Get the existing workout from database
-            loggedWorkoutDao.getLoggedWorkoutById(workoutId).collect { existingWorkout ->
-                if (existingWorkout != null) {
-                    // Don't set workoutStartTimeMillis in edit mode to prevent timer from running
-                    // Calculate and store original workout duration for display
-                    val originalDurationSeconds = if (existingWorkout.startTimestamp != null) {
-                        if (existingWorkout.endTimestamp != null) {
-                            // Completed workout: use actual duration
-                            ((existingWorkout.endTimestamp - existingWorkout.startTimestamp) / 1000).toInt()
-                        } else {
-                            // In-progress workout: calculate elapsed time from start to now
-                            ((System.currentTimeMillis() - existingWorkout.startTimestamp) / 1000).toInt()
-                        }
-                    } else null
-                    _originalWorkoutDurationSeconds.value = originalDurationSeconds
-                    
-                    // Load the workout into active state for editing
-                    _activeWorkoutState.value = existingWorkout
-                    
-                    // Initialize performance suggestions for editing context
-                    initializePerformanceSuggestions()
-                }
+            loggedWorkoutDao.getLoggedWorkoutById(workoutId).first()?.let { existingWorkout ->
+                // Don't set workoutStartTimeMillis in edit mode to prevent timer from running
+                val originalDurationSeconds = if (existingWorkout.startTimestamp != null) {
+                    if (existingWorkout.endTimestamp != null) {
+                        ((existingWorkout.endTimestamp - existingWorkout.startTimestamp) / 1000).toInt()
+                    } else {
+                        ((System.currentTimeMillis() - existingWorkout.startTimestamp) / 1000).toInt()
+                    }
+                } else null
+                _originalWorkoutDurationSeconds.value = originalDurationSeconds
+                _activeWorkoutState.value = existingWorkout
+                initializePerformanceSuggestions()
             }
         }
     }

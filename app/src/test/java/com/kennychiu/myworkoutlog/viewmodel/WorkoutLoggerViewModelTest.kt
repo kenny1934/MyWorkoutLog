@@ -24,6 +24,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
@@ -187,6 +188,39 @@ class WorkoutLoggerViewModelTest {
         waitUntil { vm.activeWorkoutState.value?.id == "done-id" }
         assertTrue("VM must be in edit mode after loadWorkoutForEdit", vm.isInEditMode())
         assertEquals("done-id", vm.activeWorkoutState.value?.id)
+    }
+
+    @Test
+    fun `loadWorkoutForEdit reads the DB row once and ignores subsequent Flow emissions`() = runTest {
+        // Room @Query returning Flow is a hot flow — it re-emits whenever the underlying
+        // row changes. If the VM uses .collect { } it will clobber in-memory state every
+        // time the row is written (notably right after finishWorkout itself updates the
+        // row). The load path must be one-shot.
+        val original = completedWorkout("done-id", startMs = 1_000_000L, endMs = 1_600_000L)
+        val rowFlow = MutableSharedFlow<LoggedWorkout?>(replay = 1)
+        rowFlow.tryEmit(original)
+        every { loggedDao.getLoggedWorkoutById("done-id") } returns rowFlow
+
+        val vm = newVm()
+        vm.loadWorkoutForEdit("done-id")
+        waitUntil { vm.activeWorkoutState.value?.id == "done-id" }
+        assertNull("precondition: initial load has no overall comments", vm.activeWorkoutState.value?.overallComments)
+
+        // Simulate a user edit that lives only in VM state.
+        vm.updateOverallComments("user-edit")
+        waitUntil { vm.activeWorkoutState.value?.overallComments == "user-edit" }
+
+        // Simulate the row being re-emitted with different content (e.g. from another
+        // code path writing the row). The VM must NOT clobber the user's edit.
+        val rewritten = original.copy(overallComments = "from-db")
+        rowFlow.tryEmit(rewritten)
+        kotlinx.coroutines.delay(100)
+
+        assertEquals(
+            "user edit must survive a re-emission of the underlying row",
+            "user-edit",
+            vm.activeWorkoutState.value?.overallComments,
+        )
     }
 
     @Test
