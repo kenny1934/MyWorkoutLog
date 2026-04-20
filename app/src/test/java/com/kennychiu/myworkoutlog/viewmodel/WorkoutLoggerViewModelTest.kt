@@ -224,6 +224,34 @@ class WorkoutLoggerViewModelTest {
     }
 
     @Test
+    fun `updateWorkoutDuration on an in-progress edit target flips isInProgress false and sets endTimestamp`() = runTest {
+        // Before the fix: typing a duration into the edit-mode chip set endTimestamp but
+        // left isInProgress=true. That row then reads as "completed" in history (which
+        // gates on endTimestamp) while still coming back from getInProgressWorkoutForTemplate
+        // (which gates on isInProgress). Option (a) of the triage: setting a concrete
+        // duration is a finalizing action, so flip isInProgress=false at the same time.
+        val startMs = 1_000_000L
+        val inProgress = completedWorkout("in-prog-id", startMs = startMs, endMs = 0L)
+            .copy(isInProgress = true, endTimestamp = null)
+        every { loggedDao.getLoggedWorkoutById("in-prog-id") } returns flowOf(inProgress)
+
+        val vm = newVm()
+        vm.loadWorkoutForEdit("in-prog-id")
+        waitUntil { vm.activeWorkoutState.value?.id == "in-prog-id" }
+        assertTrue("precondition: loaded row is in-progress", vm.activeWorkoutState.value!!.isInProgress)
+
+        vm.updateWorkoutDuration(durationSeconds = 45 * 60)
+
+        val state = vm.activeWorkoutState.value!!
+        assertFalse("manual duration must flip isInProgress=false", state.isInProgress)
+        assertEquals(
+            "endTimestamp must equal startTimestamp + duration",
+            startMs + 45 * 60 * 1000L,
+            state.endTimestamp,
+        )
+    }
+
+    @Test
     fun `finishWorkout in edit mode updates existing workout preserving id and startTimestamp, and resets edit flags`() = runTest {
         val startMs = 1_000_000L
         val endMs = startMs + 600_000L

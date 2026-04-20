@@ -262,14 +262,20 @@ class WorkoutLoggerViewModel(
     // Update workout duration manually in edit mode
     fun updateWorkoutDuration(durationSeconds: Int) {
         if (!isEditMode) return
-        
+
         _originalWorkoutDurationSeconds.value = durationSeconds
-        
-        // Update the endTimestamp in the active workout state
+
+        // Setting a concrete duration is a finalizing action — flip isInProgress=false
+        // so an edited in-progress row doesn't end up with endTimestamp set while the
+        // in-progress flag still says it's live (history reads endTimestamp, resume
+        // lookups read isInProgress; a half-and-half row breaks both).
         _activeWorkoutState.value?.let { workout ->
             if (workout.startTimestamp != null) {
                 val newEndTimestamp = workout.startTimestamp + (durationSeconds * 1000L)
-                _activeWorkoutState.value = workout.copy(endTimestamp = newEndTimestamp)
+                _activeWorkoutState.value = workout.copy(
+                    endTimestamp = newEndTimestamp,
+                    isInProgress = false,
+                )
             }
         }
     }
