@@ -340,6 +340,58 @@ class WorkoutLoggerViewModelTest {
     }
 
     @Test
+    fun `finishWorkout edit-finalizing an in-progress cycle session writes it into completedSessions`() = runTest {
+        // Bug 2 (slice 59) makes `updateWorkoutDuration` flip isInProgress=false on an
+        // in-progress edit target. Before this slice, finishWorkout's activeCycle write
+        // was gated on `!isEditMode`, so the row landed as completed in history but the
+        // cycle UI still showed the session slot as incomplete. Now the write also fires
+        // when the edit path finalizes a previously in-progress row belonging to the
+        // current active cycle.
+        val startMs = 1_000_000L
+        val inProgress = completedWorkout("in-prog-id", startMs = startMs, endMs = 0L)
+            .copy(
+                isInProgress = true,
+                endTimestamp = null,
+                activeProgramCycleId = "cycle-xyz",
+                programWeekDefinitionId = "week-1",
+                programSessionDefinitionId = "session-3",
+            )
+        every { loggedDao.getLoggedWorkoutById("in-prog-id") } returns flowOf(inProgress)
+        every { prDao.getPRsForExercise(any()) } returns emptyList()
+        every { loggedDao.updateLoggedWorkout(any()) } answers { }
+
+        val capturedCycles = mutableListOf<ActiveProgramCycle>()
+        every { activeCycleDao.setActiveCycle(any()) } answers {
+            capturedCycles += firstArg<ActiveProgramCycle>()
+        }
+
+        val activeCycle = ActiveProgramCycle(
+            cycleUuid = "cycle-xyz",
+            programTemplateId = "prog",
+            programTemplateName = "Prog",
+            userCycleName = "Block",
+            startDate = "2026-04-18",
+            completedSessions = emptyMap(),
+            cycleProgram = ProgramTemplate(id = "prog", name = "Prog", description = null, weeks = emptyList())
+        )
+
+        val vm = newVm()
+        vm.loadWorkoutForEdit("in-prog-id")
+        waitUntil { vm.activeWorkoutState.value?.id == "in-prog-id" }
+        assertTrue("precondition: loaded row is in-progress", vm.activeWorkoutState.value!!.isInProgress)
+
+        // Mimic the user typing a concrete duration into the edit-mode chip — this is
+        // what flips isInProgress=false in _activeWorkoutState (Bug 2 behavior).
+        vm.updateWorkoutDuration(durationSeconds = 45 * 60)
+        waitUntil { vm.activeWorkoutState.value?.isInProgress == false }
+
+        vm.finishWorkout(currentUnit = "kg", activeCycle = activeCycle)
+
+        waitUntil(timeoutMs = 2_000) { capturedCycles.isNotEmpty() }
+        assertEquals(mapOf("week-1_session-3" to "in-prog-id"), capturedCycles.single().completedSessions)
+    }
+
+    @Test
     fun `cancelWorkout on a new workout marks it completed in the DB and clears VM state`() = runTest {
         every { loggedDao.getInProgressWorkoutForTemplate("tpl-1") } returns null
         every { templateDao.getTemplateByIdSnapshot("tpl-1") } returns sampleTemplate()

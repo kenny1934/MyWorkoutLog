@@ -66,6 +66,14 @@ class WorkoutLoggerViewModel(
     // Track if we're in edit mode for an existing workout
     private var isEditMode = false
     private var originalWorkoutId: String? = null
+    // Captures the DB row's isInProgress at edit-load time. Needed because Bug 2's
+    // updateWorkoutDuration flips _activeWorkoutState.isInProgress=false mid-edit,
+    // so finishWorkout can't tell whether the edit finalized an in-progress cycle
+    // session by reading the current state alone. @Volatile because the write
+    // happens inside loadWorkoutForEdit's IO launch and the read happens inside
+    // finishWorkout's IO launch — different threads in the IO pool, no other
+    // synchronization on this plain var.
+    @Volatile private var originalWorkoutWasInProgress: Boolean = false
     
     // Public getter for edit mode state
     fun isInEditMode(): Boolean = isEditMode
@@ -250,6 +258,7 @@ class WorkoutLoggerViewModel(
                     }
                 } else null
                 _originalWorkoutDurationSeconds.value = originalDurationSeconds
+                originalWorkoutWasInProgress = existingWorkout.isInProgress
                 _activeWorkoutState.value = existingWorkout
                 initializePerformanceSuggestions()
             }
@@ -475,8 +484,23 @@ class WorkoutLoggerViewModel(
                     loggedWorkoutDao.insert(finalWorkout)
                 }
 
-                //Update the Active Cycle if this workout was part of one (only for new workouts)
-                if (!isEditMode && activeCycle != null && finalWorkout.programWeekDefinitionId != null && finalWorkout.programSessionDefinitionId != null) {
+                // Update the Active Cycle's completedSessions map when this workout
+                // completes a cycle session. Two paths qualify:
+                //  - Normal: a brand-new workout finished (!isEditMode).
+                //  - Edit-finalize: editing a previously in-progress cycle session flipped it
+                //    to completed. Bug 2 made this reachable (updateWorkoutDuration now flips
+                //    isInProgress=false), and without this branch the row lands as completed
+                //    in history while the cycle UI still shows the slot as incomplete. The
+                //    cycleUuid match guard prevents writing stale week/session IDs from a
+                //    row's original cycle into a different currently-active cycle.
+                val isEditFinalize = isEditMode &&
+                    originalWorkoutWasInProgress &&
+                    finalWorkout.isInProgress == false &&
+                    finalWorkout.activeProgramCycleId == activeCycle?.cycleUuid
+                if ((!isEditMode || isEditFinalize) &&
+                    activeCycle != null &&
+                    finalWorkout.programWeekDefinitionId != null &&
+                    finalWorkout.programSessionDefinitionId != null) {
                     val sessionKey = "${finalWorkout.programWeekDefinitionId}_${finalWorkout.programSessionDefinitionId}"
                     val updatedCompletedSessions = activeCycle.completedSessions.toMutableMap()
                     updatedCompletedSessions[sessionKey] = finalWorkout.id
@@ -498,6 +522,7 @@ class WorkoutLoggerViewModel(
                 // Reset edit mode state
                 isEditMode = false
                 originalWorkoutId = null
+                originalWorkoutWasInProgress = false
 
                 // Handle state based on workout completion status
                 if (finalWorkout.isInProgress == false) {
@@ -1102,6 +1127,7 @@ class WorkoutLoggerViewModel(
         // Clear any stale edit mode state
         isEditMode = false
         originalWorkoutId = null
+        originalWorkoutWasInProgress = false
         _originalWorkoutDurationSeconds.value = null
 
         // Set timing context for live timer
@@ -1179,6 +1205,7 @@ class WorkoutLoggerViewModel(
         _activeWorkoutState.value = null
         isEditMode = false
         originalWorkoutId = null
+        originalWorkoutWasInProgress = false
         workoutStartTimeMillis = 0L
         _originalWorkoutDurationSeconds.value = null
     }
