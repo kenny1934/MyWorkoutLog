@@ -101,17 +101,14 @@ class WorkoutLoggerViewModel(
     // Store original workout duration for edit mode
     private val _originalWorkoutDurationSeconds = MutableStateFlow<Int?>(null)
 
-    // This flow now calculates the elapsed time based on the start time
-    // In edit mode, shows original workout duration instead of disabled timer
+    // Stopwatch in normal mode; frozen original duration in edit mode.
     val sessionElapsedTime: StateFlow<Int> = flow {
         while (true) {
             if (isEditMode) {
-                _originalWorkoutDurationSeconds.value?.let { duration ->
-                    emit(duration)  // Show original workout duration in edit mode
-                } ?: emit(-1)  // Fallback to disabled if no duration available
+                emit(_originalWorkoutDurationSeconds.value ?: 0)
             } else if (workoutStartTimeMillis > 0) {
                 val elapsed = (System.currentTimeMillis() - workoutStartTimeMillis) / 1000
-                emit(maxOf(0, elapsed.toInt())) // Prevent negative timer values
+                emit(maxOf(0, elapsed.toInt()))
             } else {
                 emit(0)
             }
