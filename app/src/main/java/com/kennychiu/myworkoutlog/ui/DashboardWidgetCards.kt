@@ -349,7 +349,10 @@ fun NextSessionCtaCard(
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onTertiaryContainer,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        modifier = Modifier.padding(
+                            horizontal = Dimens.badgePaddingHorizontal,
+                            vertical = Dimens.badgePaddingVertical
+                        )
                     )
                 }
             }
@@ -365,7 +368,10 @@ fun NextSessionCtaCard(
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        modifier = Modifier.padding(
+                            horizontal = Dimens.badgePaddingHorizontal,
+                            vertical = Dimens.badgePaddingVertical
+                        )
                     )
                 }
             }
@@ -409,7 +415,10 @@ fun SimpleCycleProgressWidgetCard(
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            modifier = Modifier.padding(
+                                horizontal = Dimens.badgePaddingHorizontal,
+                                vertical = Dimens.badgePaddingVertical
+                            )
                         )
                     }
                 }
@@ -425,7 +434,10 @@ fun SimpleCycleProgressWidgetCard(
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            modifier = Modifier.padding(
+                                horizontal = Dimens.badgePaddingHorizontal,
+                                vertical = Dimens.badgePaddingVertical
+                            )
                         )
                     }
                 }

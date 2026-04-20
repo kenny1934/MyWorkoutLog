@@ -41,4 +41,8 @@ object Dimens {
 
     // Standard screen edge padding.
     val screenPadding = 16.dp
+
+    // Badge padding (compact inset for Surface-wrapped labels like Deload / RIR chips).
+    val badgePaddingHorizontal = 10.dp
+    val badgePaddingVertical = 4.dp
 }
