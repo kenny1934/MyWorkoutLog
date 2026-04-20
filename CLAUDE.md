@@ -15,9 +15,13 @@ Kotlin 2.1, Jetpack Compose, Material 3, Room, DataStore, Navigation Compose, Vi
 
 1. **Mesocycle / program management** is ~40% done (per prior audit on the `claude/evaluate-app-rewrite-Eqoyq` branch). This is the priority when restarting feature work.
 2. **Workout session timer + edit/resume** has been patched many times and still has state-contamination edge cases.
-3. **Room DB still uses `fallbackToDestructiveMigration()`** — every schema change wipes user data. Must be replaced before further schema changes.
-4. **Flat package `com.kennychiu.myworkoutlog`** with ~65 files and multi-thousand-line screen files. Structural cleanup (subpackages, monolith splits) is scheduled.
-5. **No real tests.** `ExampleUnitTest.kt` and `ExampleInstrumentedTest.kt` are the Android Studio wizard defaults.
+3. **Test coverage is thin outside known-fragile areas.** 103 JVM tests cover workout logger, cycle progress, history filtering, program-editor helpers, and progression hints; dashboard widgets, PRs, analytics, import/export, and cloud backup are still validated only by running the app.
+
+## Already-resolved (do not re-open without reading STATE.md)
+
+- **Room destructive fallback.** Replaced. Schema is at v25; `MIGRATION_21_22` through `MIGRATION_24_25` are defined in `WorkoutDatabase.kt`; destructive fallback is scoped to legacy dev versions 1–20 via `fallbackToDestructiveMigrationFrom(*LEGACY_DEV_VERSIONS)`; `exportSchema = true` with JSONs under `app/schemas/`; `WorkoutDatabaseMigrationTest` covers each step. Any schema bump past v25 must add a new `Migration` + extend the test.
+- **Flat package.** Files are under `data/`, `ui/`, `viewmodel/`, `util/` subpackages (`MainActivity`, `WorkoutApplication`, `AppContainer` stay at the root because the manifest references them as `.Name`).
+- **Monolithic screen files.** All four split (`DashboardScreen`, `ProgramManagementScreens`, `HistoryScreens`, `WorkoutLoggerScreens`) — see STATE.md for extraction details.
 
 ## Conventions (current codebase — follow for consistency)
 
