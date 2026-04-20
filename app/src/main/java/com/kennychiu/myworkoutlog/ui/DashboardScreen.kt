@@ -102,7 +102,6 @@ fun ArrowReorderWidgetCard(
                         IconButton(
                             onClick = onMoveUp,
                             enabled = canMoveUp,
-                            modifier = Modifier.size(36.dp),
                         ) {
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowUp,
@@ -114,7 +113,6 @@ fun ArrowReorderWidgetCard(
                         IconButton(
                             onClick = onMoveDown,
                             enabled = canMoveDown,
-                            modifier = Modifier.size(36.dp),
                         ) {
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowDown,
@@ -125,7 +123,6 @@ fun ArrowReorderWidgetCard(
                         }
                         IconButton(
                             onClick = { onToggleVisibility(widget.id) },
-                            modifier = Modifier.size(36.dp),
                         ) {
                             Icon(
                                 imageVector = if (isWidgetVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
