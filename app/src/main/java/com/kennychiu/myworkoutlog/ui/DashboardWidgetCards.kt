@@ -308,7 +308,7 @@ fun NextSessionCtaCard(
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Filled.PlayArrow,
-                        contentDescription = null,
+                        contentDescription = "Start next session",
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(24.dp)
                     )
