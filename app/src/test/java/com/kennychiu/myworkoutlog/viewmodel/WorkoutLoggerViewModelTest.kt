@@ -18,10 +18,8 @@ import com.kennychiu.myworkoutlog.data.TemplateExercise
 import com.kennychiu.myworkoutlog.data.TemplateExerciseSet
 import com.kennychiu.myworkoutlog.data.WorkoutTemplate
 import com.kennychiu.myworkoutlog.data.WorkoutTemplateDao
-import io.mockk.CapturingSlot
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -117,14 +115,14 @@ class WorkoutLoggerViewModelTest {
         every { loggedDao.getInProgressWorkoutForTemplate("tpl-1") } returns null
         every { templateDao.getTemplateByIdSnapshot("tpl-1") } returns sampleTemplate()
 
-        val inserted = slot<LoggedWorkout>()
-        every { loggedDao.insert(capture(inserted)) } answers { }
+        val inserted = mutableListOf<LoggedWorkout>()
+        every { loggedDao.insert(any()) } answers { inserted += firstArg<LoggedWorkout>() }
 
         val vm = newVm()
         vm.startWorkoutFromTemplate("tpl-1", cycleId = "cycle-xyz", weekId = "w1", sessionId = "s1")
 
-        verify(timeout = 2_000) { loggedDao.insert(any()) }
-        val saved = inserted.captured
+        waitUntil(timeoutMs = 2_000) { inserted.isNotEmpty() }
+        val saved = inserted.single()
         assertTrue("new workout must be marked in-progress", saved.isInProgress)
         assertEquals("cycle-xyz", saved.activeProgramCycleId)
         assertEquals("w1", saved.programWeekDefinitionId)
@@ -163,16 +161,17 @@ class WorkoutLoggerViewModelTest {
         every { loggedDao.getInProgressWorkoutForTemplate("tpl-1") } returns old
         every { templateDao.getTemplateByIdSnapshot("tpl-1") } returns sampleTemplate()
 
-        val inserted = slot<LoggedWorkout>()
-        every { loggedDao.insert(capture(inserted)) } answers { }
+        val inserted = mutableListOf<LoggedWorkout>()
+        every { loggedDao.insert(any()) } answers { inserted += firstArg<LoggedWorkout>() }
 
         val vm = newVm()
         vm.startFreshWorkout("tpl-1", null, null, null)
 
         verify(timeout = 2_000) { loggedDao.markWorkoutAsCompleted("old-id") }
-        verify(timeout = 2_000) { loggedDao.insert(any()) }
-        assertNotEquals("fresh workout must have a new id", "old-id", inserted.captured.id)
-        assertTrue(inserted.captured.isInProgress)
+        waitUntil(timeoutMs = 2_000) { inserted.isNotEmpty() }
+        val saved = inserted.single()
+        assertNotEquals("fresh workout must have a new id", "old-id", saved.id)
+        assertTrue(saved.isInProgress)
     }
 
     @Test
@@ -259,8 +258,10 @@ class WorkoutLoggerViewModelTest {
         every { loggedDao.getLoggedWorkoutById("done-id") } returns flowOf(completed)
         every { prDao.getPRsForExercise(any()) } returns emptyList()
 
-        val updated = slot<LoggedWorkout>()
-        every { loggedDao.updateLoggedWorkout(capture(updated)) } answers { }
+        val updated = mutableListOf<LoggedWorkout>()
+        every { loggedDao.updateLoggedWorkout(any()) } answers {
+            updated += firstArg<LoggedWorkout>()
+        }
 
         val vm = newVm()
         vm.loadWorkoutForEdit("done-id")
@@ -268,9 +269,9 @@ class WorkoutLoggerViewModelTest {
 
         vm.finishWorkout(currentUnit = "kg", activeCycle = null)
 
-        verify(timeout = 2_000) { loggedDao.updateLoggedWorkout(any()) }
+        waitUntil(timeoutMs = 2_000) { updated.isNotEmpty() }
         verify(timeout = 2_000, exactly = 0) { loggedDao.insert(any()) }
-        val saved = updated.captured
+        val saved = updated.single()
         assertEquals("edit must preserve original id", "done-id", saved.id)
         assertEquals("edit must preserve startTimestamp", startMs, saved.startTimestamp)
 
@@ -314,8 +315,10 @@ class WorkoutLoggerViewModelTest {
         val inserted = mutableListOf<LoggedWorkout>()
         every { loggedDao.insert(any()) } answers { inserted += firstArg<LoggedWorkout>() }
 
-        val updatedCycle = slot<ActiveProgramCycle>()
-        every { activeCycleDao.setActiveCycle(capture(updatedCycle)) } answers { }
+        val updatedCycles = mutableListOf<ActiveProgramCycle>()
+        every { activeCycleDao.setActiveCycle(any()) } answers {
+            updatedCycles += firstArg<ActiveProgramCycle>()
+        }
 
         val activeCycle = ActiveProgramCycle(
             cycleUuid = "cycle-xyz",
@@ -333,10 +336,9 @@ class WorkoutLoggerViewModelTest {
 
         vm.finishWorkout(currentUnit = "kg", activeCycle = activeCycle)
 
-        verify(timeout = 2_000) { activeCycleDao.setActiveCycle(any()) }
-        val saved = updatedCycle.captured
+        waitUntil(timeoutMs = 2_000) { updatedCycles.isNotEmpty() }
         val workoutId = inserted.last().id
-        assertEquals(mapOf("week-1_session-3" to workoutId), saved.completedSessions)
+        assertEquals(mapOf("week-1_session-3" to workoutId), updatedCycles.single().completedSessions)
     }
 
     @Test
@@ -389,6 +391,38 @@ class WorkoutLoggerViewModelTest {
 
         waitUntil(timeoutMs = 2_000) { capturedCycles.isNotEmpty() }
         assertEquals(mapOf("week-1_session-3" to "in-prog-id"), capturedCycles.single().completedSessions)
+    }
+
+    @Test
+    fun `resumeInProgressWorkout waits for init cleanup before reading the in-progress row`() = runTest {
+        // Bug 4 of the timer + edit/resume triage: init-time cleanup and user-driven
+        // resume both touch the same `isInProgress` column. Without serialization, a
+        // concurrent resume could read a row that cleanup is about to flip to
+        // completed. The fix stores the init cleanup as a Job and has
+        // resumeInProgressWorkout (and peers) join() it before calling
+        // getInProgressWorkoutForTemplate.
+        val callOrder = java.util.Collections.synchronizedList(mutableListOf<String>())
+        every { loggedDao.cleanupAbandonedInProgressWorkouts(any()) } answers {
+            // Make cleanup measurably slow so a resume that failed to await would
+            // race ahead and record "get" first.
+            Thread.sleep(100)
+            callOrder += "cleanup"
+            0
+        }
+        every { loggedDao.getInProgressWorkoutForTemplate("tpl-1") } answers {
+            callOrder += "get"
+            null
+        }
+
+        val vm = newVm()
+        vm.resumeInProgressWorkout("tpl-1")
+
+        waitUntil(timeoutMs = 3_000) { callOrder.size == 2 }
+        assertEquals(
+            "init cleanup must complete before resume reads the in-progress row",
+            listOf("cleanup", "get"),
+            callOrder.toList(),
+        )
     }
 
     @Test

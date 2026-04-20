@@ -78,12 +78,14 @@ class WorkoutLoggerViewModel(
     // Public getter for edit mode state
     fun isInEditMode(): Boolean = isEditMode
     
-    // PHASE 2: Session cleanup functionality
-    init {
-        // Clean up any abandoned in-progress workouts from previous sessions
-        viewModelScope.launch(Dispatchers.IO) {
-            cleanupAbandonedSessions()
-        }
+    // Init-time cleanup runs once per VM. Stored as a Job so that any path that
+    // reads in-progress rows (startWorkoutFromTemplate, resumeInProgressWorkout,
+    // checkForInProgressWorkout, loadWorkoutForEdit) can `join()` it before
+    // touching the DB — otherwise cleanup and the reader race on the same
+    // `isInProgress` column, and a resume could load a row that cleanup is
+    // about to flip to completed (or vice-versa).
+    private val cleanupJob: Job = viewModelScope.launch(Dispatchers.IO) {
+        cleanupAbandonedSessions()
     }
     
     private fun cleanupAbandonedSessions() {
@@ -248,6 +250,7 @@ class WorkoutLoggerViewModel(
         // subsequent DB update of the same row and clobber in-memory edits (including
         // the re-emission that finishWorkout itself triggers after an update).
         viewModelScope.launch(Dispatchers.IO) {
+            cleanupJob.join()
             loggedWorkoutDao.getLoggedWorkoutById(workoutId).first()?.let { existingWorkout ->
                 // Don't set workoutStartTimeMillis in edit mode to prevent timer from running
                 val originalDurationSeconds = if (existingWorkout.startTimestamp != null) {
@@ -298,6 +301,7 @@ class WorkoutLoggerViewModel(
         stopRestTimer()
         
         viewModelScope.launch(Dispatchers.IO) {
+            cleanupJob.join()
             // Check for existing in-progress workout
             val inProgressWorkout = loggedWorkoutDao.getInProgressWorkoutForTemplate(templateId)
             
@@ -1151,6 +1155,7 @@ class WorkoutLoggerViewModel(
     suspend fun checkForInProgressWorkout(templateId: String): LoggedWorkout? {
         return try {
             withContext(Dispatchers.IO) {
+                cleanupJob.join()
                 loggedWorkoutDao.getInProgressWorkoutForTemplate(templateId)
             }
         } catch (e: Exception) {
@@ -1171,6 +1176,7 @@ class WorkoutLoggerViewModel(
     // NEW: Resume existing in-progress workout
     fun resumeInProgressWorkout(templateId: String) {
         viewModelScope.launch(Dispatchers.IO) {
+            cleanupJob.join()
             val inProgressWorkout = loggedWorkoutDao.getInProgressWorkoutForTemplate(templateId)
             if (inProgressWorkout != null) {
                 loadInProgressWorkout(inProgressWorkout)
