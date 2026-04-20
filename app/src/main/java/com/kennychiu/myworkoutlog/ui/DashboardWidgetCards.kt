@@ -442,7 +442,7 @@ fun SimpleCycleProgressWidgetCard(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Dimens.spacing12))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -667,7 +667,7 @@ fun SimpleBodyweightTrendWidgetCard(widget: DashboardWidget.BodyweightTrendWidge
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Dimens.spacing12))
 
             if (widget.bodyweightData.isNotEmpty()) {
                 // Show trend summary
