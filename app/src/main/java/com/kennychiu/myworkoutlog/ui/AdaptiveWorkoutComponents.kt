@@ -583,7 +583,24 @@ fun EnhancedExerciseDetailPanel(
                                 val rirText = suggestion.suggestedRir?.toString() ?: ""
                                 onSetUpdate(exercise.id, set.id, repsText, weightText.toDoubleOrNull(), secsText, rirText, set.bands, set.notes, set.videoReference)
                             }
-                        }
+                        },
+                        onCopyPreviousSet = exercise.sets.getOrNull(index - 1)
+                            ?.takeIf { it.weight != null || it.reps != null || it.secs != null }
+                            ?.let { prev ->
+                                {
+                                    onSetUpdate(
+                                        exercise.id,
+                                        set.id,
+                                        prev.reps?.toString() ?: "",
+                                        prev.weight,
+                                        prev.secs?.toString() ?: "",
+                                        prev.rir?.toString(),
+                                        set.bands,
+                                        set.notes,
+                                        set.videoReference
+                                    )
+                                }
+                            }
                     )
                 }
             }

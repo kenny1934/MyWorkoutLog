@@ -26,6 +26,7 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -691,6 +692,7 @@ fun EnhancedSetRow(
     onStartRest: () -> Unit = {},
     onDeleteSet: () -> Unit = {},
     onApplySuggestion: () -> Unit = {},
+    onCopyPreviousSet: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     colors: WorkoutInputColors = WorkoutInputDefaults.colors()
 ) {
@@ -785,7 +787,23 @@ fun EnhancedSetRow(
                             )
                         }
                     }
-                    
+
+                    if (onCopyPreviousSet != null && weightValue.isEmpty() && repsValue.isEmpty() && secsValue.isEmpty()) {
+                        IconButton(
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onCopyPreviousSet()
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.ContentCopy,
+                                contentDescription = "Copy Previous Set",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
                     // Timer button
                     FilledTonalIconButton(
                         onClick = {
