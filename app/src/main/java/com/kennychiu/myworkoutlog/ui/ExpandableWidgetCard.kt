@@ -3,6 +3,7 @@ package com.kennychiu.myworkoutlog.ui
 import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
+import com.kennychiu.myworkoutlog.ui.theme.Dimens
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.clickable
@@ -34,7 +35,7 @@ fun SimpleExpandableWidgetCard(
         modifier = modifier
             .fillMaxWidth()
             .fillMaxHeight(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCardRaised)
     ) {
         Column(
             modifier = Modifier.padding(adaptiveContentPadding())

@@ -3,6 +3,7 @@ package com.kennychiu.myworkoutlog.ui
 import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
+import com.kennychiu.myworkoutlog.ui.theme.Dimens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,7 +35,7 @@ fun EnhancedDashboardWidgetCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCardRaised)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -53,7 +54,7 @@ fun EnhancedDashboardWidgetCard(
                     fontWeight = FontWeight.SemiBold
                 )
             }
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Dimens.spacing12))
             content()
         }
     }
@@ -96,7 +97,7 @@ fun EnhancedInsightCard(
                 scaleX = animatedScale,
                 scaleY = animatedScale
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCardRaised),
         shape = RoundedCornerShape(16.dp)
     ) {
         Box(
@@ -204,7 +205,7 @@ fun EnhancedQuickActionButton(
         modifier = Modifier
             .clickable { onClick(action) }
             .padding(4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCard)
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
