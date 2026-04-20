@@ -3,6 +3,7 @@ package com.kennychiu.myworkoutlog.ui
 import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
+import com.kennychiu.myworkoutlog.ui.theme.Dimens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -62,7 +63,7 @@ fun InteractivePerformanceChart(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(160.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCard)
         ) {
             Box(modifier = Modifier.padding(8.dp)) {
                 Chart(
@@ -83,7 +84,7 @@ fun InteractivePerformanceChart(
 
         // Chart interaction feedback
         selectedExercise?.let { exercise ->
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Dimens.spacing12))
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
@@ -215,7 +216,7 @@ fun InteractiveVolumeChart(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(160.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCard)
         ) {
             Box(modifier = Modifier.padding(8.dp)) {
                 Chart(
@@ -236,7 +237,7 @@ fun InteractiveVolumeChart(
 
         // Chart interaction feedback
         selectedDataPoint?.let { dataPoint ->
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Dimens.spacing12))
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
@@ -267,7 +268,7 @@ fun VolumeStatisticsCard(
     if (volumeData.isEmpty()) {
         Card(
             modifier = modifier,
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCard)
         ) {
             Box(
                 modifier = Modifier
@@ -292,7 +293,7 @@ fun VolumeStatisticsCard(
 
     Card(
         modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCard)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -300,7 +301,7 @@ fun VolumeStatisticsCard(
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Medium
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Dimens.spacing12))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -324,7 +325,7 @@ fun VolumeStatisticsCard(
             }
 
             targetVolume?.let { target ->
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Dimens.spacing12))
                 val targetComparison = ((averageVolume / target.toDouble()) * 100).toInt()
                 VolumeStatItem(
                     label = "vs Target",
