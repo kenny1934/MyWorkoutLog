@@ -26,6 +26,7 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
@@ -693,6 +694,7 @@ fun EnhancedSetRow(
     onDeleteSet: () -> Unit = {},
     onApplySuggestion: () -> Unit = {},
     onCopyPreviousSet: (() -> Unit)? = null,
+    onClearSet: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     colors: WorkoutInputColors = WorkoutInputDefaults.colors()
 ) {
@@ -788,7 +790,8 @@ fun EnhancedSetRow(
                         }
                     }
 
-                    if (onCopyPreviousSet != null && weightValue.isEmpty() && repsValue.isEmpty() && secsValue.isEmpty()) {
+                    val hasAnyValue = weightValue.isNotEmpty() || repsValue.isNotEmpty() || secsValue.isNotEmpty()
+                    if (onCopyPreviousSet != null && !hasAnyValue) {
                         IconButton(
                             onClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -799,6 +802,21 @@ fun EnhancedSetRow(
                             Icon(
                                 imageVector = Icons.Filled.ContentCopy,
                                 contentDescription = "Copy Previous Set",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                    if (onClearSet != null && hasAnyValue) {
+                        IconButton(
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onClearSet()
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Backspace,
+                                contentDescription = "Clear Set",
                                 modifier = Modifier.size(18.dp)
                             )
                         }

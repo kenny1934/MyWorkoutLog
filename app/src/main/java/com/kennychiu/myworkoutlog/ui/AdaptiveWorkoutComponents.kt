@@ -600,7 +600,20 @@ fun EnhancedExerciseDetailPanel(
                                         set.videoReference
                                     )
                                 }
-                            }
+                            },
+                        onClearSet = {
+                            onSetUpdate(
+                                exercise.id,
+                                set.id,
+                                "",
+                                null,
+                                "",
+                                null,
+                                set.bands,
+                                set.notes,
+                                set.videoReference
+                            )
+                        }
                     )
                 }
             }

@@ -649,6 +649,19 @@ private fun WorkoutLoggerScreenContent(
                                             )
                                         }
                                     },
+                                onClearSet = {
+                                    viewModel.updateSet(
+                                        exercise.id,
+                                        set.id,
+                                        "",
+                                        null,
+                                        "",
+                                        null,
+                                        set.bands,
+                                        set.notes,
+                                        set.videoReference
+                                    )
+                                },
                                 modifier = Modifier.padding(vertical = 6.dp)
                             )
                         }
