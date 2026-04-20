@@ -2,20 +2,26 @@
 
 This is the single source of truth for what works, what is known-broken, and what is unfinished. Update it when reality changes. If any other doc contradicts this one, that doc is wrong.
 
-Last updated: 2026-04-20 (Phase 5 slice 57 — Round F #18 of the dashboard audit landed: `SimpleWelcomeWidgetCard` flattened. Scale-in animation (`animateFloatAsState` + `graphicsLayer(scaleX, scaleY)`) deleted; three-stop `Brush.linearGradient(primaryContainer → primaryContainer.copy(0.7) → surface)` background deleted along with its `Box` wrapper. Greeting and motivational text now sit directly in a `Column` inside the `Card`. Typography (ExtraBold + primary-color greeting) deliberately left alone to avoid scope creep. Four orphan imports pruned (`Brush`, `animateFloatAsState`, `spring`, `graphicsLayer`, `background`). Net -30 LOC. This completes the dashboard audit — all 18 findings either landed or deliberately deferred (A #4 active-cycle parent widget; flag-only items absorbed into other slices). Prior entries: slice 56 (Round E #14, insights single priority-sorted stream), slice 55 (Round F #16, Quick Actions scroll indicator deleted), slice 54 (Round D #13, trend up/down colors → success / error), slice 53 (Round F #17, widget empty-state copy unified), slice 52 (Round E #15, tablet error Retry now matches compact), slice 51 (Round D #12, streak orange → `extendedColors.accent`), slice 50 (Round C #9/#10/#11, ScreenScaffold migration + unified Edit/Done IconButton + debug-gesture delete), slice 49 (Round A #2, Bodyweight simple card deleted), slice 48 (Round A #1, Welcome streak badge removed), slice 47 (Round A #3, NextSession widget simplified), slice 46 (Round B, four dead composables). Earlier: dashboard UI/UX audit → `docs/DASHBOARD_AUDIT.md`; Phase 5 slices 25–45).
+Last updated: 2026-04-20 (Phase 5 slice 58 — Bug 1 of the timer + edit/resume triage landed. `WorkoutLoggerViewModel.loadWorkoutForEdit` was `.collect { }`ing the hot `Flow<LoggedWorkout?>` returned by `getLoggedWorkoutById`, so every DB re-emission of the edit target row overwrote `_activeWorkoutState` — clobbering in-memory edits whenever anything else wrote the row (autosave, finishWorkout's own update, cycle writes, etc.). Swapped to `.first()?.let { }` — one-shot load, no re-fire, no leaked collectors on repeated entry. New regression test (`loadWorkoutForEdit reads the DB row once and ignores subsequent Flow emissions`) drives the DAO via a `MutableSharedFlow`, simulates a user edit via `updateOverallComments`, re-emits the row, asserts the edit survives. 104 JVM tests green. Same session also cleared stale "known-broken" items in CLAUDE.md (Room destructive fallback / flat-package restructure / monolith splits had all already been resolved per STATE.md). Bugs 2–4 from the triage remain; see `memory/project_timer_edit_bug_triage.md` for the full plan.
 
 ## Next session — start here
 
-**Fresh dashboard UI/UX audit at `docs/DASHBOARD_AUDIT.md`** (drafted 2026-04-20, supersedes the completed 37–45 plan). 18 findings across 6 rounds with file/line refs and size estimates. Every claim must be re-verified against the current tree before editing — line numbers and behaviour drift.
+**Timer + edit/resume triage, Bug 2 next (needs product call).** See `memory/project_timer_edit_bug_triage.md` for the full four-finding triage.
 
-Recommended order:
+1. ~~**Bug 1 — `loadWorkoutForEdit` leaked infinite Flow collect.**~~ Landed 2026-04-20 as slice 58. See chronological entry below.
+2. **Bug 2 — `updateWorkoutDuration` on an in-progress edit target produces `isInProgress=true AND endTimestamp!=null` rows.** Needs a product decision before coding: (a) flip `isInProgress=false` when a manual end is set, (b) refuse the duration edit when `isInProgress=true`, or (c) make every `endTimestamp != null` reader robust to the inconsistency. Ask Kenny first.
+3. **Bug 3 — `sessionElapsedTime` emits `-1` sentinel.** Cosmetic; one-line fix (`WorkoutLoggerViewModel.kt:111`). Low priority.
+4. **Bug 4 — TOCTOU between `cleanupAbandonedSessions` and `resumeInProgressWorkout`.** Narrow race window, deferred.
 
-1. ~~**Round B (dead-code, XS × 4)**~~ — Landed 2026-04-20 as slice 46 (bundled). See chronological entry below.
-2. ~~**Round A #3 (XS)**~~ — Landed 2026-04-20 as slice 47. See chronological entry below.
-3. ~~**Round A #1 (S)**~~ — Landed 2026-04-20 as slice 48. See chronological entry below.
-4. ~~**Round A #2 (S)**~~ — Landed 2026-04-20 as slice 49 (user picked: delete outright). See chronological entry below.
-5. ~~**Round C #9 (M)**~~ — Landed 2026-04-20 as slice 50, bundled with **C #10** (customization toggle now lives in the TopAppBar `actions` slot — single style across both paths) and **C #11** (long-press debug-reset gesture deleted along with the inline title). See chronological entry below.
-6. **Rounds D / E / F** — all landed. ~~D #12~~ slice 51. ~~E #15~~ slice 52. ~~F #17~~ slice 53. ~~D #13~~ slice 54. ~~F #16~~ slice 55. ~~E #14~~ slice 56. ~~F #18~~ slice 57. **The dashboard UI/UX audit is fully consumed.** A #4 ("Active Cycle" parent widget, M) remains deliberately deferred after A #1–3 reduced the overlap between CycleProgress + NextSession widgets — revisit only if real use surfaces clutter. Next session should probably pivot to the CLAUDE.md structural backlog (Room destructive-fallback, flat-package restructure, mesocycle completion, real tests) or tackle the device-verification sweep.
+Alternative pivots if the triage is paused:
+
+- **Mesocycle / program management** — ~40% complete per `claude/evaluate-app-rewrite-Eqoyq` audit. Priority when feature work restarts.
+- **Test coverage expansion** — dashboard widgets, PRs, analytics, import/export, cloud backup have no unit coverage. Not gating.
+- **A #4 Active Cycle parent widget** (dashboard audit residual) — only if dashboard still feels cluttered after slices 46–57.
+
+### Prior: dashboard audit (fully consumed)
+
+The dashboard UI/UX audit at `docs/DASHBOARD_AUDIT.md` was fully consumed across slices 46–57 — 17 findings landed, A #4 deliberately deferred. All 22 slices device-verified on the Z-Fold. Chronological slice 46–57 entries are below for history.
 
 Older slice plan (slices 37–45) is complete. Entries kept below for history.
 
@@ -36,6 +42,14 @@ Older slice plan (slices 37–45) is complete. Entries kept below for history.
 Backlog spans slices 33–45. Highest priority: slice 36 CTA on Z-Fold inner + outer (active cycle / no active cycle / right after final session logged → CTA should disappear). Then slices 42–45 in order.
 
 ---
+
+**Phase 5 slice 58 landed 2026-04-20** (build + 104 JVM tests green; no schema change):
+
+- **`loadWorkoutForEdit` no longer re-fires on DB updates (Bug 1 of the timer + edit/resume triage).** Previously `WorkoutLoggerViewModel.loadWorkoutForEdit` used `loggedWorkoutDao.getLoggedWorkoutById(id).collect { existingWorkout -> … _activeWorkoutState.value = existingWorkout … }`. `getLoggedWorkoutById` is a Room `@Query` returning `Flow<LoggedWorkout?>` — a hot flow that re-emits whenever the row changes. Consequences: (a) any DB write to the edit target during the edit session clobbered in-memory edits with the latest DB snapshot; (b) `finishWorkout`'s edit path writes the same row, which would itself re-fire the collect and race with the post-finish state reset; (c) repeated `loadWorkoutForEdit` entries stacked multiple live collectors racing to overwrite each other. Swapped to `.first()?.let { existingWorkout -> … }` — one-shot load, completes after the first emission, no re-fire, no leaked coroutines. `first` was already wildcard-imported via `kotlinx.coroutines.flow.*`.
+- **Regression test added.** `WorkoutLoggerViewModelTest.loadWorkoutForEdit reads the DB row once and ignores subsequent Flow emissions` drives the mocked DAO via `MutableSharedFlow<LoggedWorkout?>(replay = 1)`, waits for the initial load, calls `updateOverallComments("user-edit")` to simulate an in-memory edit, re-emits the row with different content (`overallComments = "from-db"`), and asserts `_activeWorkoutState.value.overallComments == "user-edit"`. Without the fix this assertion would fail because the second emission would overwrite the VM state with the DB row's snapshot.
+- **Scope held to Bug 1 only.** CLAUDE.md's "Don't bundle refactors with feature work" — Bugs 2/3/4 from the triage (`updateWorkoutDuration` inconsistent rows / `sessionElapsedTime` `-1` sentinel / cleanup vs resume TOCTOU) were not touched. See `memory/project_timer_edit_bug_triage.md` for the full four-bug plan.
+- **Device-verification pending.** The behavioural win lands as "user's edits no longer silently revert when something else writes the same row" — specifically relevant on the edit-then-finish path where `finishWorkout`'s own DB write used to race with the collect. Device verification isn't easy to isolate (the bug is a race); JVM test is the authoritative check.
+- Net -5 LOC in `WorkoutLoggerViewModel.kt` (1 insertion / 6 deletions from collapsing the `if (existingWorkout != null)` wrapper and a WHAT-comment block) + 34 LOC in `WorkoutLoggerViewModelTest.kt` for the new regression test + 1 import. JVM test count 103 → 104.
 
 **Phase 5 slice 57 landed 2026-04-20** (build + JVM tests green; no schema change):
 
