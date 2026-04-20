@@ -3,6 +3,7 @@ package com.kennychiu.myworkoutlog.ui
 import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
+import com.kennychiu.myworkoutlog.ui.theme.Dimens
 import com.kennychiu.myworkoutlog.ui.theme.extendedColors
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -350,7 +351,7 @@ fun AchievementCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCard)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -410,7 +411,7 @@ fun MilestoneCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.elevationCard)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(
