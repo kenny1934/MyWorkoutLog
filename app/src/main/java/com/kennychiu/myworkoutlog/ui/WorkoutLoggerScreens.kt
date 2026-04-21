@@ -154,8 +154,6 @@ private fun WorkoutLoggerScreenContent(
     // Local state for session notes
     var sessionNotesText by remember { mutableStateOf("") }
 
-    // State for exit-without-saving confirmation dialog (back gesture / nav icon).
-    // Finish no longer opens this — the gated Finish FAB / nav-rail item fires directly.
     var showExitConfirmation by remember { mutableStateOf(false) }
     var exitAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
@@ -264,6 +262,8 @@ private fun WorkoutLoggerScreenContent(
         })
     }
 
+    val sessionSummary = remember(activeWorkout) { computeSessionSummary(activeWorkout) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -322,14 +322,11 @@ private fun WorkoutLoggerScreenContent(
 
         floatingActionButton = {
             if (!shouldUseWorkoutMasterDetail()) {
-                val sessionSummary = computeSessionSummary(activeWorkout)
-                val allSetsComplete =
-                    sessionSummary.totalSets > 0 && sessionSummary.completedSets == sessionSummary.totalSets
                 Column(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    AnimatedVisibility(visible = allSetsComplete) {
+                    AnimatedVisibility(visible = sessionSummary.isComplete) {
                         ExtendedFloatingActionButton(
                             onClick = {
                                 coroutineScope.launch {
@@ -413,7 +410,7 @@ private fun WorkoutLoggerScreenContent(
                         sessionContent = {
                             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 SessionSummaryChip(
-                                    summary = computeSessionSummary(activeWorkout),
+                                    summary = sessionSummary,
                                     weightUnit = weightUnit,
                                 )
                                 CompactSessionInfo(
@@ -441,9 +438,6 @@ private fun WorkoutLoggerScreenContent(
                             )
                         },
                         navigationRail = {
-                            val masterSummary = computeSessionSummary(activeWorkout)
-                            val masterAllSetsComplete =
-                                masterSummary.totalSets > 0 && masterSummary.completedSets == masterSummary.totalSets
                             WorkoutNavigationRail(
                                 onAddExercise = { showAddExerciseDialog = true },
                                 onStartRestTimer = { viewModel.startRestTimerForSet("", "") },
@@ -456,7 +450,7 @@ private fun WorkoutLoggerScreenContent(
                                 },
                                 timerIsRunning = timerIsRunning,
                                 sessionElapsedTime = sessionElapsedTime,
-                                allSetsComplete = masterAllSetsComplete
+                                allSetsComplete = sessionSummary.isComplete
                             )
                         },
                         paddingValues = paddingValues
@@ -501,7 +495,7 @@ private fun WorkoutLoggerScreenContent(
                 // clean band across the scaffold width.
                 stickyHeader(key = "session-summary") {
                     SessionSummaryChip(
-                        summary = computeSessionSummary(activeWorkout),
+                        summary = sessionSummary,
                         weightUnit = weightUnit,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -861,7 +855,9 @@ private data class SessionSummary(
     val completedSets: Int,
     val totalSets: Int,
     val totalVolume: Double,
-)
+) {
+    val isComplete: Boolean get() = totalSets > 0 && completedSets == totalSets
+}
 
 private fun computeSessionSummary(workout: LoggedWorkout?): SessionSummary {
     val exercises = workout?.loggedExercises ?: return SessionSummary(0, 0, 0.0)

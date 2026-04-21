@@ -28,6 +28,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 
+private const val BODYWEIGHT_DEFAULT_KG = 75.0
+private val DECIMAL_INPUT_REGEX = Regex("^\\d*\\.?\\d*\$")
+
 /**
  * Adaptive workout layout container that switches between single-column and master-detail layouts
  */
@@ -366,7 +369,6 @@ fun WorkoutNavigationRail(
 
 /**
  * Compact session info: bodyweight stepper + session notes, flat (no hero Card).
- * Used by both the compact LazyColumn path and the master-detail master panel.
  */
 @Composable
 fun CompactSessionInfo(
@@ -384,7 +386,8 @@ fun CompactSessionInfo(
     val maxBw = 300.0
 
     fun adjust(delta: Double) {
-        val base = bwValue ?: 75.0
+        // Seed from typical adult bodyweight when the field is empty so ± produce sane first values.
+        val base = bwValue ?: BODYWEIGHT_DEFAULT_KG
         val next = (base + delta).coerceIn(minBw, maxBw)
         val formatted = "%.1f".format(next).trimEnd('0').trimEnd('.')
         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -413,7 +416,7 @@ fun CompactSessionInfo(
             OutlinedTextField(
                 value = bodyweightText,
                 onValueChange = { newText ->
-                    if (newText.matches(Regex("^\\d*\\.?\\d*\$"))) onBodyweightChange(newText)
+                    if (newText.matches(DECIMAL_INPUT_REGEX)) onBodyweightChange(newText)
                 },
                 label = { Text("Bodyweight") },
                 trailingIcon = {
