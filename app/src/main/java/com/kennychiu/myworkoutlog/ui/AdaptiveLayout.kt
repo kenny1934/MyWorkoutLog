@@ -279,19 +279,6 @@ fun workoutTouchTargetSize(): Dp {
 }
 
 /**
- * Get workout input field height for better gym usability
- */
-@Composable
-fun workoutInputHeight(): Dp {
-    val layoutInfo = rememberAdaptiveLayoutInfo()
-    return when (layoutInfo.screenSize) {
-        ScreenSize.COMPACT -> 56.dp
-        ScreenSize.MEDIUM -> 60.dp
-        ScreenSize.EXPANDED -> 76.dp
-    }
-}
-
-/**
  * Determine spacing between workout elements
  */
 @Composable
