@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -408,6 +409,112 @@ class AnalyticsRepositoryTest {
         assertTrue(dist.isEmpty())
     }
 
+    // -- getPersonalRecordProgress --
+
+    @Test
+    fun `PR progress returns null when exercise has no PRs`() = runTest {
+        val repo = repo(prs = emptyList())
+
+        val progress = repo.getPersonalRecordProgress("sq").first()
+
+        assertNull(progress)
+    }
+
+    @Test
+    fun `PR progress with a single PR reports NEW_PR and no improvement value`() = runTest {
+        val repo = repo(prs = listOf(
+            pr(id = "p1", type = PRType.MAX_WEIGHT_FOR_REPS, date = "2026-04-10", weight = 100.0, reps = 5)
+        ))
+
+        val progress = repo.getPersonalRecordProgress("sq").first()
+
+        assertNotNull(progress)
+        assertEquals(PRImprovementType.NEW_PR, progress!!.improvementType)
+        assertNull(progress.improvement)
+        assertEquals("p1", progress.currentPR.id)
+        assertNull(progress.previousPR)
+    }
+
+    @Test
+    fun `PR progress picks the most recent PR as current`() = runTest {
+        val repo = repo(prs = listOf(
+            pr(id = "p1", type = PRType.MAX_WEIGHT_FOR_REPS, date = "2026-03-01", weight = 95.0, reps = 5),
+            pr(id = "p3", type = PRType.MAX_WEIGHT_FOR_REPS, date = "2026-04-10", weight = 110.0, reps = 5),
+            pr(id = "p2", type = PRType.MAX_WEIGHT_FOR_REPS, date = "2026-03-20", weight = 100.0, reps = 5),
+        ))
+
+        val progress = repo.getPersonalRecordProgress("sq").first()
+
+        assertEquals("p3", progress!!.currentPR.id)
+        assertEquals("p2", progress.previousPR!!.id)
+    }
+
+    @Test
+    fun `PR progress MAX_WEIGHT_FOR_REPS with heavier current reports WEIGHT_INCREASE delta`() = runTest {
+        val repo = repo(prs = listOf(
+            pr(id = "prev", type = PRType.MAX_WEIGHT_FOR_REPS, date = "2026-03-01", weight = 100.0, reps = 5),
+            pr(id = "cur",  type = PRType.MAX_WEIGHT_FOR_REPS, date = "2026-04-01", weight = 115.0, reps = 5),
+        ))
+
+        val progress = repo.getPersonalRecordProgress("sq").first()
+
+        assertEquals(PRImprovementType.WEIGHT_INCREASE, progress!!.improvementType)
+        assertEquals(15.0, progress.improvement!!, 0.0)
+    }
+
+    @Test
+    fun `PR progress MAX_WEIGHT_FOR_REPS with lighter current reports NO_IMPROVEMENT`() = runTest {
+        val repo = repo(prs = listOf(
+            pr(id = "prev", type = PRType.MAX_WEIGHT_FOR_REPS, date = "2026-03-01", weight = 115.0, reps = 5),
+            pr(id = "cur",  type = PRType.MAX_WEIGHT_FOR_REPS, date = "2026-04-01", weight = 100.0, reps = 5),
+        ))
+
+        val progress = repo.getPersonalRecordProgress("sq").first()
+
+        assertEquals(PRImprovementType.NO_IMPROVEMENT, progress!!.improvementType)
+        assertEquals(0.0, progress.improvement!!, 0.0)
+    }
+
+    @Test
+    fun `PR progress MAX_REPS_AT_WEIGHT reports REP_INCREASE as a Double delta`() = runTest {
+        val repo = repo(prs = listOf(
+            pr(id = "prev", type = PRType.MAX_REPS_AT_WEIGHT, date = "2026-03-01", weight = 80.0, reps = 5),
+            pr(id = "cur",  type = PRType.MAX_REPS_AT_WEIGHT, date = "2026-04-01", weight = 80.0, reps = 8),
+        ))
+
+        val progress = repo.getPersonalRecordProgress("sq").first()
+
+        assertEquals(PRImprovementType.REP_INCREASE, progress!!.improvementType)
+        assertEquals(3.0, progress.improvement!!, 0.0)
+    }
+
+    @Test
+    fun `PR progress DURATION reports DURATION_INCREASE as a Double second delta`() = runTest {
+        val repo = repo(prs = listOf(
+            pr(id = "prev", type = PRType.DURATION, date = "2026-03-01", durationSecs = 60),
+            pr(id = "cur",  type = PRType.DURATION, date = "2026-04-01", durationSecs = 90),
+        ))
+
+        val progress = repo.getPersonalRecordProgress("sq").first()
+
+        assertEquals(PRImprovementType.DURATION_INCREASE, progress!!.improvementType)
+        assertEquals(30.0, progress.improvement!!, 0.0)
+    }
+
+    @Test
+    fun `PR progress tolerates a PR row with an unparseable date`() = runTest {
+        // Bogus-date PR is treated as LocalDate.MIN → never wins currentPR, never wins previousPR.
+        // The real valid row is selected.
+        val repo = repo(prs = listOf(
+            pr(id = "bogus", type = PRType.MAX_WEIGHT_FOR_REPS, date = "not-a-date", weight = 200.0, reps = 5),
+            pr(id = "cur",   type = PRType.MAX_WEIGHT_FOR_REPS, date = "2026-04-01", weight = 100.0, reps = 5),
+        ))
+
+        val progress = repo.getPersonalRecordProgress("sq").first()
+
+        assertEquals("cur", progress!!.currentPR.id)
+    }
+
     // -- fixtures --
 
     private fun repo(
@@ -415,18 +522,42 @@ class AnalyticsRepositoryTest {
         previousWorkouts: List<LoggedWorkout> = emptyList(),
         activeCycle: ActiveProgramCycle? = null,
         dateRangeWorkouts: List<LoggedWorkout> = emptyList(),
+        prs: List<PersonalRecord> = emptyList(),
     ): AnalyticsRepository {
         val loggedDao: LoggedWorkoutDao = mockk(relaxed = true) {
             every { getWorkoutsByCycle("cur") } returns flowOf(currentWorkouts)
             every { getWorkoutsByCycle("prev") } returns flowOf(previousWorkouts)
             every { getWorkoutsByDateRange(any(), any()) } returns flowOf(dateRangeWorkouts)
+            every { getRecentWorkoutsForPRAnalysis(any()) } returns flowOf(emptyList())
         }
         val cycleDao: ActiveCycleDao = mockk(relaxed = true) {
             every { getActiveCycle() } returns flowOf(activeCycle)
         }
-        val prDao: PersonalRecordDao = mockk(relaxed = true)
+        val prDao: PersonalRecordDao = mockk(relaxed = true) {
+            every { getPRsForExerciseFlow(any()) } returns flowOf(prs)
+        }
         return AnalyticsRepository(loggedDao, cycleDao, prDao)
     }
+
+    private fun pr(
+        id: String,
+        type: PRType,
+        date: String,
+        weight: Double? = null,
+        reps: Int? = null,
+        durationSecs: Int? = null,
+    ) = PersonalRecord(
+        id = id,
+        exerciseId = "sq",
+        exerciseName = "Squat",
+        date = date,
+        loggedWorkoutId = "w-$id",
+        type = type,
+        weightUnit = "kg",
+        reps = reps,
+        weight = weight,
+        durationSecs = durationSecs,
+    )
 
     private fun set(
         weight: Double? = null,
