@@ -18,13 +18,22 @@ sealed class Screen(val route: String) {
     }
 
     // The route for the workout logger screen
-    data object WorkoutLogger : Screen("workout_logger/{templateId}?cycleId={cycleId}&weekId={weekId}&sessionId={sessionId}") {
+    data object WorkoutLogger : Screen("workout_logger/{templateId}?cycleId={cycleId}&weekId={weekId}&sessionId={sessionId}&resume={resume}") {
         // This function is for starting an ad-hoc workout from a template
         fun createRoute(templateId: String) = "workout_logger/$templateId"
 
-        // This function is for starting a workout from a program cycle
-        fun createRoute(templateId: String, cycleId: String, weekId: String, sessionId: String): String {
-            return "workout_logger/$templateId?cycleId=$cycleId&weekId=$weekId&sessionId=$sessionId"
+        // This function is for starting a workout from a program cycle.
+        // Set `resume = true` to bypass the "Resume vs Start Fresh" prompt when
+        // the caller already knows the user wants to resume an in-progress session.
+        fun createRoute(
+            templateId: String,
+            cycleId: String,
+            weekId: String,
+            sessionId: String,
+            resume: Boolean = false
+        ): String {
+            val base = "workout_logger/$templateId?cycleId=$cycleId&weekId=$weekId&sessionId=$sessionId"
+            return if (resume) "$base&resume=true" else base
         }
     }
 

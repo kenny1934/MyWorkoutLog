@@ -19,8 +19,20 @@ class DashboardViewModel(
     private val analyticsRepository: AnalyticsRepository,
     private val preferencesManager: DashboardPreferencesManager,
     private val bodyweightDao: BodyweightDao,
-    private val appSettingsRepository: AppSettingsRepository
+    private val appSettingsRepository: AppSettingsRepository,
+    private val loggedWorkoutDao: LoggedWorkoutDao
 ) : ViewModel() {
+
+    // Template IDs that currently have an in-progress LoggedWorkout row.
+    // Drives the NextSessionCtaCard's Resume / Start-fresh affordance.
+    val inProgressTemplateIds: StateFlow<Set<String>> =
+        loggedWorkoutDao.getAllInProgressWorkouts()
+            .map { list -> list.mapNotNull { it.workoutTemplateId }.toSet() }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptySet()
+            )
 
     val weightUnit: StateFlow<String> = appSettingsRepository.weightUnitFlow
         .stateIn(
@@ -761,12 +773,13 @@ class DashboardViewModelFactory(
     private val analyticsRepository: AnalyticsRepository,
     private val preferencesManager: DashboardPreferencesManager,
     private val bodyweightDao: BodyweightDao,
-    private val appSettingsRepository: AppSettingsRepository
+    private val appSettingsRepository: AppSettingsRepository,
+    private val loggedWorkoutDao: LoggedWorkoutDao
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return DashboardViewModel(widgetRepository, activeCycleDao, analyticsRepository, preferencesManager, bodyweightDao, appSettingsRepository) as T
+            return DashboardViewModel(widgetRepository, activeCycleDao, analyticsRepository, preferencesManager, bodyweightDao, appSettingsRepository, loggedWorkoutDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

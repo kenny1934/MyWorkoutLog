@@ -61,7 +61,8 @@ fun WorkoutLoggerScreen(
     viewModel: WorkoutLoggerViewModel,
     activeCycleViewModel: ActiveCycleViewModel,
     weightUnit: String,
-    onNavigateUp: () -> Unit
+    onNavigateUp: () -> Unit,
+    resume: Boolean = false
 ) {
     // State for session choice dialog
     var showSessionDialog by remember { mutableStateOf(false) }
@@ -78,10 +79,16 @@ fun WorkoutLoggerScreen(
                     viewModel.startWorkoutFromTemplate(templateId, cycleId, weekId, sessionId)
                 }
                 is WorkoutSessionStatus.InProgress -> {
-                    // Found existing session, show choice dialog
-                    existingSession = sessionStatus.workout
-                    sessionHoursAgo = sessionStatus.hoursAgo
-                    showSessionDialog = true
+                    if (resume) {
+                        // Caller (e.g. NextSessionCtaCard in Resume mode) already
+                        // knows the user wants to resume; skip the prompt.
+                        viewModel.resumeInProgressWorkout(templateId)
+                    } else {
+                        // Found existing session, show choice dialog
+                        existingSession = sessionStatus.workout
+                        sessionHoursAgo = sessionStatus.hoursAgo
+                        showSessionDialog = true
+                    }
                 }
             }
         } catch (e: Exception) {

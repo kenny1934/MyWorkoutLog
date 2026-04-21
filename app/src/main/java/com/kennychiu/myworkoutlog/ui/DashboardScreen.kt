@@ -376,8 +376,14 @@ fun AdaptiveDashboardContent(
             .filterIsInstance<DashboardWidget.CycleProgressWidget>()
             .firstOrNull()?.cycle
             ?.takeIf { cycleProgress(it).nextSession != null }
+        val inProgressTemplateIds by dashboardViewModel.inProgressTemplateIds.collectAsStateWithLifecycle()
         if (nextCtaCycle != null) {
-            NextSessionCtaCard(cycle = nextCtaCycle, navController = navController)
+            val nextTemplateId = cycleProgress(nextCtaCycle).nextSession?.workoutTemplateId
+            NextSessionCtaCard(
+                cycle = nextCtaCycle,
+                navController = navController,
+                hasInProgress = nextTemplateId != null && nextTemplateId in inProgressTemplateIds
+            )
             Spacer(modifier = Modifier.height(spacing))
         }
 
@@ -444,6 +450,7 @@ fun EnhancedDashboardScreen(
     val hiddenWidgets by dashboardViewModel.hiddenWidgets.collectAsStateWithLifecycle()
     val showBodyweightDialog by dashboardViewModel.showBodyweightDialog.collectAsStateWithLifecycle()
     val weightUnit by dashboardViewModel.weightUnit.collectAsStateWithLifecycle()
+    val inProgressTemplateIds by dashboardViewModel.inProgressTemplateIds.collectAsStateWithLifecycle()
 
     // Adaptive layout information
     val layoutInfo = rememberAdaptiveLayoutInfo()
@@ -511,7 +518,12 @@ fun EnhancedDashboardScreen(
                 ?.takeIf { cycleProgress(it).nextSession != null }
             if (nextCtaCycle != null) {
                 item {
-                    NextSessionCtaCard(cycle = nextCtaCycle, navController = navController)
+                    val nextTemplateId = cycleProgress(nextCtaCycle).nextSession?.workoutTemplateId
+                    NextSessionCtaCard(
+                        cycle = nextCtaCycle,
+                        navController = navController,
+                        hasInProgress = nextTemplateId != null && nextTemplateId in inProgressTemplateIds
+                    )
                 }
             }
 

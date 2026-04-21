@@ -135,5 +135,6 @@ class AppContainer(appContext: Context) {
         dashboardPreferencesManager,
         bodyweightDao,
         appSettingsRepository,
+        loggedWorkoutDao,
     )
 }

@@ -208,6 +208,7 @@ fun AppNavHost(
             val cycleId = backStackEntry.arguments?.getString("cycleId")
             val weekId = backStackEntry.arguments?.getString("weekId")
             val sessionId = backStackEntry.arguments?.getString("sessionId")
+            val resume = backStackEntry.arguments?.getString("resume") == "true"
 
             WorkoutLoggerScreen(
                 templateId = templateId,
@@ -217,7 +218,8 @@ fun AppNavHost(
                 viewModel = loggerViewModel,
                 activeCycleViewModel = activeCycleViewModel,
                 weightUnit = weightUnit,
-                onNavigateUp = { navController.navigateUp() }
+                onNavigateUp = { navController.navigateUp() },
+                resume = resume
             )
         }
         composable(Screen.EditWorkout.route) { backStackEntry ->
