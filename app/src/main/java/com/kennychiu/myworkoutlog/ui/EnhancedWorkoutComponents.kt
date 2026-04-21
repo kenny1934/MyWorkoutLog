@@ -48,6 +48,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import android.content.Intent
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -685,39 +687,66 @@ fun EnhancedSetRow(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
+                            Text(
+                                text = "Weight",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = "Reps",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
                             OutlinedTextField(
                                 value = weightValue,
                                 onValueChange = onWeightChange,
-                                label = { Text("Weight") },
                                 trailingIcon = { Text(weightUnit, style = MaterialTheme.typography.bodyMedium) },
                                 placeholder = { Text("0") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 singleLine = true,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .semantics { contentDescription = "Weight in $weightUnit" }
                             )
                             OutlinedTextField(
                                 value = repsValue,
                                 onValueChange = onRepsChange,
-                                label = { Text("Reps") },
                                 placeholder = { Text("0") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .semantics { contentDescription = "Reps" }
                             )
                         }
                     }
 
                     if (showSecs) {
                         Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Duration",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
                         OutlinedTextField(
                             value = secsValue,
                             onValueChange = onSecsChange,
-                            label = { Text("Duration") },
                             trailingIcon = { Text("sec", style = MaterialTheme.typography.bodyMedium) },
                             placeholder = { Text("0") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .semantics { contentDescription = "Duration in seconds" }
                         )
                     }
 
