@@ -90,6 +90,14 @@ fun CycleDetailScreen(
                     onRenameClick = { showRenameDialog = true },
                 )
             }
+            if (info.isComplete) {
+                item {
+                    CycleSummaryCard(
+                        info = info,
+                        aggregates = aggregates,
+                    )
+                }
+            }
             if (aggregates.prsHit.isNotEmpty()) {
                 item {
                     CyclePrsCard(
@@ -202,6 +210,99 @@ private fun CycleHeaderCard(
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CycleSummaryCard(
+    info: CycleProgressInfo,
+    aggregates: CycleAggregates,
+) {
+    val unit = aggregates.weightUnit ?: "kg"
+    val totalSets = aggregates.perWeek.values.sumOf { it.setCount }
+    val totalVolume = aggregates.perWeek.values.sumOf { it.totalVolume }
+    val totalDurationMs = aggregates.perWeek.values.sumOf { it.totalDurationMs }
+    val topPr = remember(aggregates.prsHit) {
+        aggregates.prsHit
+            .map { it.pr }
+            .filter { it.type == PRType.MAX_WEIGHT_FOR_REPS }
+            .maxByOrNull { it.weight ?: 0.0 }
+            ?: aggregates.prsHit.firstOrNull()?.pr
+    }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Filled.EmojiEvents,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Cycle summary",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                AggregateChip(
+                    label = "Workouts",
+                    value = "${info.completedSessionCount}",
+                    modifier = Modifier.weight(1f),
+                )
+                AggregateChip(
+                    label = "Sets",
+                    value = "$totalSets",
+                    modifier = Modifier.weight(1f),
+                )
+                AggregateChip(
+                    label = "PRs",
+                    value = "${aggregates.prsHit.size}",
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                AggregateChip(
+                    label = "Volume",
+                    value = "${trim(totalVolume)} $unit",
+                    modifier = Modifier.weight(1f),
+                )
+                AggregateChip(
+                    label = "Time",
+                    value = formatDurationShort(totalDurationMs),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            if (topPr != null) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = "Top PR · ${topPr.exerciseName}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = formatPrSummary(topPr),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
                 )
             }
         }
