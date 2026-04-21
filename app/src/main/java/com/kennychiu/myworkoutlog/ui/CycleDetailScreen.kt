@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
@@ -106,6 +107,7 @@ fun CycleDetailScreen(
                     isCurrentWeek = week.id == info.currentWeek?.id,
                     aggregate = aggregates.perWeek[week.id],
                     weightUnit = aggregates.weightUnit,
+                    templates = state.templates,
                     onSessionClick = { session ->
                         val key = "${week.id}_${session.id}"
                         val completedWorkoutId = completed[key]
@@ -318,6 +320,7 @@ private fun CycleWeekCard(
     isCurrentWeek: Boolean,
     aggregate: CycleWeekAggregate?,
     weightUnit: String?,
+    templates: Map<String, WorkoutTemplate>,
     onSessionClick: (ProgramSessionDefinition) -> Unit,
 ) {
     val rir = week.targetRir?.takeIf { it.isNotBlank() }
@@ -399,6 +402,8 @@ private fun CycleWeekCard(
                 SessionRow(
                     sessionName = session.sessionName,
                     done = done,
+                    template = templates[session.workoutTemplateId],
+                    weightUnit = weightUnit ?: "kg",
                     onClick = { onSessionClick(session) },
                 )
             }
@@ -466,28 +471,88 @@ private fun formatDurationShort(ms: Long): String {
 }
 
 @Composable
-private fun SessionRow(sessionName: String, done: Boolean, onClick: () -> Unit) {
+private fun SessionRow(
+    sessionName: String,
+    done: Boolean,
+    template: WorkoutTemplate?,
+    weightUnit: String,
+    onClick: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
     ) {
         val tint = if (done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
         Icon(
             imageVector = if (done) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
             contentDescription = if (done) "Completed" else "Not completed",
             tint = tint,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier
+                .padding(top = 2.dp)
+                .size(20.dp),
         )
         Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = sessionName,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                fontWeight = if (done) FontWeight.Normal else FontWeight.Medium,
+            )
+            if (template != null && template.templateExercises.isNotEmpty()) {
+                SessionExercisePreview(template = template, weightUnit = weightUnit, done = done)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SessionExercisePreview(
+    template: WorkoutTemplate,
+    weightUnit: String,
+    done: Boolean,
+) {
+    val sortedExercises = remember(template) { template.templateExercises.sortedBy { it.order } }
+    val preview = sortedExercises.take(3)
+    val overflow = sortedExercises.size - preview.size
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+        alpha = if (done) 0.55f else 0.85f,
+    )
+    val hintColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+        alpha = if (done) 0.4f else 0.7f,
+    )
+    Spacer(Modifier.height(2.dp))
+    preview.forEach { ex ->
+        val hint = formatProgressionHint(ex, weightUnit = weightUnit)
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = ex.exerciseName,
+                style = MaterialTheme.typography.bodySmall,
+                color = labelColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (hint != null) {
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = "· $hint",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = hintColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+    if (overflow > 0) {
         Text(
-            text = sessionName,
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-            fontWeight = if (done) FontWeight.Normal else FontWeight.Medium,
-            modifier = Modifier.weight(1f),
+            text = "+$overflow more",
+            style = MaterialTheme.typography.bodySmall,
+            color = hintColor,
         )
     }
 }

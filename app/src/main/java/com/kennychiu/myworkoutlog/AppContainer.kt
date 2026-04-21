@@ -106,6 +106,7 @@ class AppContainer(appContext: Context) {
         activeCycleDao,
         loggedWorkoutDao,
         personalRecordDao,
+        workoutTemplateDao,
     )
 
     fun prViewModelFactory() = PrViewModelFactory(personalRecordDao)

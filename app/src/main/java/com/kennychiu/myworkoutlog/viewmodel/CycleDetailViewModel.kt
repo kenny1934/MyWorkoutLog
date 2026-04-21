@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 data class CycleDetailUiState(
     val cycle: ActiveProgramCycle?,
     val aggregates: CycleAggregates,
+    val templates: Map<String, WorkoutTemplate> = emptyMap(),
 ) {
     companion object {
         val EMPTY = CycleDetailUiState(null, CycleAggregates.EMPTY)
@@ -29,6 +30,7 @@ class CycleDetailViewModel(
     private val activeCycleDao: ActiveCycleDao,
     private val loggedWorkoutDao: LoggedWorkoutDao,
     personalRecordDao: PersonalRecordDao,
+    workoutTemplateDao: WorkoutTemplateDao,
 ) : ViewModel() {
 
     val state: StateFlow<CycleDetailUiState> = activeCycleDao.getActiveCycle()
@@ -39,8 +41,13 @@ class CycleDetailViewModel(
                 combine(
                     loggedWorkoutDao.getWorkoutsByCycle(cycle.cycleUuid),
                     personalRecordDao.getAllPRs(),
-                ) { workouts, prs ->
-                    CycleDetailUiState(cycle, cycleAggregates(cycle, workouts, prs))
+                    workoutTemplateDao.getAllTemplates(),
+                ) { workouts, prs, templates ->
+                    CycleDetailUiState(
+                        cycle = cycle,
+                        aggregates = cycleAggregates(cycle, workouts, prs),
+                        templates = templates.associateBy { it.id },
+                    )
                 }
             }
         }
@@ -65,11 +72,17 @@ class CycleDetailViewModelFactory(
     private val activeCycleDao: ActiveCycleDao,
     private val loggedWorkoutDao: LoggedWorkoutDao,
     private val personalRecordDao: PersonalRecordDao,
+    private val workoutTemplateDao: WorkoutTemplateDao,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(CycleDetailViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return CycleDetailViewModel(activeCycleDao, loggedWorkoutDao, personalRecordDao) as T
+            return CycleDetailViewModel(
+                activeCycleDao,
+                loggedWorkoutDao,
+                personalRecordDao,
+                workoutTemplateDao,
+            ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
