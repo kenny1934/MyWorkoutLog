@@ -381,18 +381,27 @@ fun NextSessionCtaCard(
                 }
             }
             if (hasInProgress) {
-                Spacer(modifier = Modifier.height(4.dp))
-                TextButton(
+                Spacer(modifier = Modifier.height(8.dp))
+                AssistChip(
                     onClick = { navigateToSession(false) },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                    label = { Text("Start fresh instead") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.RestartAlt,
+                            contentDescription = null,
+                            modifier = Modifier.size(AssistChipDefaults.IconSize)
+                        )
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    ),
+                    border = AssistChipDefaults.assistChipBorder(
+                        enabled = true,
+                        borderColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.4f)
+                    ),
                     modifier = Modifier.align(Alignment.Start)
-                ) {
-                    Text(
-                        text = "Start fresh instead",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
-                    )
-                }
+                )
             }
         }
     }
