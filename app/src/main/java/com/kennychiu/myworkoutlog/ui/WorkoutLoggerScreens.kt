@@ -523,6 +523,10 @@ private fun WorkoutLoggerScreenContent(
                             showExerciseContextMenu = true
                         }
                     ) {
+                        val nextUnfilledIndex = exercise.sets.indexOfFirst { s ->
+                            val performanceIn = (s.weight != null && s.reps != null) || s.secs != null
+                            !(performanceIn && s.rir != null)
+                        }
                         // Enhanced set rows
                         exercise.sets.forEachIndexed { index, set ->
                             // Get performance suggestion for this exercise
@@ -618,6 +622,7 @@ private fun WorkoutLoggerScreenContent(
                                 onClearRestTime = {
                                     viewModel.setRestTimeForSet(exercise.id, set.id, null)
                                 },
+                                isNextUnfilled = index == nextUnfilledIndex,
                                 modifier = Modifier.padding(vertical = 6.dp)
                             )
                         }

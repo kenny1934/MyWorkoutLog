@@ -581,6 +581,11 @@ fun EnhancedExerciseDetailPanel(
                 Spacer(modifier = Modifier.height(20.dp))
             }
             
+            val nextUnfilledIndex = exercise.sets.indexOfFirst { s ->
+                val performanceIn = (s.weight != null && s.reps != null) || s.secs != null
+                !(performanceIn && s.rir != null)
+            }
+
             // Sets list with enhanced spacing for large screens
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(workoutElementSpacing()),
@@ -671,7 +676,8 @@ fun EnhancedExerciseDetailPanel(
                             )
                         },
                         onEditRestTime = { seconds -> onSetRestTime(exercise.id, set.id, seconds) },
-                        onClearRestTime = { onSetRestTime(exercise.id, set.id, null) }
+                        onClearRestTime = { onSetRestTime(exercise.id, set.id, null) },
+                        isNextUnfilled = index == nextUnfilledIndex
                     )
                 }
             }

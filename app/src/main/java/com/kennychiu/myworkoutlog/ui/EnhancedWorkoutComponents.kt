@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.BorderStroke
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -54,6 +55,7 @@ import android.content.Intent
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -68,8 +70,9 @@ fun RirInputField(
     onFocusChanged: ((Boolean) -> Unit)? = null
 ) {
     val haptics = LocalHapticFeedback.current
+    val hasValue = value.isNotEmpty()
     val currentRir = value.toIntOrNull() ?: 0
-    val descriptor = when (currentRir) {
+    val descriptor = if (!hasValue) "Not logged" else when (currentRir) {
         0 -> "Failure"
         1, 2 -> "Very Hard"
         3, 4 -> "Hard"
@@ -136,9 +139,10 @@ fun RirInputField(
             FilledTonalIconButton(
                 onClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onValueChange((currentRir - 1).coerceAtLeast(0).toString())
+                    if (!hasValue) onValueChange("0")
+                    else onValueChange((currentRir - 1).coerceAtLeast(0).toString())
                 },
-                enabled = currentRir > 0,
+                enabled = !hasValue || currentRir > 0,
                 modifier = Modifier.size(32.dp),
                 colors = IconButtonDefaults.filledTonalIconButtonColors(
                     containerColor = intensityColor.copy(alpha = 0.14f),
@@ -153,7 +157,7 @@ fun RirInputField(
             }
 
             Text(
-                text = animatedRir.toString(),
+                text = if (hasValue) animatedRir.toString() else "—",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = intensityColor,
@@ -164,9 +168,10 @@ fun RirInputField(
             FilledTonalIconButton(
                 onClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onValueChange((currentRir + 1).coerceAtMost(10).toString())
+                    if (!hasValue) onValueChange("0")
+                    else onValueChange((currentRir + 1).coerceAtMost(10).toString())
                 },
-                enabled = currentRir < 10,
+                enabled = !hasValue || currentRir < 10,
                 modifier = Modifier.size(32.dp),
                 colors = IconButtonDefaults.filledTonalIconButtonColors(
                     containerColor = intensityColor.copy(alpha = 0.14f),
@@ -448,6 +453,7 @@ fun EnhancedSetRow(
     onClearSet: (() -> Unit)? = null,
     onEditRestTime: ((Int) -> Unit)? = null,
     onClearRestTime: (() -> Unit)? = null,
+    isNextUnfilled: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val haptics = LocalHapticFeedback.current
@@ -456,11 +462,27 @@ fun EnhancedSetRow(
 
     val weightRepsDone = weightValue.isNotEmpty() && repsValue.isNotEmpty()
     val secsDone = secsValue.isNotEmpty()
+    val rirDone = rirValue.isNotEmpty()
     val isSetCompleted = (showWeightReps || showSecs) &&
         (!showWeightReps || weightRepsDone) &&
-        (!showSecs || secsDone)
+        (!showSecs || secsDone) &&
+        rirDone
     val hasAnyValue = weightValue.isNotEmpty() || repsValue.isNotEmpty() || secsValue.isNotEmpty()
-    var isCollapsed by rememberSaveable { mutableStateOf(isSetCompleted) }
+    var isCollapsed by rememberSaveable {
+        mutableStateOf(isSetCompleted || (!hasAnyValue && !isNextUnfilled))
+    }
+
+    // Reactive collapse driver. Debounces on completion so the user can dial in RIR
+    // without the row collapsing under them on the first +/- tap. Any field change
+    // (including RIR) cancels and restarts the delay.
+    LaunchedEffect(isSetCompleted, isNextUnfilled, hasAnyValue, rirValue, weightValue, repsValue, secsValue) {
+        if (isSetCompleted) {
+            delay(1500)
+            isCollapsed = true
+        } else {
+            isCollapsed = !isNextUnfilled && !hasAnyValue
+        }
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -483,7 +505,7 @@ fun EnhancedSetRow(
                 Row(
                     modifier = Modifier
                         .weight(1f)
-                        .clickable(enabled = isSetCompleted) {
+                        .clickable {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             isCollapsed = !isCollapsed
                         },
@@ -509,7 +531,9 @@ fun EnhancedSetRow(
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
                     } else {
                         restTimeSeconds?.let { restTime ->
@@ -566,20 +590,18 @@ fun EnhancedSetRow(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (isSetCompleted) {
-                        IconButton(
-                            onClick = {
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                isCollapsed = !isCollapsed
-                            },
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isCollapsed) Icons.Filled.ExpandMore else Icons.Filled.ExpandLess,
-                                contentDescription = if (isCollapsed) "Expand Set" else "Collapse Set",
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+                    IconButton(
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            isCollapsed = !isCollapsed
+                        },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isCollapsed) Icons.Filled.ExpandMore else Icons.Filled.ExpandLess,
+                            contentDescription = if (isCollapsed) "Expand Set" else "Collapse Set",
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
 
                     if (showDeleteButton) {
