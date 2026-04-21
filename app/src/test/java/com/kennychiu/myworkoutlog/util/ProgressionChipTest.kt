@@ -239,4 +239,75 @@ class ProgressionChipTest {
         )
         assertEquals(102.5, chip?.weight!!, 0.0001)
     }
+
+    @Test
+    fun `LINEAR baseline week holds last weight`() {
+        val chip = suggestForScheme(
+            scheme = ProgressionScheme.LINEAR,
+            lastWeight = 60.0,
+            lastReps = 5,
+            increment = 2.5,
+            cycleWeekNumber = 1,
+        )
+        assertEquals(60.0, chip?.weight!!, 0.0001)
+        assertEquals(5, chip.reps)
+        assertEquals("60kg 5r (baseline)", chip.label)
+    }
+
+    @Test
+    fun `LINEAR week 2 resumes full increment`() {
+        val chip = suggestForScheme(
+            scheme = ProgressionScheme.LINEAR,
+            lastWeight = 60.0,
+            lastReps = 5,
+            increment = 2.5,
+            cycleWeekNumber = 2,
+        )
+        assertEquals(62.5, chip?.weight!!, 0.0001)
+        assertEquals("62.5kg 5r (next)", chip.label)
+    }
+
+    @Test
+    fun `DOUBLE at max reps holds weight on baseline week`() {
+        val chip = suggestForScheme(
+            scheme = ProgressionScheme.DOUBLE,
+            lastWeight = 60.0,
+            lastReps = 12,
+            minReps = 8,
+            maxReps = 12,
+            increment = 2.5,
+            cycleWeekNumber = 1,
+        )
+        assertEquals(60.0, chip?.weight!!, 0.0001)
+        assertEquals(12, chip.reps)
+        assertEquals("60kg 12r (baseline)", chip.label)
+    }
+
+    @Test
+    fun `DOUBLE under max reps climbs even on baseline week`() {
+        val chip = suggestForScheme(
+            scheme = ProgressionScheme.DOUBLE,
+            lastWeight = 60.0,
+            lastReps = 9,
+            minReps = 8,
+            maxReps = 12,
+            cycleWeekNumber = 1,
+        )
+        assertEquals(60.0, chip?.weight!!, 0.0001)
+        assertEquals(10, chip.reps)
+    }
+
+    @Test
+    fun `TOP_SET baseline week holds top-set weight`() {
+        val chip = suggestForScheme(
+            scheme = ProgressionScheme.TOP_SET,
+            setNumber = 1,
+            lastWeight = 100.0,
+            lastReps = 5,
+            increment = 2.5,
+            cycleWeekNumber = 1,
+        )
+        assertEquals(100.0, chip?.weight!!, 0.0001)
+        assertEquals("100kg 5r (top · baseline)", chip.label)
+    }
 }

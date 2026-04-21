@@ -63,6 +63,12 @@ class WorkoutLoggerViewModel(
     // can build a fresh suggestion per set number without redoing the DB lookup.
     private val _recentRepresentatives = MutableStateFlow<Map<String, RecentRepresentative>>(emptyMap())
 
+    // 1-based cycle week for the active workout (null when the workout has no cycle
+    // context). Resolved from the active cycle's ordered weeks against the workout's
+    // programWeekDefinitionId. Feeds the scheme-aware chip so week 1 of a fresh cycle
+    // re-introduces exercises at their last working weight instead of stacking a bump.
+    private val _cycleWeekNumber = MutableStateFlow<Int?>(null)
+
     // Track if we're in edit mode for an existing workout
     private var isEditMode = false
     private var originalWorkoutId: String? = null
@@ -1104,6 +1110,7 @@ class WorkoutLoggerViewModel(
                 minReps = templateExercise.progressionMinReps,
                 maxReps = templateExercise.progressionMaxReps,
                 targetRpe = templateExercise.progressionTargetRpe,
+                cycleWeekNumber = _cycleWeekNumber.value,
             )
             if (chip != null) {
                 return PerformanceSuggestion(
@@ -1128,6 +1135,7 @@ class WorkoutLoggerViewModel(
         if (templateId == null) {
             _progressionHints.value = emptyMap()
             _templateExercisesByExerciseId.value = emptyMap()
+            _cycleWeekNumber.value = null
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
@@ -1139,6 +1147,7 @@ class WorkoutLoggerViewModel(
             if (template == null) {
                 _progressionHints.value = emptyMap()
                 _templateExercisesByExerciseId.value = emptyMap()
+                _cycleWeekNumber.value = null
                 return@launch
             }
             val hints = mutableMapOf<String, String>()
@@ -1150,7 +1159,26 @@ class WorkoutLoggerViewModel(
             }
             _progressionHints.value = hints
             _templateExercisesByExerciseId.value = byId
+            _cycleWeekNumber.value = resolveCycleWeekNumber(workout)
         }
+    }
+
+    // Map the active workout's programWeekDefinitionId to its 1-based position in the
+    // active cycle's ordered weeks list. Returns null when the workout has no cycle
+    // context, when no cycle is active, or when the week id no longer exists in the
+    // cycle snapshot (e.g. the program was edited after cycle start).
+    private fun resolveCycleWeekNumber(workout: LoggedWorkout): Int? {
+        val weekId = workout.programWeekDefinitionId ?: return null
+        val cycleUuid = workout.activeProgramCycleId ?: return null
+        val cycle = try {
+            activeCycleDao.getActiveCycleSnapshot()
+        } catch (e: Exception) {
+            null
+        } ?: return null
+        if (cycle.cycleUuid != cycleUuid) return null
+        val orderedWeeks = cycle.cycleProgram.weeks.sortedBy { it.order }
+        val index = orderedWeeks.indexOfFirst { it.id == weekId }
+        return if (index >= 0) index + 1 else null
     }
     
     // PHASE 4: Load an existing in-progress workout (must be called from IO context)

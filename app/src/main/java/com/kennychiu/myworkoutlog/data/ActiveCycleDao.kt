@@ -15,6 +15,11 @@ interface ActiveCycleDao {
     @Query("SELECT * FROM active_program_cycle_table WHERE id = 1")
     fun getActiveCycle(): Flow<ActiveProgramCycle?>
 
+    // Snapshot read from IO thread — used where a Flow subscription would be overkill
+    // (progression hint refresh on workout load).
+    @Query("SELECT * FROM active_program_cycle_table WHERE id = 1")
+    fun getActiveCycleSnapshot(): ActiveProgramCycle?
+
     @Query("DELETE FROM active_program_cycle_table")
     fun clear() // To end a cycle
 

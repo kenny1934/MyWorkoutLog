@@ -27,14 +27,20 @@ fun suggestForScheme(
     maxReps: Int? = null,
     targetRpe: String? = null,
     weightUnit: String = "kg",
+    // 1-based cycle week, or null when the workout has no cycle context. Week 1 of a
+    // fresh cycle re-introduces the exercise at its previous working weight rather than
+    // stacking last-cycle's final bump — so the schemes that otherwise add weight each
+    // session skip the bump on week 1.
+    cycleWeekNumber: Int? = null,
 ): ChipSuggestion? {
     if (scheme == null || scheme == ProgressionScheme.NONE) return null
     if (lastWeight == null && lastReps == null) return null
+    val isBaselineWeek = cycleWeekNumber == 1
     return when (scheme) {
-        ProgressionScheme.LINEAR -> linearChip(lastWeight, lastReps, lastRir, increment, weightUnit)
-        ProgressionScheme.DOUBLE -> doubleChip(lastWeight, lastReps, lastRir, increment, minReps, maxReps, weightUnit)
+        ProgressionScheme.LINEAR -> linearChip(lastWeight, lastReps, lastRir, increment, weightUnit, isBaselineWeek)
+        ProgressionScheme.DOUBLE -> doubleChip(lastWeight, lastReps, lastRir, increment, minReps, maxReps, weightUnit, isBaselineWeek)
         ProgressionScheme.RPE -> rpeChip(lastWeight, lastReps, lastRir, targetRpe, weightUnit)
-        ProgressionScheme.TOP_SET -> topSetChip(setNumber, lastWeight, lastReps, lastRir, increment, weightUnit)
+        ProgressionScheme.TOP_SET -> topSetChip(setNumber, lastWeight, lastReps, lastRir, increment, weightUnit, isBaselineWeek)
         ProgressionScheme.NONE -> null
     }
 }
@@ -45,14 +51,16 @@ private fun linearChip(
     lastRir: Int?,
     increment: Double?,
     weightUnit: String,
+    isBaselineWeek: Boolean,
 ): ChipSuggestion {
-    val inc = increment?.takeIf { it > 0.0 }
+    val inc = increment?.takeIf { it > 0.0 && !isBaselineWeek }
     val newWeight = if (lastWeight != null && inc != null) lastWeight + inc else lastWeight
+    val suffix = if (isBaselineWeek) "baseline" else "next"
     return ChipSuggestion(
         weight = newWeight,
         reps = lastReps,
         rir = lastRir,
-        label = chipLabel(newWeight, lastReps, weightUnit, "next"),
+        label = chipLabel(newWeight, lastReps, weightUnit, suffix),
     )
 }
 
@@ -64,6 +72,7 @@ private fun doubleChip(
     minReps: Int?,
     maxReps: Int?,
     weightUnit: String,
+    isBaselineWeek: Boolean,
 ): ChipSuggestion? {
     if (lastReps == null) return null
     val climbing = maxReps == null || lastReps < maxReps
@@ -76,8 +85,17 @@ private fun doubleChip(
             label = chipLabel(lastWeight, newReps, weightUnit, "next"),
         )
     }
-    // At or above max: bump weight, reset reps to the min (if configured). Default
-    // increment is 2.5 (a common small-plate bump) when the user hasn't set one.
+    // At or above max: bump weight, reset reps to the min. Skip the bump on week 1 of
+    // the cycle — baseline re-introduction — and just hold at max reps / last weight.
+    if (isBaselineWeek) {
+        return ChipSuggestion(
+            weight = lastWeight,
+            reps = lastReps,
+            rir = lastRir,
+            label = chipLabel(lastWeight, lastReps, weightUnit, "baseline"),
+        )
+    }
+    // Default increment is 2.5 (a common small-plate bump) when the user hasn't set one.
     val inc = increment?.takeIf { it > 0.0 } ?: 2.5
     val newWeight = lastWeight?.let { it + inc }
     val newReps = minReps ?: lastReps
@@ -119,10 +137,21 @@ private fun topSetChip(
     lastRir: Int?,
     increment: Double?,
     weightUnit: String,
+    isBaselineWeek: Boolean,
 ): ChipSuggestion {
-    // Set 1 is the top set — apply a small bump so the user pushes harder than
-    // last time. Subsequent sets are backoffs and just copy the last performance.
+    // Set 1 is the top set. Apply the increment bump so the user pushes harder than
+    // last session — unless this is the cycle's baseline week, where we re-introduce
+    // at the last working weight instead of stacking a bump on top of last cycle's peak.
+    // Subsequent sets are backoffs and just copy the last performance.
     if (setNumber <= 1) {
+        if (isBaselineWeek) {
+            return ChipSuggestion(
+                weight = lastWeight,
+                reps = lastReps,
+                rir = lastRir,
+                label = chipLabel(lastWeight, lastReps, weightUnit, "top · baseline"),
+            )
+        }
         val inc = increment?.takeIf { it > 0.0 } ?: 2.5
         val newWeight = lastWeight?.let { it + inc }
         return ChipSuggestion(
