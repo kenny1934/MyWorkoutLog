@@ -34,7 +34,6 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Timer
@@ -1160,10 +1159,22 @@ fun EnhancedTimerBar(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Circular timer display
+                // Circular timer display. Long-press to reset the countdown
+                // back to the full target duration — the visible Reset
+                // IconButton was dropped in slice 78 to de-clutter the bar.
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(64.dp)
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(32.dp))
+                        .combinedClickable(
+                            onClick = { /* tap is a no-op; primary actions live in the button row */ },
+                            onLongClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onReset()
+                            },
+                            onLongClickLabel = "Reset Timer"
+                        )
                 ) {
                     // Background circle
                     CircularProgressIndicator(
@@ -1172,7 +1183,7 @@ fun EnhancedTimerBar(
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
                         strokeWidth = 6.dp,
                     )
-                    
+
                     // Progress circle
                     CircularProgressIndicator(
                         progress = { animatedProgress },
@@ -1180,33 +1191,33 @@ fun EnhancedTimerBar(
                         color = timerColor,
                         strokeWidth = 6.dp,
                     )
-                    
+
                     // Time text
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "${currentTime / 60}:${String.format("%02d", currentTime % 60)}",
+                            text = formatTime(currentTime),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         if (targetTime > 0) {
                             Text(
-                                text = "/ ${targetTime / 60}:${String.format("%02d", targetTime % 60)}",
+                                text = "/ ${formatTime(targetTime)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                 }
-                
-                // Control buttons
+
+                // Control buttons: pause/resume · +15s · stop. Reset moved to
+                // long-press-on-time-display above.
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Play/Pause button (larger)
                     FilledIconButton(
                         onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -1220,8 +1231,7 @@ fun EnhancedTimerBar(
                             modifier = Modifier.size(24.dp)
                         )
                     }
-                    
-                    // Quick time additions
+
                     FilledTonalButton(
                         onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -1235,22 +1245,7 @@ fun EnhancedTimerBar(
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    
-                    // Reset button
-                    IconButton(
-                        onClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onReset()
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Replay,
-                            contentDescription = "Reset Timer",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    
-                    // Stop button
+
                     IconButton(
                         onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
