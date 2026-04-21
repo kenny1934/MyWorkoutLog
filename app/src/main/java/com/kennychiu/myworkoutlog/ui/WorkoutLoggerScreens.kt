@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -23,9 +22,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -157,10 +154,10 @@ private fun WorkoutLoggerScreenContent(
     // Local state for session notes
     var sessionNotesText by remember { mutableStateOf("") }
 
-    // State for exit confirmation dialog
+    // State for exit-without-saving confirmation dialog (back gesture / nav icon).
+    // Finish no longer opens this — the gated Finish FAB / nav-rail item fires directly.
     var showExitConfirmation by remember { mutableStateOf(false) }
     var exitAction by remember { mutableStateOf<(() -> Unit)?>(null) }
-    var isFinishAction by remember { mutableStateOf(false) }
 
     // State for exercise addition dialog
     var showAddExerciseDialog by remember { mutableStateOf(false) }
@@ -196,10 +193,8 @@ private fun WorkoutLoggerScreenContent(
         // Note: Individual set data is automatically saved via DisposableEffect and debounced LaunchedEffect
     }
 
-    // Function to show exit confirmation dialog
-    fun showExitConfirmationDialog(action: () -> Unit, isFinish: Boolean = false) {
+    fun showExitConfirmationDialog(action: () -> Unit) {
         exitAction = action
-        isFinishAction = isFinish
         showExitConfirmation = true
     }
 
@@ -294,15 +289,13 @@ private fun WorkoutLoggerScreenContent(
                     }
                 },
                 actions = {
-                    // Show timer in regular mode, show clickable duration in edit mode
                     if (!isEditMode) {
                         Text(
-                            text = "${sessionElapsedTime / 60}:${String.format("%02d", sessionElapsedTime % 60)}",
+                            text = formatTime(sessionElapsedTime),
                             style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(end = 8.dp)
+                            modifier = Modifier.padding(end = 12.dp)
                         )
                     } else if (sessionElapsedTime >= 0) {
-                        // In edit mode, show original duration and make it clickable
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -310,7 +303,7 @@ private fun WorkoutLoggerScreenContent(
                                 .padding(horizontal = 8.dp)
                         ) {
                             Text(
-                                text = "${sessionElapsedTime / 60}:${String.format("%02d", sessionElapsedTime % 60)}",
+                                text = formatTime(sessionElapsedTime),
                                 style = MaterialTheme.typography.titleMedium
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -322,34 +315,45 @@ private fun WorkoutLoggerScreenContent(
                             )
                         }
                     }
-                    Button(onClick = {
-                        showExitConfirmationDialog({
-                            coroutineScope.launch {
-                                saveAllPendingData()
-                                viewModel.finishWorkout(weightUnit, activeCycle)
-                                onNavigateUp()
-                            }
-                        }, isFinish = true)
-                    }) {
-                        Text(if (isEditMode) "Save Changes" else "Finish")
-                    }
                 },
                 windowInsets = WindowInsets(0)
             )
         },
 
         floatingActionButton = {
-            // Only show FAB for compact screens (large screens use navigation rail)
             if (!shouldUseWorkoutMasterDetail()) {
-                FloatingActionButton(
-                    onClick = { showAddExerciseDialog = true },
-                    modifier = Modifier.size(56.dp)
+                val sessionSummary = computeSessionSummary(activeWorkout)
+                val allSetsComplete =
+                    sessionSummary.totalSets > 0 && sessionSummary.completedSets == sessionSummary.totalSets
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Icon(
-                        Icons.Filled.Add,
-                        contentDescription = "Add Exercise",
-                        modifier = Modifier.size(24.dp)
-                    )
+                    AnimatedVisibility(visible = allSetsComplete) {
+                        ExtendedFloatingActionButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    saveAllPendingData()
+                                    viewModel.finishWorkout(weightUnit, activeCycle)
+                                    onNavigateUp()
+                                }
+                            },
+                            icon = { Icon(Icons.Default.Done, contentDescription = null) },
+                            text = { Text(if (isEditMode) "Save Changes" else "Finish") },
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                    FloatingActionButton(
+                        onClick = { showAddExerciseDialog = true },
+                        modifier = Modifier.size(56.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.Add,
+                            contentDescription = "Add Exercise",
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             }
         },
@@ -414,11 +418,7 @@ private fun WorkoutLoggerScreenContent(
                                 )
                                 CompactSessionInfo(
                                     bodyweightText = bodyweightText,
-                                    onBodyweightChange = { newText ->
-                                        if (newText.matches(Regex("^\\d*\\.?\\d*\$"))) {
-                                            bodyweightText = newText
-                                        }
-                                    },
+                                    onBodyweightChange = { bodyweightText = it },
                                     sessionNotesText = sessionNotesText,
                                     onSessionNotesChange = { sessionNotesText = it },
                                     weightUnit = weightUnit
@@ -441,20 +441,22 @@ private fun WorkoutLoggerScreenContent(
                             )
                         },
                         navigationRail = {
+                            val masterSummary = computeSessionSummary(activeWorkout)
+                            val masterAllSetsComplete =
+                                masterSummary.totalSets > 0 && masterSummary.completedSets == masterSummary.totalSets
                             WorkoutNavigationRail(
                                 onAddExercise = { showAddExerciseDialog = true },
                                 onStartRestTimer = { viewModel.startRestTimerForSet("", "") },
                                 onFinishWorkout = {
-                                    showExitConfirmationDialog({
-                                        coroutineScope.launch {
-                                            saveAllPendingData()
-                                            viewModel.finishWorkout(weightUnit, activeCycle)
-                                            onNavigateUp()
-                                        }
-                                    }, isFinish = true)
+                                    coroutineScope.launch {
+                                        saveAllPendingData()
+                                        viewModel.finishWorkout(weightUnit, activeCycle)
+                                        onNavigateUp()
+                                    }
                                 },
                                 timerIsRunning = timerIsRunning,
-                                sessionElapsedTime = sessionElapsedTime
+                                sessionElapsedTime = sessionElapsedTime,
+                                allSetsComplete = masterAllSetsComplete
                             )
                         },
                         paddingValues = paddingValues
@@ -482,80 +484,15 @@ private fun WorkoutLoggerScreenContent(
                         }
                     }
                 }
-                // Enhanced bodyweight input section
                 item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(20.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.FitnessCenter,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Text(
-                                    text = "Today's Session",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            EnhancedStepperInputField(
-                                value = bodyweightText,
-                                onValueChange = { newText ->
-                                    if (newText.matches(Regex("^\\d*\\.?\\d*\$"))) {
-                                        bodyweightText = newText
-                                    }
-                                },
-                                label = "Your Bodyweight",
-                                unit = weightUnit,
-                                step = 0.5,
-                                minValue = 30.0,
-                                maxValue = 300.0,
-                                decimalPlaces = 1,
-                                onFocusChanged = { isFocused ->
-                                    if (!isFocused) {
-                                        viewModel.updateBodyweight(bodyweightText)
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            // Session notes input
-                            EnhancedWorkoutInputField(
-                                value = sessionNotesText,
-                                onValueChange = { newText ->
-                                    sessionNotesText = newText
-                                },
-                                label = "Session Notes",
-                                placeholder = "How are you feeling today? Any observations?",
-                                keyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
-                                onFocusChanged = { isFocused ->
-                                    if (!isFocused) {
-                                        viewModel.updateOverallComments(sessionNotesText)
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
+                    CompactSessionInfo(
+                        bodyweightText = bodyweightText,
+                        onBodyweightChange = { bodyweightText = it },
+                        sessionNotesText = sessionNotesText,
+                        onSessionNotesChange = { sessionNotesText = it },
+                        weightUnit = weightUnit,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
                 // Live session summary — completed / total sets and total volume,
                 // recomputed from activeWorkout on every state change. Sticky so
@@ -698,25 +635,15 @@ private fun WorkoutLoggerScreenContent(
         }
     }
 
-    // Exit confirmation dialog
     if (showExitConfirmation) {
         AlertDialog(
             onDismissRequest = { showExitConfirmation = false },
-            title = {
-                Text(if (isFinishAction) {
-                    if (isEditMode) "Confirm Save Changes" else "Confirm Finish"
-                } else {
-                    if (isEditMode) "Confirm Exit" else "Confirm Exit"
-                })
-            },
+            title = { Text("Confirm Exit") },
             text = {
-                Text(if (isFinishAction) {
-                    if (isEditMode) "Are you sure you want to save these changes to the workout?"
-                    else "Are you sure you want to finish this workout? All progress will be saved."
-                } else {
+                Text(
                     if (isEditMode) "Are you sure you want to exit without saving your changes?"
                     else "Are you sure you want to exit this workout? All progress will be saved."
-                })
+                )
             },
             confirmButton = {
                 Button(
@@ -725,11 +652,7 @@ private fun WorkoutLoggerScreenContent(
                         exitAction?.invoke()
                     }
                 ) {
-                    Text(if (isFinishAction) {
-                        if (isEditMode) "Save Changes" else "Finish"
-                    } else {
-                        "Exit"
-                    })
+                    Text("Exit")
                 }
             },
             dismissButton = {

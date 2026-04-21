@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -19,7 +20,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -281,6 +285,7 @@ fun WorkoutNavigationRail(
     onFinishWorkout: () -> Unit,
     timerIsRunning: Boolean,
     sessionElapsedTime: Int,
+    allSetsComplete: Boolean,
     modifier: Modifier = Modifier
 ) {
     NavigationRail(
@@ -335,31 +340,33 @@ fun WorkoutNavigationRail(
         )
         
         Spacer(modifier = Modifier.weight(1f))
-        
-        // Finish Workout
-        NavigationRailItem(
-            icon = {
-                Icon(
-                    Icons.Default.Done,
-                    contentDescription = "Finish",
-                    modifier = Modifier.size(24.dp)
+
+        if (allSetsComplete) {
+            NavigationRailItem(
+                icon = {
+                    Icon(
+                        Icons.Default.Done,
+                        contentDescription = "Finish",
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                label = { Text("Finish") },
+                selected = false,
+                onClick = onFinishWorkout,
+                colors = NavigationRailItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    unselectedIconColor = MaterialTheme.colorScheme.primary,
+                    unselectedTextColor = MaterialTheme.colorScheme.primary
                 )
-            },
-            label = { Text("Finish") },
-            selected = false,
-            onClick = onFinishWorkout,
-            colors = NavigationRailItemDefaults.colors(
-                selectedIconColor = MaterialTheme.colorScheme.onPrimary,
-                selectedTextColor = MaterialTheme.colorScheme.primary,
-                unselectedIconColor = MaterialTheme.colorScheme.primary,
-                unselectedTextColor = MaterialTheme.colorScheme.primary
             )
-        )
+        }
     }
 }
 
 /**
- * Compact session info for master panel
+ * Compact session info: bodyweight stepper + session notes, flat (no hero Card).
+ * Used by both the compact LazyColumn path and the master-detail master panel.
  */
 @Composable
 fun CompactSessionInfo(
@@ -370,32 +377,77 @@ fun CompactSessionInfo(
     weightUnit: String,
     modifier: Modifier = Modifier
 ) {
+    val haptics = LocalHapticFeedback.current
+    val bwValue = bodyweightText.toDoubleOrNull()
+    val step = 0.5
+    val minBw = 30.0
+    val maxBw = 300.0
+
+    fun adjust(delta: Double) {
+        val base = bwValue ?: 75.0
+        val next = (base + delta).coerceIn(minBw, maxBw)
+        val formatted = "%.1f".format(next).trimEnd('0').trimEnd('.')
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        onBodyweightChange(formatted)
+    }
+
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Bodyweight input - compact version
-        EnhancedStepperInputField(
-            value = bodyweightText,
-            onValueChange = onBodyweightChange,
-            label = "Bodyweight",
-            unit = weightUnit,
-            step = 0.5,
-            minValue = 30.0,
-            maxValue = 300.0,
-            decimalPlaces = 1,
-            modifier = Modifier.fillMaxWidth()
-        )
-        
-        // Session notes - compact version
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilledTonalIconButton(
+                onClick = { adjust(-step) },
+                enabled = bwValue == null || bwValue > minBw,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Remove,
+                    contentDescription = "Decrease bodyweight",
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            OutlinedTextField(
+                value = bodyweightText,
+                onValueChange = { newText ->
+                    if (newText.matches(Regex("^\\d*\\.?\\d*\$"))) onBodyweightChange(newText)
+                },
+                label = { Text("Bodyweight") },
+                trailingIcon = {
+                    Text(
+                        text = weightUnit,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = 12.dp)
+                    )
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+            FilledTonalIconButton(
+                onClick = { adjust(step) },
+                enabled = bwValue == null || bwValue < maxBw,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Increase bodyweight",
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
         OutlinedTextField(
             value = sessionNotesText,
             onValueChange = onSessionNotesChange,
             label = { Text("Notes") },
-            placeholder = { Text("Session notes...") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(80.dp),
+            placeholder = { Text("How are you feeling? Any observations?") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 1,
             maxLines = 3
         )
     }
