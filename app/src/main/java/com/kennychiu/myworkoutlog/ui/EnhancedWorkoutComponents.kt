@@ -753,10 +753,13 @@ fun EnhancedSetRow(
     onApplySuggestion: () -> Unit = {},
     onCopyPreviousSet: (() -> Unit)? = null,
     onClearSet: (() -> Unit)? = null,
+    onEditRestTime: ((Int) -> Unit)? = null,
+    onClearRestTime: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val haptics = LocalHapticFeedback.current
     var showExpandedOptions by rememberSaveable { mutableStateOf(false) }
+    var showRestTimeEditDialog by rememberSaveable { mutableStateOf(false) }
 
     val weightRepsDone = weightValue.isNotEmpty() && repsValue.isNotEmpty()
     val secsDone = secsValue.isNotEmpty()
@@ -817,7 +820,29 @@ fun EnhancedSetRow(
                         )
                     } else {
                         restTimeSeconds?.let { restTime ->
+                            // Tap opens DurationEditDialog to correct the value; long-press
+                            // clears it. Both affordances gated on the callbacks being wired.
+                            val badgeInteractive = onEditRestTime != null || onClearRestTime != null
+                            val badgeModifier = if (badgeInteractive) {
+                                Modifier
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .combinedClickable(
+                                        onClick = {
+                                            if (onEditRestTime != null) {
+                                                showRestTimeEditDialog = true
+                                            }
+                                        },
+                                        onLongClick = onClearRestTime?.let { clear ->
+                                            {
+                                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                clear()
+                                            }
+                                        },
+                                        onLongClickLabel = if (onClearRestTime != null) "Clear Rest Time" else null
+                                    )
+                            } else Modifier
                             Surface(
+                                modifier = badgeModifier,
                                 shape = RoundedCornerShape(16.dp),
                                 color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
                             ) {
@@ -1087,6 +1112,26 @@ fun EnhancedSetRow(
                 }
             }
         }
+    }
+
+    if (onEditRestTime != null) {
+        DurationEditDialog(
+            isVisible = showRestTimeEditDialog,
+            currentDurationSeconds = restTimeSeconds ?: 0,
+            onDismiss = { showRestTimeEditDialog = false },
+            onConfirm = { newRestSeconds ->
+                onEditRestTime(newRestSeconds)
+                showRestTimeEditDialog = false
+            },
+            title = "Edit Rest Time",
+            instruction = "Adjust the recorded rest time for this set:",
+            onClear = onClearRestTime?.let { clear ->
+                {
+                    clear()
+                    showRestTimeEditDialog = false
+                }
+            }
+        )
     }
 }
 

@@ -241,6 +241,28 @@ class WorkoutLoggerViewModel(
         }
     }
 
+    // User-edit path for the per-set rest-time badge. Separate from updateSet (already
+    // 9-param) and from the timer's internal updateSetRestTime (which doesn't persist)
+    // so the edit/clear UI has a single autoSaving entry point. Pass null to clear.
+    fun setRestTimeForSet(exerciseId: String, setId: String, restSeconds: Int?) {
+        _activeWorkoutState.update { currentWorkout ->
+            currentWorkout?.copy(
+                loggedExercises = currentWorkout.loggedExercises.map { exercise ->
+                    if (exercise.id == exerciseId) {
+                        exercise.copy(
+                            sets = exercise.sets.map { set ->
+                                if (set.id == setId) {
+                                    set.copy(restTimeSeconds = restSeconds)
+                                } else set
+                            }
+                        )
+                    } else exercise
+                }
+            )
+        }
+        autoSaveWorkout()
+    }
+
     // Load an existing workout for editing
     fun loadWorkoutForEdit(workoutId: String) {
         isEditMode = true

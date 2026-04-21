@@ -292,7 +292,10 @@ fun DurationEditDialog(
     isVisible: Boolean,
     currentDurationSeconds: Int,
     onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit
+    onConfirm: (Int) -> Unit,
+    title: String = "Edit Workout Duration",
+    instruction: String = "Enter duration to correct faulty time records:",
+    onClear: (() -> Unit)? = null,
 ) {
     if (!isVisible) return
 
@@ -306,7 +309,7 @@ fun DurationEditDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text("Edit Workout Duration")
+            Text(title)
         },
         text = {
             Column {
@@ -318,7 +321,7 @@ fun DurationEditDialog(
                 )
 
                 Text(
-                    text = "Enter duration to correct faulty time records:",
+                    text = instruction,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
@@ -370,8 +373,17 @@ fun DurationEditDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                if (onClear != null) {
+                    TextButton(onClick = onClear) {
+                        Text("Clear")
+                    }
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
             }
         }
     )

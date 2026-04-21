@@ -485,6 +485,49 @@ class WorkoutLoggerViewModelTest {
         assertNull(second.weight)
     }
 
+    @Test
+    fun `setRestTimeForSet writes the value into the targeted set only`() = runTest {
+        every { loggedDao.getInProgressWorkoutForTemplate("tpl-1") } returns null
+        every { templateDao.getTemplateByIdSnapshot("tpl-1") } returns sampleTemplate()
+
+        val vm = newVm()
+        vm.startWorkoutFromTemplate("tpl-1", null, null, null)
+        waitUntil { vm.activeWorkoutState.value != null }
+
+        val workout = vm.activeWorkoutState.value!!
+        val exerciseId = workout.loggedExercises.first().id
+        val firstSetId = workout.loggedExercises.first().sets[0].id
+        val secondSetId = workout.loggedExercises.first().sets[1].id
+
+        vm.setRestTimeForSet(exerciseId, firstSetId, 90)
+
+        val updated = vm.activeWorkoutState.value!!.loggedExercises.first()
+        val first = updated.sets.first { it.id == firstSetId }
+        val second = updated.sets.first { it.id == secondSetId }
+        assertEquals(90, first.restTimeSeconds)
+        assertNull("sibling set's rest time must not be mutated", second.restTimeSeconds)
+    }
+
+    @Test
+    fun `setRestTimeForSet with null clears the recorded rest time`() = runTest {
+        every { loggedDao.getInProgressWorkoutForTemplate("tpl-1") } returns null
+        every { templateDao.getTemplateByIdSnapshot("tpl-1") } returns sampleTemplate()
+
+        val vm = newVm()
+        vm.startWorkoutFromTemplate("tpl-1", null, null, null)
+        waitUntil { vm.activeWorkoutState.value != null }
+
+        val workout = vm.activeWorkoutState.value!!
+        val exerciseId = workout.loggedExercises.first().id
+        val setId = workout.loggedExercises.first().sets[0].id
+
+        vm.setRestTimeForSet(exerciseId, setId, 120)
+        assertEquals(120, vm.activeWorkoutState.value!!.loggedExercises.first().sets.first { it.id == setId }.restTimeSeconds)
+
+        vm.setRestTimeForSet(exerciseId, setId, null)
+        assertNull(vm.activeWorkoutState.value!!.loggedExercises.first().sets.first { it.id == setId }.restTimeSeconds)
+    }
+
     /** Wait up to [timeoutMs] for [condition] to be true. Keeps the test off the real clock. */
     private suspend fun waitUntil(timeoutMs: Long = 2_000, intervalMs: Long = 10, condition: () -> Boolean) {
         val deadline = System.currentTimeMillis() + timeoutMs

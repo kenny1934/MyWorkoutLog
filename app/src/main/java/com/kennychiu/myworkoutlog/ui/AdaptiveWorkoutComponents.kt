@@ -412,6 +412,7 @@ fun EnhancedExerciseDetailPanel(
     onAddSet: (String) -> Unit,
     onRemoveSet: (String, String) -> Unit,
     onStartRest: (String, String) -> Unit,
+    onSetRestTime: (String, String, Int?) -> Unit,
     performanceSuggestion: PerformanceSuggestion?,
     modifier: Modifier = Modifier
 ) {
@@ -613,7 +614,9 @@ fun EnhancedExerciseDetailPanel(
                                 set.notes,
                                 set.videoReference
                             )
-                        }
+                        },
+                        onEditRestTime = { seconds -> onSetRestTime(exercise.id, set.id, seconds) },
+                        onClearRestTime = { onSetRestTime(exercise.id, set.id, null) }
                     )
                 }
             }

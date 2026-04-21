@@ -436,6 +436,7 @@ private fun WorkoutLoggerScreenContent(
                                 onAddSet = { exerciseId -> viewModel.addSetToExercise(exerciseId) },
                                 onRemoveSet = { exerciseId, setId -> viewModel.removeSetFromExercise(exerciseId, setId) },
                                 onStartRest = { exerciseId, setId -> viewModel.startRestTimerForSet(exerciseId, setId) },
+                                onSetRestTime = { exerciseId, setId, seconds -> viewModel.setRestTimeForSet(exerciseId, setId, seconds) },
                                 performanceSuggestion = selectedExercise?.let { viewModel.getPerformanceSuggestion(it.exerciseId) }
                             )
                         },
@@ -679,6 +680,12 @@ private fun WorkoutLoggerScreenContent(
                                         set.notes,
                                         set.videoReference
                                     )
+                                },
+                                onEditRestTime = { seconds ->
+                                    viewModel.setRestTimeForSet(exercise.id, set.id, seconds)
+                                },
+                                onClearRestTime = {
+                                    viewModel.setRestTimeForSet(exercise.id, set.id, null)
                                 },
                                 modifier = Modifier.padding(vertical = 6.dp)
                             )
