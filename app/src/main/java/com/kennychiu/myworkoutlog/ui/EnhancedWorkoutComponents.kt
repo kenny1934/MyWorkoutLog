@@ -723,8 +723,7 @@ fun EnhancedExerciseCard(
 }
 
 /**
- * Enhanced set row with modern design and better visual grouping
- * Provides cleaner layout and better user experience
+ * Flat set row — collapsible summary when filled, OutlinedTextField inputs when expanded.
  */
 @Composable
 fun EnhancedSetRow(
@@ -757,15 +756,19 @@ fun EnhancedSetRow(
     onCopyPreviousSet: (() -> Unit)? = null,
     onClearSet: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    colors: WorkoutInputColors = WorkoutInputDefaults.colors()
+    @Suppress("UNUSED_PARAMETER") colors: WorkoutInputColors = WorkoutInputDefaults.colors()
 ) {
     val haptics = LocalHapticFeedback.current
     var showExpandedOptions by remember { mutableStateOf(false) }
-    
+
+    val isSetCompleted = (weightValue.isNotEmpty() && repsValue.isNotEmpty()) || secsValue.isNotEmpty()
+    val hasAnyValue = weightValue.isNotEmpty() || repsValue.isNotEmpty() || secsValue.isNotEmpty()
+    var isCollapsed by remember { mutableStateOf(isSetCompleted) }
+
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         )
@@ -773,20 +776,24 @@ fun EnhancedSetRow(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(horizontal = 12.dp, vertical = 10.dp)
         ) {
-            // Set header with number and action buttons
+            // Header row: badge area + action buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Set number and rest time display
                 Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(enabled = isSetCompleted) {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            isCollapsed = !isCollapsed
+                        },
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Set number badge
                     Surface(
                         shape = RoundedCornerShape(20.dp),
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
@@ -799,41 +806,64 @@ fun EnhancedSetRow(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         )
                     }
-                    
-                    // Rest time badge (if recorded)
-                    restTimeSeconds?.let { restTime ->
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+
+                    if (isCollapsed) {
+                        Text(
+                            text = buildSetSummary(weightValue, repsValue, secsValue, rirValue, weightUnit),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1
+                        )
+                    } else {
+                        restTimeSeconds?.let { restTime ->
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Timer,
-                                    contentDescription = "Rest Time",
-                                    tint = MaterialTheme.colorScheme.tertiary,
-                                    modifier = Modifier.size(12.dp)
-                                )
-                                Text(
-                                    text = "${restTime / 60}:${String.format("%02d", restTime % 60)}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.tertiary
-                                )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Timer,
+                                        contentDescription = "Rest Time",
+                                        tint = MaterialTheme.colorScheme.tertiary,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Text(
+                                        text = "${restTime / 60}:${String.format("%02d", restTime % 60)}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.tertiary
+                                    )
+                                }
                             }
                         }
                     }
                 }
-                
-                // Action buttons row
+
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Delete button (only show if more than 1 set)
+                    if (isSetCompleted) {
+                        IconButton(
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                isCollapsed = !isCollapsed
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isCollapsed) Icons.Filled.ExpandMore else Icons.Filled.ExpandLess,
+                                contentDescription = if (isCollapsed) "Expand Set" else "Collapse Set",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
                     if (showDeleteButton) {
                         IconButton(
                             onClick = {
@@ -851,39 +881,40 @@ fun EnhancedSetRow(
                         }
                     }
 
-                    val hasAnyValue = weightValue.isNotEmpty() || repsValue.isNotEmpty() || secsValue.isNotEmpty()
-                    if (onCopyPreviousSet != null && !hasAnyValue) {
-                        IconButton(
-                            onClick = {
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onCopyPreviousSet()
-                            },
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.ContentCopy,
-                                contentDescription = "Copy Previous Set",
-                                modifier = Modifier.size(18.dp)
-                            )
+                    if (!isCollapsed) {
+                        if (onCopyPreviousSet != null && !hasAnyValue) {
+                            IconButton(
+                                onClick = {
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onCopyPreviousSet()
+                                },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.ContentCopy,
+                                    contentDescription = "Copy Previous Set",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
-                    }
-                    if (onClearSet != null && hasAnyValue) {
-                        IconButton(
-                            onClick = {
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onClearSet()
-                            },
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Backspace,
-                                contentDescription = "Clear Set",
-                                modifier = Modifier.size(18.dp)
-                            )
+                        if (onClearSet != null && hasAnyValue) {
+                            IconButton(
+                                onClick = {
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    isCollapsed = false
+                                    onClearSet()
+                                },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Backspace,
+                                    contentDescription = "Clear Set",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
 
-                    // Timer button
                     FilledTonalIconButton(
                         onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -899,219 +930,187 @@ fun EnhancedSetRow(
                     }
                 }
             }
-            
-            // Performance suggestion chip (only show for empty sets)
-            if (performanceSuggestion != null && weightValue.isEmpty() && repsValue.isEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                AssistChip(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onApplySuggestion()
-                    },
-                    label = { 
-                        Text(
-                            text = buildString {
-                                performanceSuggestion.suggestedWeight?.let { append("${it}kg ") }
-                                performanceSuggestion.suggestedReps?.let { append("${it}r ") }
-                                performanceSuggestion.suggestedSecs?.let { append("${it}s ") }
-                                performanceSuggestion.daysAgo?.let { append("(${it}d ago)") }
-                            }.trim(),
-                            style = MaterialTheme.typography.labelSmall
+
+            AnimatedVisibility(visible = !isCollapsed) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    if (performanceSuggestion != null && weightValue.isEmpty() && repsValue.isEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        AssistChip(
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onApplySuggestion()
+                            },
+                            label = {
+                                Text(
+                                    text = buildString {
+                                        performanceSuggestion.suggestedWeight?.let { append("${it}kg ") }
+                                        performanceSuggestion.suggestedReps?.let { append("${it}r ") }
+                                        performanceSuggestion.suggestedSecs?.let { append("${it}s ") }
+                                        performanceSuggestion.daysAgo?.let { append("(${it}d ago)") }
+                                    }.trim(),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Filled.AutoAwesome,
+                                    contentDescription = "Smart suggestion",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth()
                         )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Filled.AutoAwesome,
-                            contentDescription = "Smart suggestion",
-                            modifier = Modifier.size(16.dp)
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(if (isLargeScreen) 16.dp else 12.dp))
-            
-            // Input fields grid - adaptive layout for large screens
-            if (showWeightReps) {
-                if (isLargeScreen) {
-                    // Large screen: Separate rows for better fit
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Weight and Reps row
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    if (showWeightReps) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(20.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            // Weight input
-                            EnhancedWorkoutInputField(
+                            OutlinedTextField(
                                 value = weightValue,
                                 onValueChange = onWeightChange,
-                                label = "Weight",
-                                unit = weightUnit,
-                                placeholder = "0",
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(workoutInputHeight()),
-                                colors = colors
+                                label = { Text("Weight") },
+                                trailingIcon = { Text(weightUnit, style = MaterialTheme.typography.bodyMedium) },
+                                placeholder = { Text("0") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
                             )
-                            
-                            // Reps input
-                            EnhancedWorkoutInputField(
+                            OutlinedTextField(
                                 value = repsValue,
                                 onValueChange = onRepsChange,
-                                label = "Reps",
-                                placeholder = "0",
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(workoutInputHeight()),
-                                colors = colors
+                                label = { Text("Reps") },
+                                placeholder = { Text("0") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
                             )
                         }
-                        
-                        // RIR input on separate row for large screens
+                    }
+
+                    if (showSecs) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = secsValue,
+                            onValueChange = onSecsChange,
+                            label = { Text("Duration") },
+                            trailingIcon = { Text("sec", style = MaterialTheme.typography.bodyMedium) },
+                            placeholder = { Text("0") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    if (showWeightReps) {
+                        Spacer(modifier = Modifier.height(12.dp))
                         RirInputField(
                             value = rirValue,
                             onValueChange = onRirChange,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
-                } else {
-                    // Compact screen: Standard layout
+
+                    Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        // Weight input
-                        EnhancedWorkoutInputField(
-                            value = weightValue,
-                            onValueChange = onWeightChange,
-                            label = "Weight",
-                            unit = weightUnit,
-                            placeholder = "0",
-                            modifier = Modifier.weight(1f),
-                            colors = colors
-                        )
-                        
-                        // Reps input
-                        EnhancedWorkoutInputField(
-                            value = repsValue,
-                            onValueChange = onRepsChange,
-                            label = "Reps",
-                            placeholder = "0",
-                            modifier = Modifier.weight(1f),
-                            colors = colors
-                        )
-                    }
-                }
-            }
-            
-            // Seconds input for time-based exercises
-            if (showSecs) {
-                Spacer(modifier = Modifier.height(if (isLargeScreen) 12.dp else 8.dp))
-                EnhancedWorkoutInputField(
-                    value = secsValue,
-                    onValueChange = onSecsChange,
-                    label = "Duration",
-                    unit = "sec",
-                    placeholder = "0",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(if (isLargeScreen) Modifier.height(workoutInputHeight()) else Modifier),
-                    colors = colors
-                )
-            }
-            
-            // RIR input (compact version - only for compact screens when weight/reps are shown)
-            if (!isLargeScreen && showWeightReps && (rirValue.isNotEmpty() || true)) {
-                Spacer(modifier = Modifier.height(12.dp))
-                RirInputField(
-                    value = rirValue,
-                    onValueChange = onRirChange,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            
-            // Expandable options toggle
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Additional Options",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                IconButton(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        showExpandedOptions = !showExpandedOptions
-                    }
-                ) {
-                    Icon(
-                        imageVector = if (showExpandedOptions) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                        contentDescription = if (showExpandedOptions) "Hide Options" else "Show Options",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            
-            // Expandable bands and notes section
-            AnimatedVisibility(visible = showExpandedOptions) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Bands input
-                    EnhancedWorkoutInputField(
-                        value = bandsValue,
-                        onValueChange = onBandsChange,
-                        label = "Resistance Bands",
-                        placeholder = "e.g., Red, Blue",
-                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = colors
-                    )
-                    
-                    // Notes input
-                    EnhancedWorkoutInputField(
-                        value = notesValue,
-                        onValueChange = onNotesChange,
-                        label = "Notes",
-                        placeholder = "Personal notes...",
-                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = colors
-                    )
-                    
-                    // Video reference selector
-                    Column {
                         Text(
-                            text = "Form Reference",
+                            text = "Additional Options",
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.Medium
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        VideoReferenceSelector(
-                            currentVideoPath = videoReference,
-                            onVideoSelected = onVideoSelected,
-                            onVideoRemoved = onVideoRemoved,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+
+                        IconButton(
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                showExpandedOptions = !showExpandedOptions
+                            }
+                        ) {
+                            Icon(
+                                imageVector = if (showExpandedOptions) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                contentDescription = if (showExpandedOptions) "Hide Options" else "Show Options",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    AnimatedVisibility(visible = showExpandedOptions) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            OutlinedTextField(
+                                value = bandsValue,
+                                onValueChange = onBandsChange,
+                                label = { Text("Resistance Bands") },
+                                placeholder = { Text("e.g., Red, Blue") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            OutlinedTextField(
+                                value = notesValue,
+                                onValueChange = onNotesChange,
+                                label = { Text("Notes") },
+                                placeholder = { Text("Personal notes…") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                                modifier = Modifier.fillMaxWidth(),
+                                maxLines = 3
+                            )
+
+                            Column {
+                                Text(
+                                    text = "Form Reference",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                VideoReferenceSelector(
+                                    currentVideoPath = videoReference,
+                                    onVideoSelected = onVideoSelected,
+                                    onVideoRemoved = onVideoRemoved,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
 }
+
+private fun buildSetSummary(
+    weight: String,
+    reps: String,
+    secs: String,
+    rir: String,
+    weightUnit: String
+): String = buildString {
+    if (weight.isNotEmpty()) append("$weight $weightUnit")
+    if (reps.isNotEmpty()) {
+        if (isNotEmpty()) append(" × ")
+        append(reps)
+    }
+    if (secs.isNotEmpty()) {
+        if (isNotEmpty()) append(" · ")
+        append("${secs}s")
+    }
+    if (rir.isNotEmpty()) {
+        if (isNotEmpty()) append(" · ")
+        append("RIR $rir")
+    }
+}.ifEmpty { "Empty" }
 
 /**
  * Enhanced timer component with circular progress and modern design
