@@ -7,7 +7,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -20,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -77,8 +82,17 @@ fun CycleDetailScreen(
         val completed = cycle.completedSessions
         val aggregates = state.aggregates
         var showRenameDialog by remember { mutableStateOf(false) }
+        val listState = rememberLazyListState()
+        val coroutineScope = rememberCoroutineScope()
+
+        // Week cards follow the header + storyboard (both always present) and
+        // two conditional cards. Index of orderedWeeks[i] = weekStartIndex + i.
+        val weekStartIndex = 2 +
+            (if (info.isComplete) 1 else 0) +
+            (if (aggregates.prsHit.isNotEmpty()) 1 else 0)
 
         LazyColumn(
+            state = listState,
             modifier = Modifier.padding(paddingValues),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -88,6 +102,17 @@ fun CycleDetailScreen(
                     cycle = cycle,
                     info = info,
                     onRenameClick = { showRenameDialog = true },
+                )
+            }
+            item {
+                CycleStoryboardStrip(
+                    cycle = cycle,
+                    info = info,
+                    onWeekClick = { weekIndex ->
+                        coroutineScope.launch {
+                            listState.animateScrollToItem(weekStartIndex + weekIndex)
+                        }
+                    },
                 )
             }
             if (info.isComplete) {
@@ -211,6 +236,111 @@ private fun CycleHeaderCard(
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CycleStoryboardStrip(
+    cycle: ActiveProgramCycle,
+    info: CycleProgressInfo,
+    onWeekClick: (Int) -> Unit,
+) {
+    if (info.orderedWeeks.isEmpty()) return
+    val currentWeekId = info.currentWeek?.id
+    val completed = cycle.completedSessions
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(modifier = Modifier.padding(vertical = 12.dp)) {
+            Text(
+                text = "Cycle plan",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+            Spacer(Modifier.height(10.dp))
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                itemsIndexed(info.orderedWeeks) { index, week ->
+                    val phase = remember(week, cycle) { classifyCycleWeek(week, cycle) }
+                    val isCurrent = week.id == currentWeekId
+                    val sessionsSorted = remember(week) { week.sessions.sortedBy { it.order } }
+                    val completedFlags = sessionsSorted.map { session ->
+                        completed.containsKey("${week.id}_${session.id}")
+                    }
+                    WeekPill(
+                        weekNumber = index + 1,
+                        phaseLabel = phase.label,
+                        completedFlags = completedFlags,
+                        isCurrent = isCurrent,
+                        onClick = { onWeekClick(index) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeekPill(
+    weekNumber: Int,
+    phaseLabel: String,
+    completedFlags: List<Boolean>,
+    isCurrent: Boolean,
+    onClick: () -> Unit,
+) {
+    val containerColor = if (isCurrent) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
+    val contentColor = if (isCurrent) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = containerColor,
+        contentColor = contentColor,
+        onClick = onClick,
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(min = 84.dp)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "W$weekNumber",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = phaseLabel,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (completedFlags.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    completedFlags.forEach { done ->
+                        Icon(
+                            imageVector = if (done) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
+                            contentDescription = null,
+                            modifier = Modifier.size(10.dp),
+                        )
+                    }
+                }
             }
         }
     }
