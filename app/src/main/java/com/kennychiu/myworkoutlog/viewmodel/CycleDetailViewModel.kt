@@ -19,6 +19,10 @@ data class CycleDetailUiState(
     val cycle: ActiveProgramCycle?,
     val aggregates: CycleAggregates,
     val templates: Map<String, WorkoutTemplate> = emptyMap(),
+    // Per-exercise top set logged at each 1-based cycle week. Feeds the adaptive
+    // projection surfaced on each week card — a missed or under-planned week
+    // anchors downstream projections off what actually happened.
+    val actualsByExerciseWeek: Map<String, Map<Int, ExerciseTopSet>> = emptyMap(),
 ) {
     companion object {
         val EMPTY = CycleDetailUiState(null, CycleAggregates.EMPTY)
@@ -47,6 +51,7 @@ class CycleDetailViewModel(
                         cycle = cycle,
                         aggregates = cycleAggregates(cycle, workouts, prs),
                         templates = templates.associateBy { it.id },
+                        actualsByExerciseWeek = cycleActualsByExerciseAndWeek(cycle, workouts),
                     )
                 }
             }

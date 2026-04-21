@@ -133,14 +133,17 @@ fun CycleDetailScreen(
                     )
                 }
             }
-            items(info.orderedWeeks) { week ->
+            itemsIndexed(info.orderedWeeks) { weekIndex, week ->
                 CycleWeekCard(
                     week = week,
+                    weekNumber = weekIndex + 1,
+                    cycleWeekCount = info.orderedWeeks.size,
                     completedSessions = completed,
                     isCurrentWeek = week.id == info.currentWeek?.id,
                     aggregate = aggregates.perWeek[week.id],
                     weightUnit = aggregates.weightUnit,
                     templates = state.templates,
+                    actualsByExerciseWeek = state.actualsByExerciseWeek,
                     onSessionClick = { session ->
                         val key = "${week.id}_${session.id}"
                         val completedWorkoutId = completed[key]
@@ -547,11 +550,14 @@ private fun formatSecondsShort(secs: Int): String {
 @Composable
 private fun CycleWeekCard(
     week: ProgramWeekDefinition,
+    weekNumber: Int,
+    cycleWeekCount: Int,
     completedSessions: Map<String, String>,
     isCurrentWeek: Boolean,
     aggregate: CycleWeekAggregate?,
     weightUnit: String?,
     templates: Map<String, WorkoutTemplate>,
+    actualsByExerciseWeek: Map<String, Map<Int, ExerciseTopSet>>,
     onSessionClick: (ProgramSessionDefinition) -> Unit,
 ) {
     val rir = week.targetRir?.takeIf { it.isNotBlank() }
@@ -635,6 +641,9 @@ private fun CycleWeekCard(
                     done = done,
                     template = templates[session.workoutTemplateId],
                     weightUnit = weightUnit ?: "kg",
+                    weekNumber = weekNumber,
+                    cycleWeekCount = cycleWeekCount,
+                    actualsByExerciseWeek = actualsByExerciseWeek,
                     onClick = { onSessionClick(session) },
                 )
             }
@@ -707,6 +716,9 @@ private fun SessionRow(
     done: Boolean,
     template: WorkoutTemplate?,
     weightUnit: String,
+    weekNumber: Int,
+    cycleWeekCount: Int,
+    actualsByExerciseWeek: Map<String, Map<Int, ExerciseTopSet>>,
     onClick: () -> Unit,
 ) {
     Row(
@@ -734,7 +746,14 @@ private fun SessionRow(
                 fontWeight = if (done) FontWeight.Normal else FontWeight.Medium,
             )
             if (template != null && template.templateExercises.isNotEmpty()) {
-                SessionExercisePreview(template = template, weightUnit = weightUnit, done = done)
+                SessionExercisePreview(
+                    template = template,
+                    weightUnit = weightUnit,
+                    done = done,
+                    weekNumber = weekNumber,
+                    cycleWeekCount = cycleWeekCount,
+                    actualsByExerciseWeek = actualsByExerciseWeek,
+                )
             }
         }
     }
@@ -745,6 +764,9 @@ private fun SessionExercisePreview(
     template: WorkoutTemplate,
     weightUnit: String,
     done: Boolean,
+    weekNumber: Int,
+    cycleWeekCount: Int,
+    actualsByExerciseWeek: Map<String, Map<Int, ExerciseTopSet>>,
 ) {
     val sortedExercises = remember(template) { template.templateExercises.sortedBy { it.order } }
     val preview = sortedExercises.take(3)
@@ -758,6 +780,14 @@ private fun SessionExercisePreview(
     Spacer(Modifier.height(2.dp))
     preview.forEach { ex ->
         val hint = formatProgressionHint(ex, weightUnit = weightUnit)
+        val projection = remember(ex, weekNumber, cycleWeekCount, weightUnit, actualsByExerciseWeek) {
+            projectExerciseAcrossWeeks(
+                exercise = ex,
+                cycleWeekCount = cycleWeekCount,
+                actualsByWeek = actualsByExerciseWeek[ex.exerciseId].orEmpty(),
+                weightUnit = weightUnit,
+            ).getOrNull(weekNumber - 1)
+        }
         Row(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = ex.exerciseName,
@@ -777,6 +807,17 @@ private fun SessionExercisePreview(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
+        if (projection != null && projection.label !in setOf("Freeform", "—")) {
+            val prefix = if (projection.isActual) "✓" else "→"
+            Text(
+                text = "$prefix ${projection.label}",
+                style = MaterialTheme.typography.labelSmall,
+                color = hintColor,
+                modifier = Modifier.padding(start = 8.dp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
     if (overflow > 0) {
