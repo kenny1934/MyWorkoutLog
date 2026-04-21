@@ -557,13 +557,15 @@ private fun WorkoutLoggerScreenContent(
                     }
                 }
                 // Live session summary — completed / total sets and total volume,
-                // recomputed from activeWorkout on every state change. Sits just
-                // above the exercise list so it reads as the "heads-up" metric
-                // for the session.
-                item {
+                // recomputed from activeWorkout on every state change. Sticky so
+                // it stays visible while the user scrolls through exercise cards
+                // mid-session. fillMaxWidth so the pinned chrome reads as a
+                // clean band across the scaffold width.
+                stickyHeader(key = "session-summary") {
                     SessionSummaryChip(
                         summary = computeSessionSummary(activeWorkout),
                         weightUnit = weightUnit,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 items(activeWorkout!!.loggedExercises, key = { it.id }) { exercise ->
