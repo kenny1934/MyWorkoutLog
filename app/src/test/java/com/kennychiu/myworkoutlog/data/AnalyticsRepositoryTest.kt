@@ -212,16 +212,214 @@ class AnalyticsRepositoryTest {
         assertNull(comp.averageWorkoutDuration)
     }
 
+    // -- getWeeklyVolumeSummary --
+
+    @Test
+    fun `weekly summary endDate is six days after start and periodLabel names the week`() = runTest {
+        val repo = repo(dateRangeWorkouts = emptyList())
+
+        val summary = repo.getWeeklyVolumeSummary("2026-04-01").first()
+
+        assertEquals("2026-04-01", summary.startDate)
+        assertEquals("2026-04-07", summary.endDate)
+        assertEquals("Week of 2026-04-01", summary.periodLabel)
+    }
+
+    @Test
+    fun `weekly summary empty workouts yield zero volume and zero average`() = runTest {
+        val repo = repo(dateRangeWorkouts = emptyList())
+
+        val summary = repo.getWeeklyVolumeSummary("2026-04-01").first()
+
+        assertEquals(0.0, summary.totalVolume, 0.0)
+        assertEquals(0, summary.workoutCount)
+        assertEquals(0.0, summary.averageVolumePerWorkout, 0.0)
+        assertTrue(summary.exerciseBreakdown.isEmpty())
+    }
+
+    @Test
+    fun `weekly summary totalVolume sums every set across all workouts`() = runTest {
+        val workouts = listOf(
+            workout(exercises = listOf(loggedExercise("sq", "Squat", listOf(
+                set(weight = 100.0, reps = 5),
+                set(weight = 100.0, reps = 5),
+            )))),
+            workout(exercises = listOf(loggedExercise("bn", "Bench", listOf(
+                set(weight = 60.0, reps = 8),
+            )))),
+        )
+        val repo = repo(dateRangeWorkouts = workouts)
+
+        val summary = repo.getWeeklyVolumeSummary("2026-04-01").first()
+
+        assertEquals(1000.0 + 480.0, summary.totalVolume, 0.0)
+        assertEquals(2, summary.workoutCount)
+        assertEquals((1000.0 + 480.0) / 2, summary.averageVolumePerWorkout, 0.0)
+    }
+
+    @Test
+    fun `weekly summary merges the same exercise across workouts into one breakdown entry`() = runTest {
+        val workouts = listOf(
+            workout(exercises = listOf(loggedExercise("sq", "Squat", listOf(set(weight = 100.0, reps = 5))))),
+            workout(exercises = listOf(loggedExercise("sq", "Squat", listOf(
+                set(weight = 110.0, reps = 5),
+                set(weight = 110.0, reps = 5),
+            )))),
+        )
+        val repo = repo(dateRangeWorkouts = workouts)
+
+        val summary = repo.getWeeklyVolumeSummary("2026-04-01").first()
+
+        val breakdown = summary.exerciseBreakdown.single()
+        assertEquals("sq", breakdown.exerciseId)
+        assertEquals(500.0 + 1100.0, breakdown.totalVolume, 0.0)
+        assertEquals(3, breakdown.setCount)
+    }
+
+    @Test
+    fun `weekly summary setCount includes sets with null weight or reps`() = runTest {
+        val workouts = listOf(
+            workout(exercises = listOf(loggedExercise("sq", "Squat", listOf(
+                set(weight = 100.0, reps = 5),
+                set(weight = null, reps = null),
+                set(weight = 100.0, reps = null),
+            ))))
+        )
+        val repo = repo(dateRangeWorkouts = workouts)
+
+        val summary = repo.getWeeklyVolumeSummary("2026-04-01").first()
+
+        val breakdown = summary.exerciseBreakdown.single()
+        assertEquals(3, breakdown.setCount)
+        assertEquals(500.0, breakdown.totalVolume, 0.0)
+    }
+
+    @Test
+    fun `weekly summary averageWeight is the mean of non-null weights`() = runTest {
+        val workouts = listOf(
+            workout(exercises = listOf(loggedExercise("sq", "Squat", listOf(
+                set(weight = 100.0, reps = 5),
+                set(weight = 120.0, reps = 5),
+                set(weight = null, reps = 5),     // excluded from averageWeight
+            ))))
+        )
+        val repo = repo(dateRangeWorkouts = workouts)
+
+        val summary = repo.getWeeklyVolumeSummary("2026-04-01").first()
+
+        assertEquals(110.0, summary.exerciseBreakdown.single().averageWeight!!, 0.0)
+    }
+
+    @Test
+    fun `weekly summary averageWeight is null when no sets have weight`() = runTest {
+        val workouts = listOf(
+            workout(exercises = listOf(loggedExercise("plank", "Plank", listOf(set(secs = 60)))))
+        )
+        val repo = repo(dateRangeWorkouts = workouts)
+
+        val summary = repo.getWeeklyVolumeSummary("2026-04-01").first()
+
+        assertNull(summary.exerciseBreakdown.single().averageWeight)
+    }
+
+    // -- getMuscleGroupVolumeDistribution --
+
+    @Test
+    fun `muscle distribution for a single-muscle exercise gives 100 percent to that muscle`() = runTest {
+        val workouts = listOf(
+            workout(exercises = listOf(
+                loggedExercise("bn", "Bench", listOf(set(weight = 100.0, reps = 5)), muscles = listOf(MuscleGroup.CHEST))
+            ))
+        )
+        val repo = repo(dateRangeWorkouts = workouts)
+
+        val dist = repo.getMuscleGroupVolumeDistribution("2026-04-01", "2026-04-07").first()
+
+        val chest = dist.single()
+        assertEquals(MuscleGroup.CHEST, chest.muscleGroup)
+        assertEquals(500.0, chest.totalVolume, 0.0)
+        assertEquals(100.0, chest.percentage, 0.0)
+        assertEquals(1, chest.exerciseCount)
+    }
+
+    @Test
+    fun `muscle distribution splits volume evenly across an exercise's target muscles`() = runTest {
+        val workouts = listOf(
+            workout(exercises = listOf(
+                loggedExercise("bn", "Bench", listOf(set(weight = 100.0, reps = 5)),
+                    muscles = listOf(MuscleGroup.CHEST, MuscleGroup.TRICEPS))
+            ))
+        )
+        val repo = repo(dateRangeWorkouts = workouts)
+
+        val dist = repo.getMuscleGroupVolumeDistribution("2026-04-01", "2026-04-07").first()
+
+        assertEquals(2, dist.size)
+        assertEquals(250.0, dist.first { it.muscleGroup == MuscleGroup.CHEST }.totalVolume, 0.0)
+        assertEquals(250.0, dist.first { it.muscleGroup == MuscleGroup.TRICEPS }.totalVolume, 0.0)
+        assertEquals(50.0, dist.first { it.muscleGroup == MuscleGroup.CHEST }.percentage, 0.0)
+        assertEquals(50.0, dist.first { it.muscleGroup == MuscleGroup.TRICEPS }.percentage, 0.0)
+    }
+
+    @Test
+    fun `muscle distribution results are sorted by totalVolume descending`() = runTest {
+        val workouts = listOf(
+            workout(exercises = listOf(
+                loggedExercise("sq", "Squat", listOf(set(weight = 100.0, reps = 5)),
+                    muscles = listOf(MuscleGroup.QUADS)),                      // 500
+                loggedExercise("bn", "Bench", listOf(set(weight = 100.0, reps = 3)),
+                    muscles = listOf(MuscleGroup.CHEST)),                      // 300
+            ))
+        )
+        val repo = repo(dateRangeWorkouts = workouts)
+
+        val dist = repo.getMuscleGroupVolumeDistribution("2026-04-01", "2026-04-07").first()
+
+        assertEquals(MuscleGroup.QUADS, dist[0].muscleGroup)
+        assertEquals(MuscleGroup.CHEST, dist[1].muscleGroup)
+    }
+
+    @Test
+    fun `muscle distribution exerciseCount dedupes the same exercise across workouts`() = runTest {
+        val workouts = listOf(
+            workout(exercises = listOf(
+                loggedExercise("sq", "Squat", listOf(set(weight = 100.0, reps = 5)),
+                    muscles = listOf(MuscleGroup.QUADS))
+            )),
+            workout(exercises = listOf(
+                loggedExercise("sq", "Squat", listOf(set(weight = 110.0, reps = 5)),
+                    muscles = listOf(MuscleGroup.QUADS))
+            )),
+        )
+        val repo = repo(dateRangeWorkouts = workouts)
+
+        val dist = repo.getMuscleGroupVolumeDistribution("2026-04-01", "2026-04-07").first()
+
+        assertEquals(1, dist.single().exerciseCount)
+        assertEquals(500.0 + 550.0, dist.single().totalVolume, 0.0)
+    }
+
+    @Test
+    fun `muscle distribution empty workouts yield an empty list`() = runTest {
+        val repo = repo(dateRangeWorkouts = emptyList())
+
+        val dist = repo.getMuscleGroupVolumeDistribution("2026-04-01", "2026-04-07").first()
+
+        assertTrue(dist.isEmpty())
+    }
+
     // -- fixtures --
 
     private fun repo(
         currentWorkouts: List<LoggedWorkout> = emptyList(),
         previousWorkouts: List<LoggedWorkout> = emptyList(),
         activeCycle: ActiveProgramCycle? = null,
+        dateRangeWorkouts: List<LoggedWorkout> = emptyList(),
     ): AnalyticsRepository {
         val loggedDao: LoggedWorkoutDao = mockk(relaxed = true) {
             every { getWorkoutsByCycle("cur") } returns flowOf(currentWorkouts)
             every { getWorkoutsByCycle("prev") } returns flowOf(previousWorkouts)
+            every { getWorkoutsByDateRange(any(), any()) } returns flowOf(dateRangeWorkouts)
         }
         val cycleDao: ActiveCycleDao = mockk(relaxed = true) {
             every { getActiveCycle() } returns flowOf(activeCycle)
@@ -245,11 +443,12 @@ class AnalyticsRepositoryTest {
         exerciseId: String,
         name: String,
         sets: List<LoggedSet>,
+        muscles: List<MuscleGroup> = emptyList(),
     ) = LoggedExercise(
         id = "le-$exerciseId-${UUID.randomUUID()}",
         exerciseId = exerciseId,
         exerciseName = name,
-        targetMuscleGroups = emptyList(),
+        targetMuscleGroups = muscles,
         equipment = emptyList(),
         sets = sets,
     )
