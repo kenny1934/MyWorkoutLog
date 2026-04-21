@@ -3,6 +3,8 @@ package com.kennychiu.myworkoutlog.ui
 import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
+import com.kennychiu.myworkoutlog.ui.theme.extendedColors
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -14,8 +16,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -321,7 +321,7 @@ fun EnhancedStepperInputField(
 }
 
 /**
- * Compact input field for RIR (Reps in Reserve) with visual scale
+ * Compact input field for RIR (Reps in Reserve) — stepper layout, range 0..10.
  */
 @Composable
 fun RirInputField(
@@ -332,58 +332,119 @@ fun RirInputField(
 ) {
     val haptics = LocalHapticFeedback.current
     val currentRir = value.toIntOrNull() ?: 0
-    
+    val descriptor = when (currentRir) {
+        0 -> "Failure"
+        1, 2 -> "Very Hard"
+        3, 4 -> "Hard"
+        5, 6 -> "Moderate"
+        7, 8 -> "Easy"
+        else -> "Very Easy"
+    }
+
+    val errorColor = MaterialTheme.colorScheme.error
+    val warningColor = MaterialTheme.extendedColors.warning
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val successColor = MaterialTheme.extendedColors.success
+    val intensityColor = when (currentRir) {
+        0 -> errorColor
+        1, 2 -> errorColor
+        3, 4 -> warningColor
+        5, 6 -> primaryColor
+        7, 8 -> successColor
+        else -> successColor
+    }
+    val animatedRir by animateIntAsState(targetValue = currentRir, label = "rirValue")
+
     Column(modifier = modifier) {
-        Text(
-            text = "RIR",
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // RIR scale buttons
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 4.dp),
-            modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            items(11) { rir ->
-                val isSelected = currentRir == rir
-                FilterChip(
-                    selected = isSelected,
+            Text(
+                text = "RIR",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = descriptor,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = intensityColor
+            )
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                            intensityColor.copy(alpha = 0.10f),
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                        )
+                    )
+                )
+                .padding(horizontal = 4.dp, vertical = 4.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                FilledTonalIconButton(
                     onClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onValueChange(rir.toString())
+                        onValueChange((currentRir - 1).coerceAtLeast(0).toString())
                     },
-                    label = {
-                        Text(
-                            text = rir.toString(),
-                            fontSize = 12.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                        )
-                    },
-                    modifier = Modifier.size(width = 48.dp, height = 44.dp),
-                    leadingIcon = null
+                    enabled = currentRir > 0,
+                    modifier = Modifier.size(32.dp),
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = intensityColor.copy(alpha = 0.14f),
+                        contentColor = intensityColor
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Remove,
+                        contentDescription = "Decrease RIR",
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                Text(
+                    text = animatedRir.toString(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = intensityColor,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f)
                 )
+
+                FilledTonalIconButton(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onValueChange((currentRir + 1).coerceAtMost(10).toString())
+                    },
+                    enabled = currentRir < 10,
+                    modifier = Modifier.size(32.dp),
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = intensityColor.copy(alpha = 0.14f),
+                        contentColor = intensityColor
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = "Increase RIR",
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
-        
-        // RIR description
-        Text(
-            text = when (currentRir) {
-                0 -> "Failure"
-                1, 2 -> "Very Hard"
-                3, 4 -> "Hard"
-                5, 6 -> "Moderate"
-                7, 8 -> "Easy"
-                else -> "Very Easy"
-            },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp)
-        )
     }
 }
 
