@@ -414,6 +414,9 @@ fun SimpleCycleProgressWidgetCard(
     onEndCycle: (() -> Unit)? = null
 ) {
     val info = remember(widget.cycle) { cycleProgress(widget.cycle) }
+    val phase = remember(info.currentWeek, widget.cycle) {
+        info.currentWeek?.let { classifyCycleWeek(it, widget.cycle) }
+    }
     val cycleDateFormatter = remember { java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy") }
 
     Card(
@@ -506,6 +509,14 @@ fun SimpleCycleProgressWidgetCard(
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
+                    if (phase != null) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = phase.label,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = widget.sessionProgress,
