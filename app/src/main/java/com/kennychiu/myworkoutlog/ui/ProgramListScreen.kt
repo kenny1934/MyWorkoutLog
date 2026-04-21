@@ -105,6 +105,19 @@ fun ManageProgramsScreen(
                                             }
                                         )
                                         DropdownMenuItem(
+                                            text = { Text("Duplicate") },
+                                            onClick = {
+                                                showOverflowMenu = false
+                                                programViewModel.duplicate(program)
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Outlined.ContentCopy,
+                                                    contentDescription = null
+                                                )
+                                            }
+                                        )
+                                        DropdownMenuItem(
                                             text = {
                                                 Text(
                                                     "Delete Program",

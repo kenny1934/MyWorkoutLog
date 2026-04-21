@@ -64,6 +64,25 @@ class ProgramViewModel(
             programDao.deleteById(programId)
         }
     }
+
+    fun duplicate(source: ProgramTemplate) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val clonedWeeks = source.weeks.map { week ->
+                week.copy(
+                    id = UUID.randomUUID().toString(),
+                    sessions = week.sessions.map { session ->
+                        session.copy(id = UUID.randomUUID().toString())
+                    },
+                )
+            }
+            val clone = source.copy(
+                id = UUID.randomUUID().toString(),
+                name = "${source.name} (copy)",
+                weeks = clonedWeeks,
+            )
+            programDao.insert(clone)
+        }
+    }
 }
 
 class ProgramViewModelFactory(
