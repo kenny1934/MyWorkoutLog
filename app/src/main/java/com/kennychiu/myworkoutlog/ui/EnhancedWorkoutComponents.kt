@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.BorderStroke
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -354,6 +355,16 @@ fun RirInputField(
         else -> successColor
     }
     val animatedRir by animateIntAsState(targetValue = currentRir, label = "rirValue")
+    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
+    val gradientBrush = remember(intensityColor, surfaceVariant) {
+        Brush.horizontalGradient(
+            listOf(
+                surfaceVariant.copy(alpha = 0.45f),
+                intensityColor.copy(alpha = 0.10f),
+                surfaceVariant.copy(alpha = 0.45f)
+            )
+        )
+    }
 
     Column(modifier = modifier) {
         Row(
@@ -377,72 +388,60 @@ fun RirInputField(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                            intensityColor.copy(alpha = 0.10f),
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-                        )
-                    )
-                )
-                .padding(horizontal = 4.dp, vertical = 4.dp)
+                .background(gradientBrush)
+                .padding(horizontal = 4.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                FilledTonalIconButton(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onValueChange((currentRir - 1).coerceAtLeast(0).toString())
-                    },
-                    enabled = currentRir > 0,
-                    modifier = Modifier.size(32.dp),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = intensityColor.copy(alpha = 0.14f),
-                        contentColor = intensityColor
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Remove,
-                        contentDescription = "Decrease RIR",
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-
-                Text(
-                    text = animatedRir.toString(),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = intensityColor,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f)
+            FilledTonalIconButton(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onValueChange((currentRir - 1).coerceAtLeast(0).toString())
+                },
+                enabled = currentRir > 0,
+                modifier = Modifier.size(32.dp),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = intensityColor.copy(alpha = 0.14f),
+                    contentColor = intensityColor
                 )
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Remove,
+                    contentDescription = "Decrease RIR",
+                    modifier = Modifier.size(18.dp)
+                )
+            }
 
-                FilledTonalIconButton(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onValueChange((currentRir + 1).coerceAtMost(10).toString())
-                    },
-                    enabled = currentRir < 10,
-                    modifier = Modifier.size(32.dp),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = intensityColor.copy(alpha = 0.14f),
-                        contentColor = intensityColor
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = "Increase RIR",
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+            Text(
+                text = animatedRir.toString(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = intensityColor,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f)
+            )
+
+            FilledTonalIconButton(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onValueChange((currentRir + 1).coerceAtMost(10).toString())
+                },
+                enabled = currentRir < 10,
+                modifier = Modifier.size(32.dp),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = intensityColor.copy(alpha = 0.14f),
+                    contentColor = intensityColor
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = "Increase RIR",
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }
@@ -755,15 +754,18 @@ fun EnhancedSetRow(
     onApplySuggestion: () -> Unit = {},
     onCopyPreviousSet: (() -> Unit)? = null,
     onClearSet: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
-    @Suppress("UNUSED_PARAMETER") colors: WorkoutInputColors = WorkoutInputDefaults.colors()
+    modifier: Modifier = Modifier
 ) {
     val haptics = LocalHapticFeedback.current
-    var showExpandedOptions by remember { mutableStateOf(false) }
+    var showExpandedOptions by rememberSaveable { mutableStateOf(false) }
 
-    val isSetCompleted = (weightValue.isNotEmpty() && repsValue.isNotEmpty()) || secsValue.isNotEmpty()
+    val weightRepsDone = weightValue.isNotEmpty() && repsValue.isNotEmpty()
+    val secsDone = secsValue.isNotEmpty()
+    val isSetCompleted = (showWeightReps || showSecs) &&
+        (!showWeightReps || weightRepsDone) &&
+        (!showSecs || secsDone)
     val hasAnyValue = weightValue.isNotEmpty() || repsValue.isNotEmpty() || secsValue.isNotEmpty()
-    var isCollapsed by remember { mutableStateOf(isSetCompleted) }
+    var isCollapsed by rememberSaveable { mutableStateOf(isSetCompleted) }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -778,7 +780,6 @@ fun EnhancedSetRow(
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 10.dp)
         ) {
-            // Header row: badge area + action buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -833,7 +834,7 @@ fun EnhancedSetRow(
                                         modifier = Modifier.size(12.dp)
                                     )
                                     Text(
-                                        text = "${restTime / 60}:${String.format("%02d", restTime % 60)}",
+                                        text = formatTime(restTime),
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Medium,
                                         color = MaterialTheme.colorScheme.tertiary
@@ -1096,21 +1097,18 @@ private fun buildSetSummary(
     secs: String,
     rir: String,
     weightUnit: String
-): String = buildString {
-    if (weight.isNotEmpty()) append("$weight $weightUnit")
-    if (reps.isNotEmpty()) {
-        if (isNotEmpty()) append(" × ")
-        append(reps)
-    }
-    if (secs.isNotEmpty()) {
-        if (isNotEmpty()) append(" · ")
-        append("${secs}s")
-    }
-    if (rir.isNotEmpty()) {
-        if (isNotEmpty()) append(" · ")
-        append("RIR $rir")
-    }
-}.ifEmpty { "Empty" }
+): String {
+    val weightReps = listOfNotNull(
+        weight.takeIf { it.isNotEmpty() }?.let { "$it $weightUnit" },
+        reps.takeIf { it.isNotEmpty() }
+    ).joinToString(" × ")
+    val parts = listOfNotNull(
+        weightReps.takeIf { it.isNotEmpty() },
+        secs.takeIf { it.isNotEmpty() }?.let { "${it}s" },
+        rir.takeIf { it.isNotEmpty() }?.let { "RIR $it" }
+    )
+    return if (parts.isEmpty()) "Empty" else parts.joinToString(" · ")
+}
 
 /**
  * Enhanced timer component with circular progress and modern design
