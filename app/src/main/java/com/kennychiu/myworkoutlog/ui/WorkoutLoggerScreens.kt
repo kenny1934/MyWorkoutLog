@@ -407,17 +407,23 @@ private fun WorkoutLoggerScreenContent(
                         lastPerformanceFor = { exerciseId -> viewModel.getLastPerformance(exerciseId) },
                         progressionHintFor = { exerciseId -> viewModel.getProgressionHint(exerciseId) },
                         sessionContent = {
-                            CompactSessionInfo(
-                                bodyweightText = bodyweightText,
-                                onBodyweightChange = { newText ->
-                                    if (newText.matches(Regex("^\\d*\\.?\\d*\$"))) {
-                                        bodyweightText = newText
-                                    }
-                                },
-                                sessionNotesText = sessionNotesText,
-                                onSessionNotesChange = { sessionNotesText = it },
-                                weightUnit = weightUnit
-                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                SessionSummaryChip(
+                                    summary = computeSessionSummary(activeWorkout),
+                                    weightUnit = weightUnit,
+                                )
+                                CompactSessionInfo(
+                                    bodyweightText = bodyweightText,
+                                    onBodyweightChange = { newText ->
+                                        if (newText.matches(Regex("^\\d*\\.?\\d*\$"))) {
+                                            bodyweightText = newText
+                                        }
+                                    },
+                                    sessionNotesText = sessionNotesText,
+                                    onSessionNotesChange = { sessionNotesText = it },
+                                    weightUnit = weightUnit
+                                )
+                            }
                         },
                         selectedExerciseContent = {
                             val selectedExercise = activeWorkout!!.loggedExercises.find { it.id == selectedExerciseId }
@@ -549,6 +555,16 @@ private fun WorkoutLoggerScreenContent(
                             )
                         }
                     }
+                }
+                // Live session summary — completed / total sets and total volume,
+                // recomputed from activeWorkout on every state change. Sits just
+                // above the exercise list so it reads as the "heads-up" metric
+                // for the session.
+                item {
+                    SessionSummaryChip(
+                        summary = computeSessionSummary(activeWorkout),
+                        weightUnit = weightUnit,
+                    )
                 }
                 items(activeWorkout!!.loggedExercises, key = { it.id }) { exercise ->
                     // Calculate completion metrics for enhanced display
@@ -905,6 +921,62 @@ private fun CycleContextBanner(
                     )
                 }
             }
+        }
+    }
+}
+
+private data class SessionSummary(
+    val completedSets: Int,
+    val totalSets: Int,
+    val totalVolume: Double,
+)
+
+private fun computeSessionSummary(workout: LoggedWorkout?): SessionSummary {
+    val exercises = workout?.loggedExercises ?: return SessionSummary(0, 0, 0.0)
+    var completed = 0
+    var total = 0
+    var volume = 0.0
+    for (exercise in exercises) {
+        for (set in exercise.sets) {
+            total += 1
+            val hasWeightReps = set.weight != null && set.reps != null
+            val hasSecs = set.secs != null
+            if (hasWeightReps || hasSecs) completed += 1
+            if (hasWeightReps) volume += (set.weight ?: 0.0) * (set.reps ?: 0)
+        }
+    }
+    return SessionSummary(completed, total, volume)
+}
+
+@Composable
+private fun SessionSummaryChip(
+    summary: SessionSummary,
+    weightUnit: String,
+    modifier: Modifier = Modifier,
+) {
+    if (summary.totalSets == 0) return
+    val volumeSuffix = if (summary.totalVolume > 0) " · ${summary.totalVolume.toInt()} $weightUnit" else ""
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.FitnessCenter,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp),
+            )
+            Text(
+                text = "${summary.completedSets}/${summary.totalSets} sets$volumeSuffix",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
