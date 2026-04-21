@@ -206,7 +206,12 @@ data class LoggedExercise(
     val equipment: List<Equipment>,
     val sets: List<LoggedSet>,
     val isSubstitute: Boolean? = false,
-    val notes: String? = null
+    val notes: String? = null,
+    // When this exercise was substituted, snapshot the *first* original exercise so
+    // chained substitutions (A→B→C) still report "from A" rather than "from B".
+    // JSON-blob only inside logged_workout_table.loggedExercises; no SQL column.
+    val originalExerciseId: String? = null,
+    val originalExerciseName: String? = null,
 )
 
 @Entity(tableName = "logged_workout_table")

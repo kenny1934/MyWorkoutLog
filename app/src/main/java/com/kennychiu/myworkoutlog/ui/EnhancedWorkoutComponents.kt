@@ -196,6 +196,7 @@ fun RirInputField(
 fun EnhancedExerciseCard(
     exerciseName: String,
     isSubstitute: Boolean = false,
+    originalExerciseName: String? = null,
     setsCompleted: Int = 0,
     totalSets: Int = 0,
     lastPerformance: String? = null,
@@ -291,6 +292,10 @@ fun EnhancedExerciseCard(
                     ) {
                         // Substitute indicator
                         if (isSubstitute) {
+                            val badgeLabel = originalExerciseName
+                                ?.takeIf { it.isNotBlank() }
+                                ?.let { "from $it" }
+                                ?: "Substituted"
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
@@ -307,7 +312,7 @@ fun EnhancedExerciseCard(
                                         modifier = Modifier.size(14.dp)
                                     )
                                     Text(
-                                        text = "Substituted",
+                                        text = badgeLabel,
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Medium,
                                         color = MaterialTheme.colorScheme.primary

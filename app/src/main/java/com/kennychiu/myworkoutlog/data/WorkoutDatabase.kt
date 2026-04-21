@@ -21,7 +21,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PersonalRecord::class,
         BodyweightEntry::class,
     ],
-    version = 25,
+    version = 26,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -73,6 +73,15 @@ abstract class WorkoutDatabase : RoomDatabase() {
             }
         }
 
+        // v25 → v26: added LoggedExercise.originalExerciseId / originalExerciseName so
+        // a substituted exercise records what it replaced. Same JSON-blob-only story —
+        // lives inside logged_workout_table.loggedExercises.
+        val MIGRATION_25_26: Migration = object : Migration(25, 26) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // No-op: schema unchanged; only the JSON shape inside an existing TEXT column.
+            }
+        }
+
         // Migrations from v21 onwards MUST be added here. No new schema changes are
         // allowed without a Migration object — prior dev history wiped user data on
         // every schema bump and that is not acceptable going forward.
@@ -81,6 +90,7 @@ abstract class WorkoutDatabase : RoomDatabase() {
             MIGRATION_22_23,
             MIGRATION_23_24,
             MIGRATION_24_25,
+            MIGRATION_25_26,
         )
 
         // Versions 1–20 were only ever opened under fallbackToDestructiveMigration.

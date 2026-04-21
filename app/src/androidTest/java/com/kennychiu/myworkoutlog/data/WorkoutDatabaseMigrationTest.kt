@@ -92,4 +92,17 @@ class WorkoutDatabaseMigrationTest {
             WorkoutDatabase.MIGRATION_24_25,
         ).close()
     }
+
+    // v25 → v26 added LoggedExercise.originalExerciseId / originalExerciseName inside
+    // the JSON blob in logged_workout_table.loggedExercises. Same no-op pattern.
+    @Test
+    fun migrate25To26() {
+        helper.createDatabase(dbName, 25).close()
+        helper.runMigrationsAndValidate(
+            dbName,
+            26,
+            true,
+            WorkoutDatabase.MIGRATION_25_26,
+        ).close()
+    }
 }

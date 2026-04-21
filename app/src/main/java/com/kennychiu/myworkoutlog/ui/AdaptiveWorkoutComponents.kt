@@ -268,8 +268,9 @@ fun ExerciseListItem(
             // Status indicator
             if (exercise.isSubstitute == true) {
                 Spacer(modifier = Modifier.height(4.dp))
+                val orig = exercise.originalExerciseName?.takeIf { it.isNotBlank() }
                 Text(
-                    text = "Substituted",
+                    text = if (orig != null) "Substituted from $orig" else "Substituted",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.tertiary
                 )
@@ -528,8 +529,9 @@ fun EnhancedExerciseDetailPanel(
                         color = MaterialTheme.colorScheme.primary
                     )
                     if (exercise.isSubstitute == true) {
+                        val orig = exercise.originalExerciseName?.takeIf { it.isNotBlank() }
                         Text(
-                            text = "Substituted Exercise",
+                            text = if (orig != null) "Substituted from $orig" else "Substituted Exercise",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.tertiary
                         )

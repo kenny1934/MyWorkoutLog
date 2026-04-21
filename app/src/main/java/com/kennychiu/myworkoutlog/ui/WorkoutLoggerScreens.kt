@@ -520,6 +520,7 @@ private fun WorkoutLoggerScreenContent(
                     EnhancedExerciseCard(
                         exerciseName = exercise.exerciseName,
                         isSubstitute = exercise.isSubstitute == true,
+                        originalExerciseName = exercise.originalExerciseName,
                         setsCompleted = setsCompleted,
                         totalSets = totalSets,
                         lastPerformance = lastPerformance,

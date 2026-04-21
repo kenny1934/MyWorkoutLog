@@ -643,13 +643,18 @@ class WorkoutLoggerViewModel(
                     currentWorkout?.copy(
                         loggedExercises = currentWorkout.loggedExercises.map { exercise ->
                             if (exercise.id == currentExerciseId) {
-                                // Replace the exercise but keep all the sets data
+                                // Snapshot the original exercise the first time we substitute,
+                                // so a chain A→B→C still reports "from A" rather than "from B".
+                                val origId = exercise.originalExerciseId ?: exercise.exerciseId
+                                val origName = exercise.originalExerciseName ?: exercise.exerciseName
                                 exercise.copy(
                                     exerciseId = newExercise.id,
                                     exerciseName = newExercise.name,
                                     targetMuscleGroups = newExercise.targetMuscleGroups,
                                     equipment = newExercise.equipment,
-                                    isSubstitute = true // Mark as substituted
+                                    isSubstitute = true,
+                                    originalExerciseId = origId,
+                                    originalExerciseName = origName,
                                 )
                             } else {
                                 exercise
