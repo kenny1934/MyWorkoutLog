@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -515,6 +516,137 @@ class AnalyticsRepositoryTest {
         assertEquals("cur", progress!!.currentPR.id)
     }
 
+    // -- getExercisePerformanceTrend --
+
+    @Test
+    fun `trend returns INSUFFICIENT_DATA and the unknown-exercise label when no workouts exist`() = runTest {
+        val repo = repo(workoutsWithExercise = emptyList())
+
+        val trend = repo.getExercisePerformanceTrend("sq").first()!!
+
+        assertEquals(TrendDirection.INSUFFICIENT_DATA, trend.trendDirection)
+        assertEquals("Unknown Exercise", trend.exerciseName)
+        assertTrue(trend.dataPoints.isEmpty())
+        assertEquals("More data needed for trend analysis.", trend.recommendedAction)
+    }
+
+    @Test
+    fun `trend returns INSUFFICIENT_DATA with fewer than three valid dataPoints`() = runTest {
+        val workouts = listOf(
+            workoutWithExercise(exId = "sq", date = "2026-04-01", weight = 100.0, reps = 1),
+            workoutWithExercise(exId = "sq", date = "2026-04-08", weight = 105.0, reps = 1),
+        )
+        val repo = repo(workoutsWithExercise = workouts)
+
+        val trend = repo.getExercisePerformanceTrend("sq").first()!!
+
+        assertEquals(TrendDirection.INSUFFICIENT_DATA, trend.trendDirection)
+        assertEquals(2, trend.dataPoints.size)
+    }
+
+    @Test
+    fun `trend slope between 0_5 and 2_0 resolves to SLIGHTLY_IMPROVING`() = runTest {
+        val workouts = listOf(
+            workoutWithExercise(exId = "sq", date = "2026-04-01", weight = 100.0, reps = 1),
+            workoutWithExercise(exId = "sq", date = "2026-04-08", weight = 101.0, reps = 1),
+            workoutWithExercise(exId = "sq", date = "2026-04-15", weight = 102.0, reps = 1),
+        )
+        val repo = repo(workoutsWithExercise = workouts)
+
+        val trend = repo.getExercisePerformanceTrend("sq").first()!!
+
+        assertEquals(TrendDirection.SLIGHTLY_IMPROVING, trend.trendDirection)
+        assertEquals("Steady improvement. Keep up the consistent training.", trend.recommendedAction)
+    }
+
+    @Test
+    fun `trend slope above 2_0 resolves to STRONGLY_IMPROVING`() = runTest {
+        val workouts = listOf(
+            workoutWithExercise(exId = "sq", date = "2026-04-01", weight = 100.0, reps = 1),
+            workoutWithExercise(exId = "sq", date = "2026-04-08", weight = 103.0, reps = 1),
+            workoutWithExercise(exId = "sq", date = "2026-04-15", weight = 106.0, reps = 1),
+        )
+        val repo = repo(workoutsWithExercise = workouts)
+
+        val trend = repo.getExercisePerformanceTrend("sq").first()!!
+
+        assertEquals(TrendDirection.STRONGLY_IMPROVING, trend.trendDirection)
+    }
+
+    @Test
+    fun `trend with flat 1RM values resolves to STABLE`() = runTest {
+        val workouts = listOf(
+            workoutWithExercise(exId = "sq", date = "2026-04-01", weight = 100.0, reps = 1),
+            workoutWithExercise(exId = "sq", date = "2026-04-08", weight = 100.0, reps = 1),
+            workoutWithExercise(exId = "sq", date = "2026-04-15", weight = 100.0, reps = 1),
+        )
+        val repo = repo(workoutsWithExercise = workouts)
+
+        val trend = repo.getExercisePerformanceTrend("sq").first()!!
+
+        assertEquals(TrendDirection.STABLE, trend.trendDirection)
+    }
+
+    @Test
+    fun `trend with steep descending slope resolves to STRONGLY_DECLINING`() = runTest {
+        val workouts = listOf(
+            workoutWithExercise(exId = "sq", date = "2026-04-01", weight = 106.0, reps = 1),
+            workoutWithExercise(exId = "sq", date = "2026-04-08", weight = 103.0, reps = 1),
+            workoutWithExercise(exId = "sq", date = "2026-04-15", weight = 100.0, reps = 1),
+        )
+        val repo = repo(workoutsWithExercise = workouts)
+
+        val trend = repo.getExercisePerformanceTrend("sq").first()!!
+
+        assertEquals(TrendDirection.STRONGLY_DECLINING, trend.trendDirection)
+    }
+
+    @Test
+    fun `trend for a non-bodyweight exercise carries externalWeight as bestWeight and null bodyweight`() = runTest {
+        val workouts = listOf(
+            workoutWithExercise(exId = "sq", date = "2026-04-01", weight = 100.0, reps = 1, bodyweight = 80.0)
+        )
+        val repo = repo(workoutsWithExercise = workouts, exerciseInfo = masterExercise("sq", usesBodyweight = false))
+
+        val trend = repo.getExercisePerformanceTrend("sq").first()!!
+
+        val point = trend.dataPoints.single()
+        assertEquals(100.0, point.bestWeight!!, 0.0)
+        assertEquals(100.0, point.externalWeight!!, 0.0)
+        assertFalse(point.usesBodyweight)
+        assertNull(point.bodyweight)
+        assertEquals(100.0, point.estimated1RM!!, 0.0)
+    }
+
+    @Test
+    fun `trend for a bodyweight exercise adds user bodyweight to bestWeight and 1RM`() = runTest {
+        val workouts = listOf(
+            workoutWithExercise(exId = "pu", date = "2026-04-01", weight = 20.0, reps = 1, bodyweight = 80.0)
+        )
+        val repo = repo(workoutsWithExercise = workouts, exerciseInfo = masterExercise("pu", usesBodyweight = true))
+
+        val trend = repo.getExercisePerformanceTrend("pu").first()!!
+
+        val point = trend.dataPoints.single()
+        assertEquals(100.0, point.bestWeight!!, 0.0)       // 20 external + 80 bodyweight
+        assertEquals(20.0, point.externalWeight!!, 0.0)
+        assertEquals(80.0, point.bodyweight!!, 0.0)
+        assertTrue(point.usesBodyweight)
+        assertEquals(100.0, point.estimated1RM!!, 0.0)
+    }
+
+    @Test
+    fun `trend skips workouts that do not include the target exercise`() = runTest {
+        val targeted = workoutWithExercise(exId = "sq", date = "2026-04-01", weight = 100.0, reps = 1)
+        val untargeted = workoutWithExercise(exId = "bn", date = "2026-04-05", weight = 60.0, reps = 5)
+        val repo = repo(workoutsWithExercise = listOf(targeted, untargeted))
+
+        val trend = repo.getExercisePerformanceTrend("sq").first()!!
+
+        assertEquals(1, trend.dataPoints.size)
+        assertEquals("sq", trend.dataPoints.single().exerciseId)
+    }
+
     // -- fixtures --
 
     private fun repo(
@@ -523,12 +655,15 @@ class AnalyticsRepositoryTest {
         activeCycle: ActiveProgramCycle? = null,
         dateRangeWorkouts: List<LoggedWorkout> = emptyList(),
         prs: List<PersonalRecord> = emptyList(),
+        workoutsWithExercise: List<LoggedWorkout> = emptyList(),
+        exerciseInfo: Exercise? = null,
     ): AnalyticsRepository {
         val loggedDao: LoggedWorkoutDao = mockk(relaxed = true) {
             every { getWorkoutsByCycle("cur") } returns flowOf(currentWorkouts)
             every { getWorkoutsByCycle("prev") } returns flowOf(previousWorkouts)
             every { getWorkoutsByDateRange(any(), any()) } returns flowOf(dateRangeWorkouts)
             every { getRecentWorkoutsForPRAnalysis(any()) } returns flowOf(emptyList())
+            every { getAllWorkoutsWithExercise(any()) } returns flowOf(workoutsWithExercise)
         }
         val cycleDao: ActiveCycleDao = mockk(relaxed = true) {
             every { getActiveCycle() } returns flowOf(activeCycle)
@@ -536,7 +671,31 @@ class AnalyticsRepositoryTest {
         val prDao: PersonalRecordDao = mockk(relaxed = true) {
             every { getPRsForExerciseFlow(any()) } returns flowOf(prs)
         }
-        return AnalyticsRepository(loggedDao, cycleDao, prDao)
+        val exDao: ExerciseDao = mockk(relaxed = true) {
+            every { getExerciseById(any()) } returns exerciseInfo
+        }
+        return AnalyticsRepository(loggedDao, cycleDao, prDao, exDao)
+    }
+
+    private fun masterExercise(id: String, usesBodyweight: Boolean) = Exercise(
+        id = id,
+        name = id,
+        usesBodyweight = usesBodyweight,
+        targetMuscleGroups = emptyList(),
+        equipment = emptyList(),
+    )
+
+    private fun workoutWithExercise(
+        exId: String,
+        date: String,
+        weight: Double,
+        reps: Int,
+        bodyweight: Double? = null,
+    ) = workout(
+        exercises = listOf(loggedExercise(exId, exId, listOf(set(weight = weight, reps = reps)))),
+    ).let {
+        // workout() hardcodes date = "2026-04-22"; override the date + bodyweight for trend tests.
+        it.copy(date = date, bodyweight = bodyweight)
     }
 
     private fun pr(

@@ -15,7 +15,7 @@ Kotlin 2.1, Jetpack Compose, Material 3, Room, DataStore, Navigation Compose, Vi
 
 1. **Mesocycle / program management** is ~40% done (per prior audit on the `claude/evaluate-app-rewrite-Eqoyq` branch). This is the priority when restarting feature work.
 2. **Workout session timer + edit/resume** has been patched many times and still has state-contamination edge cases.
-3. **Test coverage is thin outside known-fragile areas.** 192 JVM tests cover workout logger, cycle progress, history filtering, program-editor helpers, progression hints/projection, cycle-phase classification, PR detection (`PrService.detectNewPRs`), and most `AnalyticsRepository` flows (`compareCycles`, `getWeeklyVolumeSummary`, `getMuscleGroupVolumeDistribution`, `getPersonalRecordProgress`); dashboard widgets, `AnalyticsRepository.getExercisePerformanceTrend` + dashboard aggregates, import/export, and cloud backup are still validated only by running the app.
+3. **Test coverage is thin outside known-fragile areas.** 201 JVM tests cover workout logger, cycle progress, history filtering, program-editor helpers, progression hints/projection, cycle-phase classification, PR detection (`PrService.detectNewPRs`), and all `AnalyticsRepository` Flow surfaces (`compareCycles`, `getWeeklyVolumeSummary`, `getMuscleGroupVolumeDistribution`, `getPersonalRecordProgress`, `getExercisePerformanceTrend`); dashboard widgets, `AnalyticsRepository` `suspend` dashboard aggregates, import/export, and cloud backup are still validated only by running the app.
 
 ## Already-resolved (do not re-open without reading STATE.md)
 
