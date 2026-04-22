@@ -151,7 +151,14 @@ fun CycleDetailScreen(
                         if (completedWorkoutId != null) {
                             navController.navigate(Screen.HistoryDetail.createRoute(completedWorkoutId))
                         } else {
-                            navController.navigate(Screen.TemplateDetail.createRoute(session.workoutTemplateId))
+                            navController.navigate(
+                                Screen.WorkoutLogger.createRoute(
+                                    templateId = session.workoutTemplateId,
+                                    cycleId = cycle.cycleUuid,
+                                    weekId = week.id,
+                                    sessionId = session.id,
+                                )
+                            )
                         }
                     },
                 )
