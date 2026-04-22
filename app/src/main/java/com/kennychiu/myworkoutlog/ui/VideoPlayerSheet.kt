@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -273,15 +274,31 @@ fun VideoPlayerSheet(
                 style = MaterialTheme.typography.titleMedium
             )
 
-            VideoPlayerSurface(
-                player = player,
-                hasMedia = !selectedUri.isNullOrBlank(),
+            val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+            val maxPlayerHeight = (configuration.screenHeightDp * 0.5f).dp.coerceAtMost(480.dp)
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(videoAspect ?: (16f / 9f))
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.Black)
-            )
+                    .heightIn(max = maxPlayerHeight)
+            ) {
+                val ratio = videoAspect ?: (16f / 9f)
+                val availW = maxWidth
+                val availH = maxHeight
+                val (playerW, playerH) = if (availW / ratio <= availH) {
+                    availW to availW / ratio
+                } else {
+                    availH * ratio to availH
+                }
+                VideoPlayerSurface(
+                    player = player,
+                    hasMedia = !selectedUri.isNullOrBlank(),
+                    modifier = Modifier
+                        .size(playerW, playerH)
+                        .align(Alignment.Center)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.Black)
+                )
+            }
 
             ScrubberAnnotations(
                 durationMs = durationMs,
