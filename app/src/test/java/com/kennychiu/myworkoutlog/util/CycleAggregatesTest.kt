@@ -1,14 +1,18 @@
 package com.kennychiu.myworkoutlog.util
 
 import com.kennychiu.myworkoutlog.data.ActiveProgramCycle
+import com.kennychiu.myworkoutlog.data.Equipment
 import com.kennychiu.myworkoutlog.data.LoggedExercise
 import com.kennychiu.myworkoutlog.data.LoggedSet
 import com.kennychiu.myworkoutlog.data.LoggedWorkout
+import com.kennychiu.myworkoutlog.data.MuscleGroup
 import com.kennychiu.myworkoutlog.data.PRType
 import com.kennychiu.myworkoutlog.data.PersonalRecord
 import com.kennychiu.myworkoutlog.data.ProgramSessionDefinition
 import com.kennychiu.myworkoutlog.data.ProgramTemplate
 import com.kennychiu.myworkoutlog.data.ProgramWeekDefinition
+import com.kennychiu.myworkoutlog.data.TemplateExercise
+import com.kennychiu.myworkoutlog.data.WorkoutTemplate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -118,6 +122,120 @@ class CycleAggregatesTest {
         assertNotNull(agg.perWeek["w1"])
     }
 
+    // ── cycleBaselinesByExercise ──────────────────────────────────────────
+
+    @Test
+    fun `baselines — empty cycle yields empty map`() {
+        val empty = cycle().copy(cycleProgram = cycle().cycleProgram.copy(weeks = emptyList()))
+        val baselines = cycleBaselinesByExercise(empty, emptyMap()) { null }
+        assertTrue(baselines.isEmpty())
+    }
+
+    @Test
+    fun `baselines — missing templates are skipped silently`() {
+        val c = cycle()
+        val lookups = mutableListOf<String>()
+        val baselines = cycleBaselinesByExercise(c, emptyMap()) { id ->
+            lookups += id
+            null
+        }
+        assertTrue(baselines.isEmpty())
+        assertTrue(lookups.isEmpty())
+    }
+
+    @Test
+    fun `baselines — lookup returns null excludes the exercise`() {
+        val c = cycle()
+        val templates = mapOf("t" to template("t", listOf(templateExercise("exid"))))
+        val baselines = cycleBaselinesByExercise(c, templates) { null }
+        assertTrue(baselines.isEmpty())
+    }
+
+    @Test
+    fun `baselines — picks heaviest weight-reps top set from pre-cycle workout`() {
+        val c = cycle()
+        val templates = mapOf("t" to template("t", listOf(templateExercise("exid"))))
+        val preCycle = workout(
+            id = "pre",
+            cycleId = "OTHER",
+            weekId = null,
+            loggedExercises = listOf(
+                exercise(sets = listOf(
+                    set(reps = 10, weight = 80.0),
+                    set(reps = 5, weight = 100.0),
+                    set(reps = 8, weight = 90.0),
+                )),
+            ),
+        )
+        val baselines = cycleBaselinesByExercise(c, templates) { id ->
+            if (id == "exid") preCycle else null
+        }
+        assertEquals(ExerciseTopSet(100.0, 5), baselines["exid"])
+    }
+
+    @Test
+    fun `baselines — duration-only top set stores ExerciseTopSet with null weight and reps`() {
+        val c = cycle()
+        val templates = mapOf("t" to template("t", listOf(templateExercise("exid"))))
+        val preCycle = workout(
+            id = "pre",
+            cycleId = "OTHER",
+            weekId = null,
+            loggedExercises = listOf(
+                exercise(sets = listOf(durationSet(secs = 60), durationSet(secs = 45))),
+            ),
+        )
+        val baselines = cycleBaselinesByExercise(c, templates) { id ->
+            if (id == "exid") preCycle else null
+        }
+        assertEquals(ExerciseTopSet(null, null), baselines["exid"])
+    }
+
+    @Test
+    fun `baselines — exerciseId referenced in multiple sessions dedupes to one lookup`() {
+        val twoWeekCycle = cycle()
+        val templates = mapOf("t" to template("t", listOf(templateExercise("exid"))))
+        val preCycle = workout(
+            id = "pre",
+            cycleId = "OTHER",
+            weekId = null,
+            loggedExercises = listOf(
+                exercise(sets = listOf(set(reps = 5, weight = 120.0))),
+            ),
+        )
+        val lookups = mutableListOf<String>()
+        val baselines = cycleBaselinesByExercise(twoWeekCycle, templates) { id ->
+            lookups += id
+            preCycle
+        }
+        assertEquals(1, lookups.size)
+        assertEquals("exid", lookups.single())
+        assertEquals(ExerciseTopSet(120.0, 5), baselines["exid"])
+    }
+
+    @Test
+    fun `baselines — returned workout missing exerciseId is excluded`() {
+        val c = cycle()
+        val templates = mapOf("t" to template("t", listOf(templateExercise("exid"))))
+        val preCycle = workout(
+            id = "pre",
+            cycleId = "OTHER",
+            weekId = null,
+            loggedExercises = listOf(
+                LoggedExercise(
+                    id = "ex",
+                    exerciseId = "different-id",
+                    exerciseName = "Something else",
+                    targetMuscleGroups = emptyList(),
+                    equipment = emptyList(),
+                    sets = listOf(set(reps = 5, weight = 100.0)),
+                ),
+            ),
+        )
+        val baselines = cycleBaselinesByExercise(c, templates) { preCycle }
+        assertTrue(baselines.isEmpty())
+    }
+
     // ── helpers ────────────────────────────────────────────────────────────
 
     private fun cycle(): ActiveProgramCycle {
@@ -191,6 +309,26 @@ class CycleAggregatesTest {
 
     private fun set(reps: Int?, weight: Double?): LoggedSet =
         LoggedSet(id = java.util.UUID.randomUUID().toString(), reps = reps, weight = weight)
+
+    private fun durationSet(secs: Int): LoggedSet =
+        LoggedSet(id = java.util.UUID.randomUUID().toString(), secs = secs)
+
+    private fun template(id: String, exercises: List<TemplateExercise>) = WorkoutTemplate(
+        id = id,
+        name = id,
+        description = null,
+        templateExercises = exercises,
+    )
+
+    private fun templateExercise(exerciseId: String) = TemplateExercise(
+        id = "te-$exerciseId",
+        exerciseId = exerciseId,
+        exerciseName = exerciseId,
+        targetMuscleGroups = emptyList<MuscleGroup>(),
+        equipment = emptyList<Equipment>(),
+        sets = emptyList(),
+        order = 0,
+    )
 
     private fun pr(id: String, workoutId: String, date: String) = PersonalRecord(
         id = id,

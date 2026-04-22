@@ -144,6 +144,7 @@ fun CycleDetailScreen(
                     weightUnit = aggregates.weightUnit,
                     templates = state.templates,
                     actualsByExerciseWeek = state.actualsByExerciseWeek,
+                    baselinesByExercise = state.baselinesByExercise,
                     onSessionClick = { session ->
                         val key = "${week.id}_${session.id}"
                         val completedWorkoutId = completed[key]
@@ -558,6 +559,7 @@ private fun CycleWeekCard(
     weightUnit: String?,
     templates: Map<String, WorkoutTemplate>,
     actualsByExerciseWeek: Map<String, Map<Int, ExerciseTopSet>>,
+    baselinesByExercise: Map<String, ExerciseTopSet>,
     onSessionClick: (ProgramSessionDefinition) -> Unit,
 ) {
     val rir = week.targetRir?.takeIf { it.isNotBlank() }
@@ -644,6 +646,7 @@ private fun CycleWeekCard(
                     weekNumber = weekNumber,
                     cycleWeekCount = cycleWeekCount,
                     actualsByExerciseWeek = actualsByExerciseWeek,
+                    baselinesByExercise = baselinesByExercise,
                     onClick = { onSessionClick(session) },
                 )
             }
@@ -719,6 +722,7 @@ private fun SessionRow(
     weekNumber: Int,
     cycleWeekCount: Int,
     actualsByExerciseWeek: Map<String, Map<Int, ExerciseTopSet>>,
+    baselinesByExercise: Map<String, ExerciseTopSet>,
     onClick: () -> Unit,
 ) {
     Row(
@@ -753,6 +757,7 @@ private fun SessionRow(
                     weekNumber = weekNumber,
                     cycleWeekCount = cycleWeekCount,
                     actualsByExerciseWeek = actualsByExerciseWeek,
+                    baselinesByExercise = baselinesByExercise,
                 )
             }
         }
@@ -767,6 +772,7 @@ private fun SessionExercisePreview(
     weekNumber: Int,
     cycleWeekCount: Int,
     actualsByExerciseWeek: Map<String, Map<Int, ExerciseTopSet>>,
+    baselinesByExercise: Map<String, ExerciseTopSet>,
 ) {
     val sortedExercises = remember(template) { template.templateExercises.sortedBy { it.order } }
     val preview = sortedExercises.take(3)
@@ -780,10 +786,11 @@ private fun SessionExercisePreview(
     Spacer(Modifier.height(2.dp))
     preview.forEach { ex ->
         val hint = formatProgressionHint(ex, weightUnit = weightUnit)
-        val projection = remember(ex, weekNumber, cycleWeekCount, weightUnit, actualsByExerciseWeek) {
+        val projection = remember(ex, weekNumber, cycleWeekCount, weightUnit, actualsByExerciseWeek, baselinesByExercise) {
             projectExerciseAcrossWeeks(
                 exercise = ex,
                 cycleWeekCount = cycleWeekCount,
+                baseline = baselinesByExercise[ex.exerciseId],
                 actualsByWeek = actualsByExerciseWeek[ex.exerciseId].orEmpty(),
                 weightUnit = weightUnit,
             ).getOrNull(weekNumber - 1)

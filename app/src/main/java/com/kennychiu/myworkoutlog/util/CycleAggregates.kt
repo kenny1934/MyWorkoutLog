@@ -1,8 +1,10 @@
 package com.kennychiu.myworkoutlog.util
 
 import com.kennychiu.myworkoutlog.data.ActiveProgramCycle
+import com.kennychiu.myworkoutlog.data.LoggedSet
 import com.kennychiu.myworkoutlog.data.LoggedWorkout
 import com.kennychiu.myworkoutlog.data.PersonalRecord
+import com.kennychiu.myworkoutlog.data.WorkoutTemplate
 
 data class CycleWeekAggregate(
     val weekId: String,
@@ -75,13 +77,7 @@ fun cycleActualsByExerciseAndWeek(
     for (workout in workoutsInCycle) {
         val weekNumber = workout.programWeekDefinitionId?.let(weekNumberByWeekId::get) ?: continue
         for (exercise in workout.loggedExercises) {
-            val top = exercise.sets
-                .filter { (it.weight != null && it.reps != null) || it.secs != null }
-                .maxWithOrNull(
-                    compareBy({ it.weight ?: 0.0 }, { it.reps ?: 0 }, { it.secs ?: 0 })
-                )
-                ?: continue
-            val candidate = ExerciseTopSet(top.weight, top.reps)
+            val candidate = pickTopSet(exercise.sets) ?: continue
             val bucket = result.getOrPut(exercise.exerciseId) { mutableMapOf() }
             val prior = bucket[weekNumber]
             if (prior == null || topSetRank(candidate) > topSetRank(prior)) {
@@ -90,6 +86,43 @@ fun cycleActualsByExerciseAndWeek(
         }
     }
     return result
+}
+
+// Pre-cycle baseline top set per exercise referenced by the cycle's session
+// templates. `lookup` returns the most recent workout containing exerciseId
+// before the cycle started (typically `LoggedWorkoutDao.getLatestWorkoutWithExerciseBefore`
+// against `cycle.startDate`), and the helper extracts that workout's top set.
+// Exercises with no pre-cycle history are omitted from the map.
+fun cycleBaselinesByExercise(
+    cycle: ActiveProgramCycle,
+    templatesById: Map<String, WorkoutTemplate>,
+    lookup: (exerciseId: String) -> LoggedWorkout?,
+): Map<String, ExerciseTopSet> {
+    val exerciseIds = mutableSetOf<String>()
+    for (week in cycle.cycleProgram.weeks) {
+        for (session in week.sessions) {
+            val template = templatesById[session.workoutTemplateId] ?: continue
+            for (ex in template.templateExercises) exerciseIds += ex.exerciseId
+        }
+    }
+
+    val result = mutableMapOf<String, ExerciseTopSet>()
+    for (exerciseId in exerciseIds) {
+        val workout = lookup(exerciseId) ?: continue
+        val loggedExercise = workout.loggedExercises.firstOrNull { it.exerciseId == exerciseId } ?: continue
+        val top = pickTopSet(loggedExercise.sets) ?: continue
+        result[exerciseId] = top
+    }
+    return result
+}
+
+private fun pickTopSet(sets: List<LoggedSet>): ExerciseTopSet? {
+    val top = sets
+        .filter { (it.weight != null && it.reps != null) || it.secs != null }
+        .maxWithOrNull(
+            compareBy({ it.weight ?: 0.0 }, { it.reps ?: 0 }, { it.secs ?: 0 })
+        ) ?: return null
+    return ExerciseTopSet(top.weight, top.reps)
 }
 
 private fun topSetRank(set: ExerciseTopSet): Double {

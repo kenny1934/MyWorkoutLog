@@ -97,13 +97,24 @@ interface LoggedWorkoutDao {
     
     // Get the most recent workout with same template containing a specific exercise
     @Query("""
-        SELECT * FROM logged_workout_table 
-        WHERE workoutTemplateId = :templateId 
-        AND loggedExercises LIKE '%"exerciseId":"' || :exerciseId || '"%' 
-        ORDER BY date DESC, startTimestamp DESC 
+        SELECT * FROM logged_workout_table
+        WHERE workoutTemplateId = :templateId
+        AND loggedExercises LIKE '%"exerciseId":"' || :exerciseId || '"%'
+        ORDER BY date DESC, startTimestamp DESC
         LIMIT 1
     """)
     fun getLatestWorkoutWithExerciseInTemplate(exerciseId: String, templateId: String): LoggedWorkout?
+
+    // Most recent workout with a specific exercise whose date is strictly before
+    // :beforeDate — used to anchor pre-cycle baselines for forward projection.
+    @Query("""
+        SELECT * FROM logged_workout_table
+        WHERE loggedExercises LIKE '%"exerciseId":"' || :exerciseId || '"%'
+        AND date < :beforeDate
+        ORDER BY date DESC, startTimestamp DESC
+        LIMIT 1
+    """)
+    fun getLatestWorkoutWithExerciseBefore(exerciseId: String, beforeDate: String): LoggedWorkout?
     
     // Get recent workouts with same template (for session-based context)
     @Query("""

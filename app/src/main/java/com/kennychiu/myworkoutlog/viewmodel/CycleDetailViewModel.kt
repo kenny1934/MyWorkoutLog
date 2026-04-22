@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class CycleDetailUiState(
     val cycle: ActiveProgramCycle?,
@@ -23,6 +24,9 @@ data class CycleDetailUiState(
     // projection surfaced on each week card — a missed or under-planned week
     // anchors downstream projections off what actually happened.
     val actualsByExerciseWeek: Map<String, Map<Int, ExerciseTopSet>> = emptyMap(),
+    // Pre-cycle top set per exercise — anchors the forward projection on week 1
+    // so weeks before the first intra-cycle log read real numbers instead of "—".
+    val baselinesByExercise: Map<String, ExerciseTopSet> = emptyMap(),
 ) {
     companion object {
         val EMPTY = CycleDetailUiState(null, CycleAggregates.EMPTY)
@@ -47,11 +51,18 @@ class CycleDetailViewModel(
                     personalRecordDao.getAllPRs(),
                     workoutTemplateDao.getAllTemplates(),
                 ) { workouts, prs, templates ->
+                    val templatesById = templates.associateBy { it.id }
+                    val baselines = withContext(Dispatchers.IO) {
+                        cycleBaselinesByExercise(cycle, templatesById) { exerciseId ->
+                            loggedWorkoutDao.getLatestWorkoutWithExerciseBefore(exerciseId, cycle.startDate)
+                        }
+                    }
                     CycleDetailUiState(
                         cycle = cycle,
                         aggregates = cycleAggregates(cycle, workouts, prs),
-                        templates = templates.associateBy { it.id },
+                        templates = templatesById,
                         actualsByExerciseWeek = cycleActualsByExerciseAndWeek(cycle, workouts),
+                        baselinesByExercise = baselines,
                     )
                 }
             }
