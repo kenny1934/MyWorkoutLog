@@ -192,6 +192,7 @@ data class LoggedSet(
     val notes: String? = null,
     val restTimeSeconds: Int? = null, // Actual rest time taken after this set
     val videoReference: String? = null, // Path to video file for form reference
+    val videoMarks: String? = null, // JSON blob of scrubber pip annotations ({holdStart, holdEnd, reps})
     // ADD THESE TWO PROPERTIES TO SNAPSHOT THE TARGETS
     val targetReps: String? = null,
     val targetSecs: String? = null,

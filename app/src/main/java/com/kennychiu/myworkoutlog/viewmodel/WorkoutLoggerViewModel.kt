@@ -421,15 +421,16 @@ class WorkoutLoggerViewModel(
 
     // Called when the user enters their performance for a set
     fun updateSet(
-        exerciseId: String, 
-        setId: String, 
-        reps: String, 
-        weight: Double?, 
-        secs: String, 
-        rir: String? = null, 
-        bands: String? = null, 
+        exerciseId: String,
+        setId: String,
+        reps: String,
+        weight: Double?,
+        secs: String,
+        rir: String? = null,
+        bands: String? = null,
         notes: String? = null,
-        videoReference: String? = null
+        videoReference: String? = null,
+        videoMarks: String? = null
     ) {
         _activeWorkoutState.update { currentWorkout ->
             currentWorkout?.copy(
@@ -445,7 +446,8 @@ class WorkoutLoggerViewModel(
                                         rir = rir?.toIntOrNull(),
                                         bands = bands?.takeIf { it.isNotBlank() },
                                         notes = notes?.takeIf { it.isNotBlank() },
-                                        videoReference = videoReference?.takeIf { it.isNotBlank() }
+                                        videoReference = videoReference?.takeIf { it.isNotBlank() },
+                                        videoMarks = videoMarks?.takeIf { it.isNotBlank() }
                                     )
                                 } else {
                                     set
@@ -458,14 +460,14 @@ class WorkoutLoggerViewModel(
                 }
             )
         }
-        
+
         // PHASE 3: Auto-save after set update
         autoSaveWorkout()
     }
 
     // Overloaded function to maintain backward compatibility
     fun updateSet(exerciseId: String, setId: String, reps: String, weight: Double?, secs: String) {
-        updateSet(exerciseId, setId, reps, weight, secs, null, null, null, null)
+        updateSet(exerciseId, setId, reps, weight, secs, null, null, null, null, null)
     }
 
     // Saves the completed workout to the database

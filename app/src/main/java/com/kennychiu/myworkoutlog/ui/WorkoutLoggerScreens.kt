@@ -434,8 +434,8 @@ private fun WorkoutLoggerScreenContent(
                             EnhancedExerciseDetailPanel(
                                 exercise = selectedExercise,
                                 weightUnit = weightUnit,
-                                onSetUpdate = { exerciseId, setId, repsText, weight, secsText, rirText, bands, notes, videoPath ->
-                                    viewModel.updateSet(exerciseId, setId, repsText, weight, secsText, rirText, bands, notes, videoPath)
+                                onSetUpdate = { exerciseId, setId, repsText, weight, secsText, rirText, bands, notes, videoPath, videoMarks ->
+                                    viewModel.updateSet(exerciseId, setId, repsText, weight, secsText, rirText, bands, notes, videoPath, videoMarks)
                                 },
                                 onAddSet = { exerciseId -> viewModel.addSetToExercise(exerciseId) },
                                 onRemoveSet = { exerciseId, setId -> viewModel.removeSetFromExercise(exerciseId, setId) },
@@ -552,6 +552,7 @@ private fun WorkoutLoggerScreenContent(
                                 bandsValue = set.bands ?: "",
                                 notesValue = set.notes ?: "",
                                 videoReference = set.videoReference,
+                                videoMarks = set.videoMarks,
                                 restTimeSeconds = set.restTimeSeconds,
                                 weightUnit = weightUnit,
                                 showWeightReps = !set.targetReps.isNullOrBlank(),
@@ -559,28 +560,28 @@ private fun WorkoutLoggerScreenContent(
                                 showDeleteButton = exercise.sets.size > 1, // Only show delete if more than 1 set
                                 performanceSuggestion = performanceSuggestion,
                                 onWeightChange = { newWeight ->
-                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", newWeight.toDoubleOrNull(), set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes, set.videoReference)
+                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", newWeight.toDoubleOrNull(), set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes, set.videoReference, set.videoMarks)
                                 },
                                 onRepsChange = { newReps ->
-                                    viewModel.updateSet(exercise.id, set.id, newReps, set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes, set.videoReference)
+                                    viewModel.updateSet(exercise.id, set.id, newReps, set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes, set.videoReference, set.videoMarks)
                                 },
                                 onSecsChange = { newSecs ->
-                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, newSecs, set.rir?.toString(), set.bands, set.notes, set.videoReference)
+                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, newSecs, set.rir?.toString(), set.bands, set.notes, set.videoReference, set.videoMarks)
                                 },
                                 onRirChange = { newRir ->
-                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", newRir, set.bands, set.notes, set.videoReference)
+                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", newRir, set.bands, set.notes, set.videoReference, set.videoMarks)
                                 },
                                 onBandsChange = { newBands ->
-                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), newBands, set.notes, set.videoReference)
+                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), newBands, set.notes, set.videoReference, set.videoMarks)
                                 },
                                 onNotesChange = { newNotes ->
-                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, newNotes, set.videoReference)
+                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, newNotes, set.videoReference, set.videoMarks)
                                 },
-                                onVideoSelected = { videoPath ->
-                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes, videoPath)
+                                onVideoSelected = { videoPath, marks ->
+                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes, videoPath, marks)
                                 },
                                 onVideoRemoved = {
-                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes, null)
+                                    viewModel.updateSet(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes, null, null)
                                 },
                                 onStartRest = { viewModel.startRestTimerForSet(exercise.id, set.id) },
                                 onDeleteSet = {
@@ -594,7 +595,7 @@ private fun WorkoutLoggerScreenContent(
                                         val repsText = suggestion.suggestedReps?.toString() ?: ""
                                         val secsText = suggestion.suggestedSecs?.toString() ?: ""
                                         val rirText = suggestion.suggestedRir?.toString() ?: ""
-                                        viewModel.updateSet(exercise.id, set.id, repsText, weightText.toDoubleOrNull(), secsText, rirText, set.bands, set.notes, set.videoReference)
+                                        viewModel.updateSet(exercise.id, set.id, repsText, weightText.toDoubleOrNull(), secsText, rirText, set.bands, set.notes, set.videoReference, set.videoMarks)
                                     }
                                 },
                                 onCopyPreviousSet = exercise.sets.getOrNull(index - 1)
@@ -610,7 +611,8 @@ private fun WorkoutLoggerScreenContent(
                                                 prev.rir?.toString(),
                                                 set.bands,
                                                 set.notes,
-                                                set.videoReference
+                                                set.videoReference,
+                                                set.videoMarks
                                             )
                                         }
                                     },
@@ -624,7 +626,8 @@ private fun WorkoutLoggerScreenContent(
                                         null,
                                         set.bands,
                                         set.notes,
-                                        set.videoReference
+                                        set.videoReference,
+                                        set.videoMarks
                                     )
                                 },
                                 onEditRestTime = { seconds ->

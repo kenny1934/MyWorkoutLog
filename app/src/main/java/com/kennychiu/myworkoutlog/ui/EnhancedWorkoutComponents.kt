@@ -443,6 +443,7 @@ fun EnhancedSetRow(
     bandsValue: String = "",
     notesValue: String = "",
     videoReference: String? = null,
+    videoMarks: String? = null,
     restTimeSeconds: Int? = null,
     weightUnit: String,
     showWeightReps: Boolean = true,
@@ -456,7 +457,7 @@ fun EnhancedSetRow(
     onRirChange: (String) -> Unit = {},
     onBandsChange: (String) -> Unit = {},
     onNotesChange: (String) -> Unit = {},
-    onVideoSelected: (String) -> Unit = {},
+    onVideoSelected: (String, String?) -> Unit = { _, _ -> },
     onVideoRemoved: () -> Unit = {},
     onStartRest: () -> Unit = {},
     onDeleteSet: () -> Unit = {},
@@ -910,7 +911,7 @@ fun EnhancedSetRow(
                                 Spacer(modifier = Modifier.height(6.dp))
                                 VideoReferenceSelector(
                                     currentVideoPath = videoReference,
-                                    onVideoSelected = onVideoSelected,
+                                    onVideoSelected = { uri -> onVideoSelected(uri, null) },
                                     onVideoRemoved = onVideoRemoved,
                                     modifier = Modifier.fillMaxWidth()
                                 )
@@ -946,9 +947,10 @@ fun EnhancedSetRow(
         VideoPlayerSheet(
             setNumber = setNumber,
             initialUri = videoReference,
+            initialMarks = videoMarks,
             onDismiss = { showVideoSheet = false },
-            onAttach = { uri, attachedReps, attachedSecs ->
-                onVideoSelected(uri)
+            onAttach = { uri, attachedReps, attachedSecs, attachedMarks ->
+                onVideoSelected(uri, attachedMarks)
                 if (attachedReps != null && repsValue.isEmpty()) {
                     onRepsChange(attachedReps.toString())
                 }
@@ -966,6 +968,7 @@ fun EnhancedSetRow(
         VideoPlayerSheet(
             setNumber = null,
             initialUri = videoReference,
+            initialMarks = videoMarks,
             onDismiss = { showReviewSheet = false },
             onAttach = null
         )

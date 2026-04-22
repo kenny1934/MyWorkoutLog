@@ -464,7 +464,7 @@ fun CompactSessionInfo(
 fun EnhancedExerciseDetailPanel(
     exercise: LoggedExercise?,
     weightUnit: String,
-    onSetUpdate: (String, String, String, Double?, String, String?, String?, String?, String?) -> Unit,
+    onSetUpdate: (String, String, String, Double?, String, String?, String?, String?, String?, String?) -> Unit,
     onAddSet: (String) -> Unit,
     onRemoveSet: (String, String) -> Unit,
     onStartRest: (String, String) -> Unit,
@@ -612,6 +612,7 @@ fun EnhancedExerciseDetailPanel(
                         bandsValue = set.bands ?: "",
                         notesValue = set.notes ?: "",
                         videoReference = set.videoReference,
+                        videoMarks = set.videoMarks,
                         restTimeSeconds = set.restTimeSeconds,
                         weightUnit = weightUnit,
                         showWeightReps = !set.targetReps.isNullOrBlank(),
@@ -620,28 +621,28 @@ fun EnhancedExerciseDetailPanel(
                         performanceSuggestion = performanceSuggestion,
                         isLargeScreen = true, // Enable large screen optimizations
                         onWeightChange = { newWeight ->
-                            onSetUpdate(exercise.id, set.id, set.reps?.toString() ?: "", newWeight.toDoubleOrNull(), set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes, set.videoReference)
+                            onSetUpdate(exercise.id, set.id, set.reps?.toString() ?: "", newWeight.toDoubleOrNull(), set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes, set.videoReference, set.videoMarks)
                         },
                         onRepsChange = { newReps ->
-                            onSetUpdate(exercise.id, set.id, newReps, set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes, set.videoReference)
+                            onSetUpdate(exercise.id, set.id, newReps, set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes, set.videoReference, set.videoMarks)
                         },
                         onSecsChange = { newSecs ->
-                            onSetUpdate(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, newSecs, set.rir?.toString(), set.bands, set.notes, set.videoReference)
+                            onSetUpdate(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, newSecs, set.rir?.toString(), set.bands, set.notes, set.videoReference, set.videoMarks)
                         },
                         onRirChange = { newRir ->
-                            onSetUpdate(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", newRir, set.bands, set.notes, set.videoReference)
+                            onSetUpdate(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", newRir, set.bands, set.notes, set.videoReference, set.videoMarks)
                         },
                         onBandsChange = { newBands ->
-                            onSetUpdate(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), newBands, set.notes, set.videoReference)
+                            onSetUpdate(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), newBands, set.notes, set.videoReference, set.videoMarks)
                         },
                         onNotesChange = { newNotes ->
-                            onSetUpdate(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, newNotes, set.videoReference)
+                            onSetUpdate(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, newNotes, set.videoReference, set.videoMarks)
                         },
-                        onVideoSelected = { videoPath ->
-                            onSetUpdate(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes, videoPath)
+                        onVideoSelected = { videoPath, marks ->
+                            onSetUpdate(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes, videoPath, marks)
                         },
                         onVideoRemoved = {
-                            onSetUpdate(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes, null)
+                            onSetUpdate(exercise.id, set.id, set.reps?.toString() ?: "", set.weight, set.secs?.toString() ?: "", set.rir?.toString(), set.bands, set.notes, null, null)
                         },
                         onStartRest = { onStartRest(exercise.id, set.id) },
                         onDeleteSet = { onRemoveSet(exercise.id, set.id) },
@@ -651,7 +652,7 @@ fun EnhancedExerciseDetailPanel(
                                 val repsText = suggestion.suggestedReps?.toString() ?: ""
                                 val secsText = suggestion.suggestedSecs?.toString() ?: ""
                                 val rirText = suggestion.suggestedRir?.toString() ?: ""
-                                onSetUpdate(exercise.id, set.id, repsText, weightText.toDoubleOrNull(), secsText, rirText, set.bands, set.notes, set.videoReference)
+                                onSetUpdate(exercise.id, set.id, repsText, weightText.toDoubleOrNull(), secsText, rirText, set.bands, set.notes, set.videoReference, set.videoMarks)
                             }
                         },
                         onCopyPreviousSet = exercise.sets.getOrNull(index - 1)
@@ -667,7 +668,8 @@ fun EnhancedExerciseDetailPanel(
                                         prev.rir?.toString(),
                                         set.bands,
                                         set.notes,
-                                        set.videoReference
+                                        set.videoReference,
+                                        set.videoMarks
                                     )
                                 }
                             },
@@ -681,7 +683,8 @@ fun EnhancedExerciseDetailPanel(
                                 null,
                                 set.bands,
                                 set.notes,
-                                set.videoReference
+                                set.videoReference,
+                                set.videoMarks
                             )
                         },
                         onEditRestTime = { seconds -> onSetRestTime(exercise.id, set.id, seconds) },

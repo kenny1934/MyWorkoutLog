@@ -71,6 +71,7 @@ import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.kennychiu.myworkoutlog.util.RecentClip
+import com.kennychiu.myworkoutlog.util.VideoMarks
 import com.kennychiu.myworkoutlog.util.hasRecentClipsPermission
 import com.kennychiu.myworkoutlog.util.queryRecentCameraClips
 import com.kennychiu.myworkoutlog.util.recentClipsPermission
@@ -81,16 +82,21 @@ import com.kennychiu.myworkoutlog.util.rememberVideoThumbnail
  * Bottom sheet wrapping a Media3 [PlayerView] for inline video review. When [setNumber]
  * is non-null and [onAttach] is wired, an "Attach to Set N" action commits the chosen
  * URI string back to the caller along with optional `reps` (from the `+1` tap-along
- * counter) and `secs` (from mark-start/end for holds) when those helpers were used.
+ * counter), `secs` (from mark-start/end for holds), and a serialized `videoMarks`
+ * JSON blob ([VideoMarks]) when helpers were used.
  *
  * Pre-fills with the most-recent video in `DCIM/Camera` (within ~90s) when available;
  * otherwise the body is the gallery-picker fallback.
+ *
+ * When [initialMarks] is non-null its parsed contents seed the rep and hold state,
+ * so reopening an already-attached clip in either mode resumes the pips in place.
  *
  * Helper visibility:
  *  - `+1 rep` counter is shown only when [showWeightReps] is true.
  *  - `[Mark start] / [Mark end]` is shown only when [showSecs] is true.
  *  - Frame stepper `± 0.1s` is always shown when the sheet has attach wiring.
  *  - Playback speed (0.5x / 1x / 2x) is shown whenever a clip is loaded — both attach and review modes.
+ *  - Scrubber pip strip is shown in attach mode and in review mode when [initialMarks] yields any pips.
  *  - In review mode ([onAttach] is null) the counter, hold-mark, and frame-stepper helpers are hidden.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -99,7 +105,8 @@ fun VideoPlayerSheet(
     setNumber: Int?,
     initialUri: String?,
     onDismiss: () -> Unit,
-    onAttach: ((String, Int?, Int?) -> Unit)?,
+    onAttach: ((String, Int?, Int?, String?) -> Unit)?,
+    initialMarks: String? = null,
     showWeightReps: Boolean = false,
     showSecs: Boolean = false,
     modifier: Modifier = Modifier
@@ -112,9 +119,12 @@ fun VideoPlayerSheet(
     var clips by remember { mutableStateOf<List<RecentClip>>(emptyList()) }
     var selectedUri by remember { mutableStateOf(initialUri) }
 
-    val repTimestamps = remember { mutableStateListOf<Long>() }
-    var holdStartMs by remember { mutableStateOf<Long?>(null) }
-    var holdEndMs by remember { mutableStateOf<Long?>(null) }
+    val initialParsed = remember(initialMarks) { VideoMarks.parse(initialMarks) }
+    val repTimestamps = remember(initialMarks) {
+        mutableStateListOf<Long>().apply { initialParsed?.reps?.let { addAll(it) } }
+    }
+    var holdStartMs by remember(initialMarks) { mutableStateOf(initialParsed?.holdStart) }
+    var holdEndMs by remember(initialMarks) { mutableStateOf(initialParsed?.holdEnd) }
     var playbackSpeed by remember { mutableStateOf(1f) }
     var videoAspect by remember { mutableStateOf<Float?>(null) }
     var durationMs by remember { mutableStateOf(0L) }
@@ -218,15 +228,13 @@ fun VideoPlayerSheet(
                     .background(Color.Black)
             )
 
-            if (onAttach != null) {
-                ScrubberAnnotations(
-                    durationMs = durationMs,
-                    holdStartMs = holdStartMs,
-                    holdEndMs = holdEndMs,
-                    repTimestamps = repTimestamps,
-                    onSeek = { player.seekTo(it) }
-                )
-            }
+            ScrubberAnnotations(
+                durationMs = durationMs,
+                holdStartMs = holdStartMs,
+                holdEndMs = holdEndMs,
+                repTimestamps = repTimestamps,
+                onSeek = { player.seekTo(it) }
+            )
 
             if (onAttach != null && !selectedUri.isNullOrBlank()) {
                 FrameStepperRow(
@@ -329,7 +337,14 @@ fun VideoPlayerSheet(
                             val uri = selectedUri ?: return@Button
                             val attachedSecs = holdDurationSecs?.let { kotlin.math.max(1, kotlin.math.round(it).toInt()) }
                             val attachedReps = repTimestamps.size.takeIf { it > 0 }
-                            onAttach(uri, attachedReps, attachedSecs)
+                            val attachedMarks = VideoMarks.serialize(
+                                VideoMarks(
+                                    holdStart = holdStartMs,
+                                    holdEnd = holdEndMs,
+                                    reps = repTimestamps.toList()
+                                )
+                            )
+                            onAttach(uri, attachedReps, attachedSecs, attachedMarks)
                         },
                         enabled = selectedUri != null,
                         modifier = Modifier.weight(1f)
