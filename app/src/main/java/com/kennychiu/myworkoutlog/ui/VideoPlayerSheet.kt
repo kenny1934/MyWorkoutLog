@@ -36,6 +36,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -76,7 +79,8 @@ import com.kennychiu.myworkoutlog.util.rememberVideoThumbnail
  *  - `+1 rep` counter is shown only when [showWeightReps] is true.
  *  - `[Mark start] / [Mark end]` is shown only when [showSecs] is true.
  *  - Frame stepper `± 0.1s` is always shown when the sheet has attach wiring.
- *  - In review mode ([onAttach] is null) all helpers are hidden.
+ *  - Playback speed (0.5x / 1x / 2x) is shown whenever a clip is loaded — both attach and review modes.
+ *  - In review mode ([onAttach] is null) the counter, hold-mark, and frame-stepper helpers are hidden.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,6 +103,7 @@ fun VideoPlayerSheet(
     var repCount by remember { mutableStateOf<Int?>(null) }
     var holdStartMs by remember { mutableStateOf<Long?>(null) }
     var holdEndMs by remember { mutableStateOf<Long?>(null) }
+    var playbackSpeed by remember { mutableStateOf(1f) }
 
     val player = remember {
         ExoPlayer.Builder(context).build().apply { playWhenReady = false }
@@ -114,6 +119,9 @@ fun VideoPlayerSheet(
             player.setMediaItem(MediaItem.fromUri(Uri.parse(uri)))
             player.prepare()
         }
+    }
+    LaunchedEffect(playbackSpeed) {
+        player.setPlaybackSpeed(playbackSpeed)
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -177,6 +185,13 @@ fun VideoPlayerSheet(
                         val max = player.duration.takeIf { it > 0 } ?: Long.MAX_VALUE
                         player.seekTo((player.currentPosition + 100L).coerceAtMost(max))
                     }
+                )
+            }
+
+            if (!selectedUri.isNullOrBlank()) {
+                PlaybackSpeedRow(
+                    speed = playbackSpeed,
+                    onSpeedChange = { playbackSpeed = it }
                 )
             }
 
@@ -370,6 +385,25 @@ private fun FrameStepperRow(
         ) {
             Text("0.1s")
             Icon(Icons.Filled.ChevronRight, contentDescription = null, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+@Composable
+private fun PlaybackSpeedRow(
+    speed: Float,
+    onSpeedChange: (Float) -> Unit
+) {
+    val options = listOf(0.5f to "0.5x", 1f to "1x", 2f to "2x")
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        options.forEachIndexed { index, (value, label) ->
+            SegmentedButton(
+                selected = speed == value,
+                onClick = { onSpeedChange(value) },
+                shape = SegmentedButtonDefaults.itemShape(index, options.size)
+            ) {
+                Text(label)
+            }
         }
     }
 }
