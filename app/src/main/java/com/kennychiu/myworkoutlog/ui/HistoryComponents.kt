@@ -356,22 +356,7 @@ private data class WorkoutVideoClip(
 
 @Composable
 fun WorkoutVideoGallery(workout: LoggedWorkout) {
-    val clips = remember(workout) {
-        workout.loggedExercises.flatMap { exercise ->
-            exercise.sets.mapIndexedNotNull { index, set ->
-                val ref = set.videoReference?.takeIf { it.isNotBlank() }
-                ref?.let {
-                    WorkoutVideoClip(
-                        setId = set.id,
-                        setNumber = index + 1,
-                        exerciseName = exercise.exerciseName,
-                        videoRef = it,
-                        videoMarks = set.videoMarks
-                    )
-                }
-            }
-        }
-    }
+    val clips = rememberWorkoutVideoClips(workout)
     if (clips.isEmpty()) return
 
     var expanded by rememberSaveable(workout.id) { mutableStateOf(false) }
@@ -406,20 +391,64 @@ fun WorkoutVideoGallery(workout: LoggedWorkout) {
             }
 
             AnimatedVisibility(visible = expanded) {
-                LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(clips, key = { it.setId }) { clip ->
-                        WorkoutVideoGalleryThumbnail(clip)
-                    }
-                }
+                WorkoutVideoGalleryStrip(
+                    clips = clips,
+                    modifier = Modifier.padding(top = 12.dp)
+                )
             }
         }
     }
 }
+
+/**
+ * Bare horizontal LazyRow of clip thumbnails for a workout, no collapse affordance
+ * or card chrome. Used by [WorkoutVideoGallery] inside its expandable card (phone)
+ * and by the tablet master-detail pinned strip. Renders nothing when the workout
+ * has no attached clips so the caller can drop it in unconditionally.
+ */
+@Composable
+fun WorkoutVideoGalleryStrip(
+    workout: LoggedWorkout,
+    modifier: Modifier = Modifier
+) {
+    val clips = rememberWorkoutVideoClips(workout)
+    if (clips.isEmpty()) return
+    WorkoutVideoGalleryStrip(clips = clips, modifier = modifier)
+}
+
+@Composable
+private fun WorkoutVideoGalleryStrip(
+    clips: List<WorkoutVideoClip>,
+    modifier: Modifier = Modifier
+) {
+    LazyRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(clips, key = { it.setId }) { clip ->
+            WorkoutVideoGalleryThumbnail(clip)
+        }
+    }
+}
+
+@Composable
+private fun rememberWorkoutVideoClips(workout: LoggedWorkout): List<WorkoutVideoClip> =
+    remember(workout) {
+        workout.loggedExercises.flatMap { exercise ->
+            exercise.sets.mapIndexedNotNull { index, set ->
+                val ref = set.videoReference?.takeIf { it.isNotBlank() }
+                ref?.let {
+                    WorkoutVideoClip(
+                        setId = set.id,
+                        setNumber = index + 1,
+                        exerciseName = exercise.exerciseName,
+                        videoRef = it,
+                        videoMarks = set.videoMarks
+                    )
+                }
+            }
+        }
+    }
 
 @Composable
 private fun WorkoutVideoGalleryThumbnail(clip: WorkoutVideoClip) {

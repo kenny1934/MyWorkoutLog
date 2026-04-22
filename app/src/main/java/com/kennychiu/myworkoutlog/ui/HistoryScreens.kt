@@ -254,8 +254,42 @@ fun HistoryDetailPanel(
                 CircularProgressIndicator()
             }
         } else {
+          Column(modifier = Modifier.fillMaxSize()) {
+            val hasAnyClip = currentWorkout.loggedExercises.any { ex ->
+                ex.sets.any { !it.videoReference.isNullOrBlank() }
+            }
+            if (hasAnyClip) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Videocam,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Clips",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                WorkoutVideoGalleryStrip(
+                    workout = currentWorkout,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(top = 12.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+            }
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -462,6 +496,7 @@ fun HistoryDetailPanel(
                     }
                 }
             }
+          }
 
             // Delete confirmation dialog
             DeleteWorkoutConfirmationDialog(
