@@ -906,10 +906,18 @@ fun EnhancedSetRow(
             setNumber = setNumber,
             initialUri = videoReference,
             onDismiss = { showVideoSheet = false },
-            onAttach = { uri ->
+            onAttach = { uri, attachedReps, attachedSecs ->
                 onVideoSelected(uri)
+                if (attachedReps != null && repsValue.isEmpty()) {
+                    onRepsChange(attachedReps.toString())
+                }
+                if (attachedSecs != null && secsValue.isEmpty()) {
+                    onSecsChange(attachedSecs.toString())
+                }
                 showVideoSheet = false
-            }
+            },
+            showWeightReps = showWeightReps,
+            showSecs = showSecs
         )
     }
 }

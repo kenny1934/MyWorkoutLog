@@ -23,15 +23,21 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -60,10 +66,17 @@ import com.kennychiu.myworkoutlog.util.rememberVideoThumbnail
 /**
  * Bottom sheet wrapping a Media3 [PlayerView] for inline video review. When [setNumber]
  * is non-null and [onAttach] is wired, an "Attach to Set N" action commits the chosen
- * URI string back to the caller.
+ * URI string back to the caller along with optional `reps` (from the `+1` tap-along
+ * counter) and `secs` (from mark-start/end for holds) when those helpers were used.
  *
  * Pre-fills with the most-recent video in `DCIM/Camera` (within ~90s) when available;
  * otherwise the body is the gallery-picker fallback.
+ *
+ * Helper visibility:
+ *  - `+1 rep` counter is shown only when [showWeightReps] is true.
+ *  - `[Mark start] / [Mark end]` is shown only when [showSecs] is true.
+ *  - Frame stepper `± 0.1s` is always shown when the sheet has attach wiring.
+ *  - In review mode ([onAttach] is null) all helpers are hidden.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,7 +84,9 @@ fun VideoPlayerSheet(
     setNumber: Int?,
     initialUri: String?,
     onDismiss: () -> Unit,
-    onAttach: ((String) -> Unit)?,
+    onAttach: ((String, Int?, Int?) -> Unit)?,
+    showWeightReps: Boolean = false,
+    showSecs: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -80,6 +95,26 @@ fun VideoPlayerSheet(
     var permissionGranted by remember { mutableStateOf(hasRecentClipsPermission(context)) }
     var clips by remember { mutableStateOf<List<RecentClip>>(emptyList()) }
     var selectedUri by remember { mutableStateOf(initialUri) }
+
+    var repCount by remember { mutableStateOf<Int?>(null) }
+    var holdStartMs by remember { mutableStateOf<Long?>(null) }
+    var holdEndMs by remember { mutableStateOf<Long?>(null) }
+
+    val player = remember {
+        ExoPlayer.Builder(context).build().apply { playWhenReady = false }
+    }
+    DisposableEffect(Unit) {
+        onDispose { player.release() }
+    }
+    LaunchedEffect(selectedUri) {
+        val uri = selectedUri
+        if (uri.isNullOrBlank()) {
+            player.clearMediaItems()
+        } else {
+            player.setMediaItem(MediaItem.fromUri(Uri.parse(uri)))
+            player.prepare()
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -102,6 +137,12 @@ fun VideoPlayerSheet(
         selectedUri = picked
     }
 
+    val holdDurationSecs: Float? = run {
+        val start = holdStartMs
+        val end = holdEndMs
+        if (start != null && end != null && end > start) (end - start) / 1000f else null
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -120,13 +161,43 @@ fun VideoPlayerSheet(
             )
 
             VideoPlayerSurface(
-                uri = selectedUri,
+                player = player,
+                hasMedia = !selectedUri.isNullOrBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(16f / 9f)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color.Black)
             )
+
+            if (onAttach != null && !selectedUri.isNullOrBlank()) {
+                FrameStepperRow(
+                    onStepBack = { player.seekTo((player.currentPosition - 100L).coerceAtLeast(0L)) },
+                    onStepForward = {
+                        val max = player.duration.takeIf { it > 0 } ?: Long.MAX_VALUE
+                        player.seekTo((player.currentPosition + 100L).coerceAtMost(max))
+                    }
+                )
+            }
+
+            if (onAttach != null && showWeightReps) {
+                RepCounterRow(
+                    repCount = repCount,
+                    onIncrement = { repCount = (repCount ?: 0) + 1 },
+                    onReset = { repCount = null }
+                )
+            }
+
+            if (onAttach != null && showSecs) {
+                HoldMarkRow(
+                    durationSecs = holdDurationSecs,
+                    hasStart = holdStartMs != null,
+                    hasEnd = holdEndMs != null,
+                    onMarkStart = { holdStartMs = player.currentPosition; holdEndMs = null },
+                    onMarkEnd = { if (holdStartMs != null) holdEndMs = player.currentPosition },
+                    onReset = { holdStartMs = null; holdEndMs = null }
+                )
+            }
 
             if (clips.size > 1) {
                 Text(
@@ -178,7 +249,8 @@ fun VideoPlayerSheet(
                     Button(
                         onClick = {
                             val uri = selectedUri ?: return@Button
-                            onAttach(uri)
+                            val attachedSecs = holdDurationSecs?.let { kotlin.math.max(1, kotlin.math.round(it).toInt()) }
+                            onAttach(uri, repCount, attachedSecs)
                         },
                         enabled = selectedUri != null,
                         modifier = Modifier.weight(1f)
@@ -191,33 +263,129 @@ fun VideoPlayerSheet(
     }
 }
 
+@Composable
+private fun RepCounterRow(
+    repCount: Int?,
+    onIncrement: () -> Unit,
+    onReset: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        FilledTonalButton(
+            onClick = onIncrement,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.size(8.dp))
+            Text("+1 rep")
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (repCount != null) "Counted: $repCount reps" else "Tap along with the video to count reps",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (repCount != null) {
+                TextButton(onClick = onReset) { Text("Reset") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HoldMarkRow(
+    durationSecs: Float?,
+    hasStart: Boolean,
+    hasEnd: Boolean,
+    onMarkStart: () -> Unit,
+    onMarkEnd: () -> Unit,
+    onReset: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilledTonalButton(
+                onClick = onMarkStart,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(Icons.Filled.Timer, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.size(8.dp))
+                Text(if (hasStart) "Start ✓" else "Mark start")
+            }
+            FilledTonalButton(
+                onClick = onMarkEnd,
+                enabled = hasStart,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(Icons.Filled.Timer, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.size(8.dp))
+                Text(if (hasEnd) "End ✓" else "Mark end")
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = when {
+                    durationSecs != null -> "Duration: %.1fs".format(durationSecs)
+                    hasStart -> "Scrub to the end of the hold, then tap Mark end"
+                    else -> "Scrub to the start of the hold, then tap Mark start"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (hasStart || hasEnd) {
+                TextButton(onClick = onReset) { Text("Reset") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FrameStepperRow(
+    onStepBack: () -> Unit,
+    onStepForward: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        OutlinedButton(
+            onClick = onStepBack,
+            modifier = Modifier.weight(1f)
+        ) {
+            Icon(Icons.Filled.ChevronLeft, contentDescription = null, modifier = Modifier.size(18.dp))
+            Text("0.1s")
+        }
+        OutlinedButton(
+            onClick = onStepForward,
+            modifier = Modifier.weight(1f)
+        ) {
+            Text("0.1s")
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
 /**
- * Persistent ExoPlayer wrapper. Releases the player on disposal; swaps the media item
- * in place when [uri] changes so the surface doesn't re-attach.
+ * Media3 [PlayerView] host. The [ExoPlayer] lifecycle is owned by the caller (so the
+ * helper buttons above can read `currentPosition` and drive `seekTo`). When
+ * [hasMedia] is false, a placeholder icon fills the surface instead.
  */
 @Composable
-private fun VideoPlayerSurface(uri: String?, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    val player = remember {
-        ExoPlayer.Builder(context).build().apply {
-            playWhenReady = false
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose { player.release() }
-    }
-
-    LaunchedEffect(uri) {
-        if (uri.isNullOrBlank()) {
-            player.clearMediaItems()
-        } else {
-            player.setMediaItem(MediaItem.fromUri(Uri.parse(uri)))
-            player.prepare()
-        }
-    }
-
-    if (uri.isNullOrBlank()) {
+private fun VideoPlayerSurface(
+    player: ExoPlayer,
+    hasMedia: Boolean,
+    modifier: Modifier = Modifier
+) {
+    if (!hasMedia) {
         Box(modifier = modifier, contentAlignment = Alignment.Center) {
             Icon(
                 imageVector = Icons.Filled.Videocam,
