@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -30,6 +31,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 private data class AllClipEntry(
     val setId: String,
@@ -110,6 +113,9 @@ fun AllClipsScreen(
                     )
                 }
             } else {
+                val groupedByDate = remember(visibleClips) {
+                    visibleClips.groupBy { it.date }
+                }
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(columnCount),
                     modifier = Modifier
@@ -119,8 +125,16 @@ fun AllClipsScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(visibleClips, key = { it.setId }) { clip ->
-                        AllClipsCell(clip)
+                    groupedByDate.forEach { (date, clipsForDate) ->
+                        item(
+                            key = "hdr-$date",
+                            span = { GridItemSpan(maxLineSpan) }
+                        ) {
+                            DateGroupHeader(isoDate = date, clipCount = clipsForDate.size)
+                        }
+                        items(clipsForDate, key = { it.setId }) { clip ->
+                            AllClipsCell(clip)
+                        }
                     }
                 }
             }
@@ -272,6 +286,39 @@ private fun AllClipsCell(clip: AllClipEntry) {
             onDismiss = { showSheet = false },
             onAttach = null
         )
+    }
+}
+
+@Composable
+private fun DateGroupHeader(isoDate: String, clipCount: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = formatDateHeader(isoDate),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = if (clipCount == 1) "1 clip" else "$clipCount clips",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+private val isoDateParser = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+private val dateHeaderFormatter = SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault())
+
+private fun formatDateHeader(isoDate: String): String {
+    return try {
+        val parsed = isoDateParser.parse(isoDate) ?: return isoDate
+        dateHeaderFormatter.format(parsed)
+    } catch (_: Exception) {
+        isoDate
     }
 }
 
