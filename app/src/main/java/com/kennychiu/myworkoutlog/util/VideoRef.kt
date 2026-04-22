@@ -17,11 +17,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.util.UUID
 
 // Shared plumbing for the three video-reference entry points (exercise-level demo,
 // set-level form capture, record-now flow). Treats a videoLink/videoReference string
@@ -86,46 +83,6 @@ fun rememberVideoPickLauncher(onPicked: (String) -> Unit): () -> Unit {
         launcher.launch(
             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
         )
-    }
-}
-
-/**
- * Launcher that records a video via the system camera into app-specific external
- * storage and returns a FileProvider content URI on success.
- */
-@Composable
-fun rememberVideoCaptureLauncher(onCaptured: (String) -> Unit): () -> Unit {
-    val context = LocalContext.current
-    val pendingUri = remember { mutableStateOf<Uri?>(null) }
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CaptureVideo()
-    ) { success ->
-        val uri = pendingUri.value
-        pendingUri.value = null
-        if (success && uri != null) onCaptured(uri.toString())
-    }
-    return launch@{
-        val uri = createCaptureOutputUri(context) ?: return@launch
-        pendingUri.value = uri
-        try {
-            launcher.launch(uri)
-        } catch (_: ActivityNotFoundException) {
-            pendingUri.value = null
-        }
-    }
-}
-
-private fun createCaptureOutputUri(context: Context): Uri? {
-    val dir = File(context.getExternalFilesDir(null), "videos").apply { mkdirs() }
-    val file = File(dir, "form_${System.currentTimeMillis()}_${UUID.randomUUID()}.mp4")
-    return try {
-        FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            file
-        )
-    } catch (_: IllegalArgumentException) {
-        null
     }
 }
 

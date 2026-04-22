@@ -35,7 +35,6 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -1211,10 +1210,10 @@ fun ExerciseDemoChip(
 }
 
 /**
- * Set-level form-video selector: empty state shows [Record] + [Pick] side by side;
+ * Set-level form-video selector: empty state shows a full-width [Pick] button;
  * filled state shows a thumbnail preview that opens the system video viewer on tap,
- * with a trailing delete icon. Uses the shared picker/capture/viewer utilities so
- * the exercise-level demo (Slice A) shares the same URI handling.
+ * with a trailing delete icon. Uses the shared picker/viewer utilities so the
+ * exercise-level demo (Slice A) shares the same URI handling.
  */
 @Composable
 fun VideoReferenceSelector(
@@ -1227,10 +1226,6 @@ fun VideoReferenceSelector(
     val haptics = LocalHapticFeedback.current
 
     val pickVideo = rememberVideoPickLauncher { uri ->
-        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-        onVideoSelected(uri)
-    }
-    val captureVideo = rememberVideoCaptureLauncher { uri ->
         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
         onVideoSelected(uri)
     }
@@ -1250,61 +1245,30 @@ fun VideoReferenceSelector(
             modifier = modifier.fillMaxWidth()
         )
     } else {
-        Row(
+        OutlinedButton(
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                pickVideo()
+            },
             modifier = modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.primary
+            ),
+            border = BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+            )
         ) {
-            OutlinedButton(
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    captureVideo()
-                },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary
-                ),
-                border = BorderStroke(
-                    1.dp,
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Videocam,
-                    contentDescription = "Record form video",
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "Record",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-            OutlinedButton(
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    pickVideo()
-                },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary
-                ),
-                border = BorderStroke(
-                    1.dp,
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.VideoLibrary,
-                    contentDescription = "Pick form video from gallery",
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "Pick",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+            Icon(
+                imageVector = Icons.Filled.VideoLibrary,
+                contentDescription = "Pick form video from gallery",
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "Pick",
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }
