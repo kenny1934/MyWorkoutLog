@@ -321,6 +321,7 @@ fun VideoPlayerSheet(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        PlayerRoleHeader(label = "Current", isCurrent = true)
                         PrimaryPlayerBox(
                             player = player,
                             uri = selectedUri,
@@ -346,6 +347,9 @@ fun VideoPlayerSheet(
                     )
                 }
             } else {
+                if (dualMode) {
+                    PlayerRoleHeader(label = "Current", isCurrent = true)
+                }
                 PrimaryPlayerBox(
                     player = player,
                     uri = selectedUri,
@@ -783,10 +787,46 @@ private fun PrimaryPlayerBox(
 }
 
 /**
+ * Small tonal pill above each player in dual-player mode so the user can tell the
+ * current clip apart from the historic one at a glance. Primary (current) uses
+ * `primaryContainer`; comparison (previous) uses `secondaryContainer`. Hidden entirely
+ * in single-player mode — callers only render this in dual layouts.
+ */
+@Composable
+private fun PlayerRoleHeader(
+    label: String,
+    isCurrent: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val bgColor = if (isCurrent) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.secondaryContainer
+    }
+    val fgColor = if (isCurrent) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSecondaryContainer
+    }
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = bgColor,
+        modifier = modifier
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = fgColor,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+        )
+    }
+}
+
+/**
  * Comparison player section — owns its own [ExoPlayer] for the previous-workout clip,
- * renders a caption beneath the player, and shows the previous clip's persisted pips
- * on an independent scrubber. Playback speed is driven from the sheet-level segmented
- * button so both players stay in sync on 0.5×/1×/2×.
+ * renders a "Previous · date · Set N" header pill above the player, and shows the
+ * previous clip's persisted pips on an independent scrubber. Playback speed is driven
+ * from the sheet-level segmented button so both players stay in sync on 0.5×/1×/2×.
  */
 @Composable
 private fun ComparisonPlayerSection(
@@ -834,7 +874,8 @@ private fun ComparisonPlayerSection(
     }
 
     val parsed = remember(ref.videoMarks) { VideoMarks.parse(ref.videoMarks) }
-    val caption = buildString {
+    val headerLabel = buildString {
+        append("Previous · ")
         append(formatComparisonDate(ref.workoutDate))
         append(" · Set ")
         append(ref.setNumber)
@@ -845,6 +886,7 @@ private fun ComparisonPlayerSection(
     }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        PlayerRoleHeader(label = headerLabel, isCurrent = false)
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
@@ -868,11 +910,6 @@ private fun ComparisonPlayerSection(
                     .background(Color.Black)
             )
         }
-        Text(
-            text = caption,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
         ScrubberAnnotations(
             durationMs = durationMs,
             holdStartMs = parsed?.holdStart,
