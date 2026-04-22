@@ -160,7 +160,16 @@ fun AppNavHost(
                 },
                 onNavigateToEdit = { workoutId ->
                     navController.navigate(Screen.EditWorkout.createRoute(workoutId))
+                },
+                onOpenAllClips = {
+                    navController.navigate(Screen.AllClips.route)
                 }
+            )
+        }
+        composable(Screen.AllClips.route) {
+            AllClipsScreen(
+                viewModel = historyViewModel,
+                onNavigateUp = { navController.navigateUp() }
             )
         }
         composable(Screen.HistoryDetail.route) { backStackEntry ->

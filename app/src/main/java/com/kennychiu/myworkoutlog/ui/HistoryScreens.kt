@@ -23,7 +23,8 @@ import java.util.concurrent.TimeUnit
 fun HistoryScreen(
     viewModel: HistoryViewModel,
     onNavigateToWorkout: (String) -> Unit,
-    onNavigateToEdit: (String) -> Unit = onNavigateToWorkout // Default to existing behavior for backward compatibility
+    onNavigateToEdit: (String) -> Unit = onNavigateToWorkout, // Default to existing behavior for backward compatibility
+    onOpenAllClips: () -> Unit = {}
 ) {
     var viewMode by remember { mutableStateOf(HistoryViewMode.MESOCYCLES) }
     var selectedWorkoutId by remember { mutableStateOf<String?>(null) }
@@ -39,7 +40,8 @@ fun HistoryScreen(
             selectedWorkoutId = selectedWorkoutId,
             onWorkoutSelected = { selectedWorkoutId = it },
             onNavigateToWorkout = onNavigateToWorkout,
-            onNavigateToEdit = onNavigateToEdit
+            onNavigateToEdit = onNavigateToEdit,
+            onOpenAllClips = onOpenAllClips
         )
     } else {
         // Small screen: Original single-column layout
@@ -47,7 +49,8 @@ fun HistoryScreen(
             viewModel = viewModel,
             viewMode = viewMode,
             onViewModeChanged = { viewMode = it },
-            onNavigateToWorkout = onNavigateToWorkout
+            onNavigateToWorkout = onNavigateToWorkout,
+            onOpenAllClips = onOpenAllClips
         )
     }
 }
@@ -57,12 +60,14 @@ private fun HistorySingleColumnView(
     viewModel: HistoryViewModel,
     viewMode: HistoryViewMode,
     onViewModeChanged: (HistoryViewMode) -> Unit,
-    onNavigateToWorkout: (String) -> Unit
+    onNavigateToWorkout: (String) -> Unit,
+    onOpenAllClips: () -> Unit
 ) {
     Column(modifier = Modifier.padding(16.dp)) {
         HistoryHeader(
             viewMode = viewMode,
-            onViewModeChanged = onViewModeChanged
+            onViewModeChanged = onViewModeChanged,
+            onOpenAllClips = onOpenAllClips
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -78,7 +83,8 @@ private fun HistorySingleColumnView(
 @Composable
 private fun HistoryHeader(
     viewMode: HistoryViewMode,
-    onViewModeChanged: (HistoryViewMode) -> Unit
+    onViewModeChanged: (HistoryViewMode) -> Unit,
+    onOpenAllClips: () -> Unit
 ) {
     val layoutInfo = rememberAdaptiveLayoutInfo()
 
@@ -87,7 +93,18 @@ private fun HistoryHeader(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Workout History", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Workout History",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                AllClipsIconButton(onClick = onOpenAllClips)
+            }
             Spacer(modifier = Modifier.height(12.dp))
 
             // View mode toggle buttons - stacked vertically for better visibility
@@ -118,6 +135,9 @@ private fun HistoryHeader(
             Text("Workout History", fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.weight(1f))
 
+            AllClipsIconButton(onClick = onOpenAllClips)
+            Spacer(modifier = Modifier.width(4.dp))
+
             // View mode toggle buttons
             Row {
                 FilterChip(
@@ -137,6 +157,17 @@ private fun HistoryHeader(
 }
 
 @Composable
+private fun AllClipsIconButton(onClick: () -> Unit) {
+    IconButton(onClick = onClick) {
+        Icon(
+            imageVector = Icons.Filled.Videocam,
+            contentDescription = "All Clips",
+            tint = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+@Composable
 private fun HistoryMasterDetailView(
     layoutInfo: AdaptiveLayoutInfo,
     viewModel: HistoryViewModel,
@@ -145,7 +176,8 @@ private fun HistoryMasterDetailView(
     selectedWorkoutId: String?,
     onWorkoutSelected: (String?) -> Unit,
     onNavigateToWorkout: (String) -> Unit,
-    onNavigateToEdit: (String) -> Unit
+    onNavigateToEdit: (String) -> Unit,
+    onOpenAllClips: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -166,7 +198,8 @@ private fun HistoryMasterDetailView(
             ) {
                 HistoryHeader(
                     viewMode = viewMode,
-                    onViewModeChanged = onViewModeChanged
+                    onViewModeChanged = onViewModeChanged,
+                    onOpenAllClips = onOpenAllClips
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
