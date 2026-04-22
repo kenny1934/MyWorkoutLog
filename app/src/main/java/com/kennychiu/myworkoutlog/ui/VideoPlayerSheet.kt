@@ -77,15 +77,20 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
+import androidx.compose.ui.unit.Dp
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import com.kennychiu.myworkoutlog.util.PreviousSetReference
 import com.kennychiu.myworkoutlog.util.RecentClip
 import com.kennychiu.myworkoutlog.util.VideoMarks
 import com.kennychiu.myworkoutlog.util.hasRecentClipsPermission
 import com.kennychiu.myworkoutlog.util.queryRecentCameraClips
 import com.kennychiu.myworkoutlog.util.recentClipsPermission
+import com.kennychiu.myworkoutlog.util.rememberPreviousSetWithVideo
 import com.kennychiu.myworkoutlog.util.rememberVideoPickLauncher
 import com.kennychiu.myworkoutlog.util.rememberVideoThumbnail
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 /**
  * Compact "▶ Review" chip for a set row. Renders nothing when [videoRef] is null or
@@ -159,10 +164,11 @@ fun SetVideoReviewChip(
  *  - Scrubber pip strip is shown in attach mode and in review mode when [initialMarks] yields any pips.
  *  - In review mode ([onAttach] is null) the counter, hold-mark, and frame-stepper helpers are hidden.
  *
- * [exerciseId] and [excludingWorkoutId] are plumbing for A4 comparison mode (review
- * only). Slice 121 receives them without using them — the dual-player UI lands in
- * slice 122. Both must be non-null to enable comparison; attach-mode callers should
- * leave them null.
+ * When both [exerciseId] and [excludingWorkoutId] are non-null AND the sheet is in
+ * review mode ([onAttach] is null), the sheet renders a second player below (phone /
+ * Z-Fold cover) or beside (tablet) the primary player, wired to the most recent prior
+ * clip of the same exercise. If no prior clip exists, the sheet silently falls back
+ * to single-player. Attach mode is always single-player regardless of these params.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -174,8 +180,8 @@ fun VideoPlayerSheet(
     initialMarks: String? = null,
     showWeightReps: Boolean = false,
     showSecs: Boolean = false,
-    @Suppress("UNUSED_PARAMETER") exerciseId: String? = null,
-    @Suppress("UNUSED_PARAMETER") excludingWorkoutId: String? = null,
+    exerciseId: String? = null,
+    excludingWorkoutId: String? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -286,46 +292,84 @@ fun VideoPlayerSheet(
             )
 
             val configuration = androidx.compose.ui.platform.LocalConfiguration.current
-            val maxPlayerHeight = (configuration.screenHeightDp * 0.5f).dp.coerceAtMost(480.dp)
-            BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = maxPlayerHeight)
-            ) {
-                val ratio = videoAspect ?: (16f / 9f)
-                val availW = maxWidth
-                val availH = maxHeight
-                val (playerW, playerH) = if (availW / ratio <= availH) {
-                    availW to availW / ratio
-                } else {
-                    availH * ratio to availH
-                }
-                VideoPlayerSurface(
-                    player = player,
-                    hasMedia = !selectedUri.isNullOrBlank(),
-                    modifier = Modifier
-                        .size(playerW, playerH)
-                        .align(Alignment.Center)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Black)
-                )
+            val layoutInfo = rememberAdaptiveLayoutInfo()
+            val previousSetRef = rememberPreviousSetWithVideo(
+                exerciseId = exerciseId?.takeIf { onAttach == null },
+                excludingWorkoutId = excludingWorkoutId?.takeIf { onAttach == null }
+            )
+            val dualMode = previousSetRef != null && onAttach == null
+            val primaryMaxHeight: Dp = if (dualMode && !layoutInfo.useMasterDetail) {
+                (configuration.screenHeightDp * 0.375f).dp.coerceAtMost(360.dp)
+            } else {
+                (configuration.screenHeightDp * 0.5f).dp.coerceAtMost(480.dp)
             }
 
-            ScrubberAnnotations(
-                durationMs = durationMs,
-                holdStartMs = holdStartMs,
-                holdEndMs = holdEndMs,
-                repTimestamps = repTimestamps,
-                onSeek = { player.seekTo(it) },
-                onDeleteRep = if (onAttach != null) { { index -> repTimestamps.removeAt(index) } } else null,
-                onDeleteHoldStart = if (onAttach != null) {
-                    {
-                        holdStartMs = null
-                        holdEndMs = null
+            val onDeleteRep: ((Int) -> Unit)? =
+                if (onAttach != null) { { index -> repTimestamps.removeAt(index) } } else null
+            val onDeleteHoldStart: (() -> Unit)? = if (onAttach != null) {
+                { holdStartMs = null; holdEndMs = null }
+            } else null
+            val onDeleteHoldEnd: (() -> Unit)? =
+                if (onAttach != null) { { holdEndMs = null } } else null
+
+            if (dualMode && layoutInfo.useMasterDetail) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        PrimaryPlayerBox(
+                            player = player,
+                            uri = selectedUri,
+                            videoAspect = videoAspect,
+                            maxPlayerHeight = primaryMaxHeight
+                        )
+                        ScrubberAnnotations(
+                            durationMs = durationMs,
+                            holdStartMs = holdStartMs,
+                            holdEndMs = holdEndMs,
+                            repTimestamps = repTimestamps,
+                            onSeek = { player.seekTo(it) },
+                            onDeleteRep = onDeleteRep,
+                            onDeleteHoldStart = onDeleteHoldStart,
+                            onDeleteHoldEnd = onDeleteHoldEnd
+                        )
                     }
-                } else null,
-                onDeleteHoldEnd = if (onAttach != null) { { holdEndMs = null } } else null
-            )
+                    ComparisonPlayerSection(
+                        ref = previousSetRef!!,
+                        maxPlayerHeight = primaryMaxHeight,
+                        playbackSpeed = playbackSpeed,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            } else {
+                PrimaryPlayerBox(
+                    player = player,
+                    uri = selectedUri,
+                    videoAspect = videoAspect,
+                    maxPlayerHeight = primaryMaxHeight
+                )
+                ScrubberAnnotations(
+                    durationMs = durationMs,
+                    holdStartMs = holdStartMs,
+                    holdEndMs = holdEndMs,
+                    repTimestamps = repTimestamps,
+                    onSeek = { player.seekTo(it) },
+                    onDeleteRep = onDeleteRep,
+                    onDeleteHoldStart = onDeleteHoldStart,
+                    onDeleteHoldEnd = onDeleteHoldEnd
+                )
+                if (dualMode) {
+                    ComparisonPlayerSection(
+                        ref = previousSetRef!!,
+                        maxPlayerHeight = primaryMaxHeight,
+                        playbackSpeed = playbackSpeed
+                    )
+                }
+            }
 
             if (onAttach != null && !selectedUri.isNullOrBlank()) {
                 FrameStepperRow(
@@ -699,6 +743,154 @@ private data class ScrubberMark(
     val label: String,
     val onDelete: (() -> Unit)?
 )
+
+/**
+ * Shared primary player surface used by both single-player and dual-player layouts.
+ * Reuses the existing fit-aspect math — black bars along whichever axis the video
+ * doesn't fully consume.
+ */
+@Composable
+private fun PrimaryPlayerBox(
+    player: ExoPlayer,
+    uri: String?,
+    videoAspect: Float?,
+    maxPlayerHeight: Dp,
+    modifier: Modifier = Modifier
+) {
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(max = maxPlayerHeight)
+    ) {
+        val ratio = videoAspect ?: (16f / 9f)
+        val availW = maxWidth
+        val availH = maxHeight
+        val (playerW, playerH) = if (availW / ratio <= availH) {
+            availW to availW / ratio
+        } else {
+            availH * ratio to availH
+        }
+        VideoPlayerSurface(
+            player = player,
+            hasMedia = !uri.isNullOrBlank(),
+            modifier = Modifier
+                .size(playerW, playerH)
+                .align(Alignment.Center)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.Black)
+        )
+    }
+}
+
+/**
+ * Comparison player section — owns its own [ExoPlayer] for the previous-workout clip,
+ * renders a caption beneath the player, and shows the previous clip's persisted pips
+ * on an independent scrubber. Playback speed is driven from the sheet-level segmented
+ * button so both players stay in sync on 0.5×/1×/2×.
+ */
+@Composable
+private fun ComparisonPlayerSection(
+    ref: PreviousSetReference,
+    maxPlayerHeight: Dp,
+    playbackSpeed: Float,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    var videoAspect by remember(ref.videoRef) { mutableStateOf<Float?>(null) }
+    var durationMs by remember(ref.videoRef) { mutableStateOf(0L) }
+
+    val player = remember { ExoPlayer.Builder(context).build().apply { playWhenReady = false } }
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                val w = videoSize.width
+                val h = videoSize.height
+                if (w > 0 && h > 0) {
+                    val pixelRatio = videoSize.pixelWidthHeightRatio.takeIf { it > 0f } ?: 1f
+                    videoAspect = (w * pixelRatio) / h
+                }
+            }
+
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_READY) {
+                    durationMs = player.duration.coerceAtLeast(0L)
+                }
+            }
+        }
+        player.addListener(listener)
+        onDispose {
+            player.removeListener(listener)
+            player.release()
+        }
+    }
+    LaunchedEffect(ref.videoRef) {
+        videoAspect = null
+        durationMs = 0L
+        player.setMediaItem(MediaItem.fromUri(Uri.parse(ref.videoRef)))
+        player.prepare()
+    }
+    LaunchedEffect(playbackSpeed) {
+        player.setPlaybackSpeed(playbackSpeed)
+    }
+
+    val parsed = remember(ref.videoMarks) { VideoMarks.parse(ref.videoMarks) }
+    val caption = buildString {
+        append(formatComparisonDate(ref.workoutDate))
+        append(" · Set ")
+        append(ref.setNumber)
+        if (!ref.userCycleName.isNullOrBlank()) {
+            append(" · ")
+            append(ref.userCycleName)
+        }
+    }
+
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = maxPlayerHeight)
+        ) {
+            val ratio = videoAspect ?: (16f / 9f)
+            val availW = maxWidth
+            val availH = maxHeight
+            val (playerW, playerH) = if (availW / ratio <= availH) {
+                availW to availW / ratio
+            } else {
+                availH * ratio to availH
+            }
+            VideoPlayerSurface(
+                player = player,
+                hasMedia = true,
+                modifier = Modifier
+                    .size(playerW, playerH)
+                    .align(Alignment.Center)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.Black)
+            )
+        }
+        Text(
+            text = caption,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        ScrubberAnnotations(
+            durationMs = durationMs,
+            holdStartMs = parsed?.holdStart,
+            holdEndMs = parsed?.holdEnd,
+            repTimestamps = parsed?.reps.orEmpty(),
+            onSeek = { player.seekTo(it) }
+        )
+    }
+}
+
+private fun formatComparisonDate(isoDate: String): String {
+    return try {
+        val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(isoDate) ?: return isoDate
+        SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(parsed)
+    } catch (_: Exception) {
+        isoDate
+    }
+}
 
 /**
  * Media3 [PlayerView] host. The [ExoPlayer] lifecycle is owned by the caller (so the
