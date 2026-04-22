@@ -13,12 +13,14 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -48,6 +50,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -56,6 +59,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
@@ -105,11 +110,12 @@ fun VideoPlayerSheet(
     var clips by remember { mutableStateOf<List<RecentClip>>(emptyList()) }
     var selectedUri by remember { mutableStateOf(initialUri) }
 
-    var repCount by remember { mutableStateOf<Int?>(null) }
+    val repTimestamps = remember { mutableStateListOf<Long>() }
     var holdStartMs by remember { mutableStateOf<Long?>(null) }
     var holdEndMs by remember { mutableStateOf<Long?>(null) }
     var playbackSpeed by remember { mutableStateOf(1f) }
     var videoAspect by remember { mutableStateOf<Float?>(null) }
+    var durationMs by remember { mutableStateOf(0L) }
 
     val player = remember {
         ExoPlayer.Builder(context).build().apply { playWhenReady = false }
@@ -124,6 +130,12 @@ fun VideoPlayerSheet(
                     videoAspect = (w * pixelRatio) / h
                 }
             }
+
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_READY) {
+                    durationMs = player.duration.coerceAtLeast(0L)
+                }
+            }
         }
         player.addListener(listener)
         onDispose {
@@ -134,6 +146,7 @@ fun VideoPlayerSheet(
     LaunchedEffect(selectedUri) {
         val uri = selectedUri
         videoAspect = null
+        durationMs = 0L
         if (uri.isNullOrBlank()) {
             player.clearMediaItems()
         } else {
@@ -202,6 +215,16 @@ fun VideoPlayerSheet(
                     .background(Color.Black)
             )
 
+            if (onAttach != null) {
+                ScrubberAnnotations(
+                    durationMs = durationMs,
+                    holdStartMs = holdStartMs,
+                    holdEndMs = holdEndMs,
+                    repTimestamps = repTimestamps,
+                    onSeek = { player.seekTo(it) }
+                )
+            }
+
             if (onAttach != null && !selectedUri.isNullOrBlank()) {
                 FrameStepperRow(
                     onStepBack = { player.seekTo((player.currentPosition - 100L).coerceAtLeast(0L)) },
@@ -221,9 +244,9 @@ fun VideoPlayerSheet(
 
             if (onAttach != null && showWeightReps) {
                 RepCounterRow(
-                    repCount = repCount,
-                    onIncrement = { repCount = (repCount ?: 0) + 1 },
-                    onReset = { repCount = null }
+                    repCount = repTimestamps.size.takeIf { it > 0 },
+                    onIncrement = { repTimestamps.add(player.currentPosition) },
+                    onReset = { repTimestamps.clear() }
                 )
             }
 
@@ -302,7 +325,8 @@ fun VideoPlayerSheet(
                         onClick = {
                             val uri = selectedUri ?: return@Button
                             val attachedSecs = holdDurationSecs?.let { kotlin.math.max(1, kotlin.math.round(it).toInt()) }
-                            onAttach(uri, repCount, attachedSecs)
+                            val attachedReps = repTimestamps.size.takeIf { it > 0 }
+                            onAttach(uri, attachedReps, attachedSecs)
                         },
                         enabled = selectedUri != null,
                         modifier = Modifier.weight(1f)
@@ -440,6 +464,65 @@ private fun PlaybackSpeedRow(
                 shape = SegmentedButtonDefaults.itemShape(index, options.size)
             ) {
                 Text(label)
+            }
+        }
+    }
+}
+
+/**
+ * Timeline strip beneath the player. Renders a small vertical pip for each tap-along
+ * rep timestamp and for hold start/end. Tap a pip to seek the player to that mark.
+ * Hidden entirely when there are no marks or the duration is not yet known.
+ */
+@Composable
+private fun ScrubberAnnotations(
+    durationMs: Long,
+    holdStartMs: Long?,
+    holdEndMs: Long?,
+    repTimestamps: List<Long>,
+    onSeek: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (durationMs <= 0L) return
+    if (holdStartMs == null && holdEndMs == null && repTimestamps.isEmpty()) return
+
+    val holdColor = MaterialTheme.colorScheme.primary
+    val repColor = MaterialTheme.colorScheme.tertiary
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val density = LocalDensity.current
+    val hitTargetDp = 24.dp
+    val hitTargetPx = with(density) { hitTargetDp.toPx() }
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(16.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(trackColor)
+    ) {
+        val widthPx = with(density) { maxWidth.toPx() }
+        val marks = buildList<Pair<Long, Color>> {
+            holdStartMs?.let { add(it to holdColor) }
+            holdEndMs?.let { add(it to holdColor) }
+            repTimestamps.forEach { add(it to repColor) }
+        }
+        marks.forEach { (markMs, color) ->
+            val clamped = markMs.coerceIn(0L, durationMs)
+            val fraction = (clamped.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+            val centerPx = fraction * widthPx
+            Box(
+                modifier = Modifier
+                    .offset { IntOffset((centerPx - hitTargetPx / 2f).toInt(), 0) }
+                    .size(width = hitTargetDp, height = 16.dp)
+                    .clickable { onSeek(markMs) },
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 4.dp, height = 16.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(color)
+                )
             }
         }
     }
