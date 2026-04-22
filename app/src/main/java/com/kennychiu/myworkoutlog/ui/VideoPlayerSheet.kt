@@ -7,10 +7,12 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -60,8 +62,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -233,7 +237,15 @@ fun VideoPlayerSheet(
                 holdStartMs = holdStartMs,
                 holdEndMs = holdEndMs,
                 repTimestamps = repTimestamps,
-                onSeek = { player.seekTo(it) }
+                onSeek = { player.seekTo(it) },
+                onDeleteRep = if (onAttach != null) { { index -> repTimestamps.removeAt(index) } } else null,
+                onDeleteHoldStart = if (onAttach != null) {
+                    {
+                        holdStartMs = null
+                        holdEndMs = null
+                    }
+                } else null,
+                onDeleteHoldEnd = if (onAttach != null) { { holdEndMs = null } } else null
             )
 
             if (onAttach != null && !selectedUri.isNullOrBlank()) {
@@ -490,8 +502,10 @@ private fun PlaybackSpeedRow(
 /**
  * Timeline strip beneath the player. Renders a small vertical pip for each tap-along
  * rep timestamp and for hold start/end. Tap a pip to seek the player to that mark.
+ * When delete callbacks are non-null, long-press on a pip removes it (with haptic).
  * Hidden entirely when there are no marks or the duration is not yet known.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ScrubberAnnotations(
     durationMs: Long,
@@ -499,6 +513,9 @@ private fun ScrubberAnnotations(
     holdEndMs: Long?,
     repTimestamps: List<Long>,
     onSeek: (Long) -> Unit,
+    onDeleteRep: ((Int) -> Unit)? = null,
+    onDeleteHoldStart: (() -> Unit)? = null,
+    onDeleteHoldEnd: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     if (durationMs <= 0L) return
@@ -508,6 +525,7 @@ private fun ScrubberAnnotations(
     val repColor = MaterialTheme.colorScheme.tertiary
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
     val density = LocalDensity.current
+    val haptics = LocalHapticFeedback.current
     val hitTargetDp = 24.dp
     val hitTargetPx = with(density) { hitTargetDp.toPx() }
 
@@ -519,12 +537,14 @@ private fun ScrubberAnnotations(
             .background(trackColor)
     ) {
         val widthPx = with(density) { maxWidth.toPx() }
-        val marks = buildList<Pair<Long, Color>> {
-            holdStartMs?.let { add(it to holdColor) }
-            holdEndMs?.let { add(it to holdColor) }
-            repTimestamps.forEach { add(it to repColor) }
+        val marks = buildList<Triple<Long, Color, (() -> Unit)?>> {
+            if (holdStartMs != null) add(Triple(holdStartMs, holdColor, onDeleteHoldStart))
+            if (holdEndMs != null) add(Triple(holdEndMs, holdColor, onDeleteHoldEnd))
+            repTimestamps.forEachIndexed { index, t ->
+                add(Triple(t, repColor, onDeleteRep?.let { cb -> { cb(index) } }))
+            }
         }
-        marks.forEach { (markMs, color) ->
+        marks.forEach { (markMs, color, onDelete) ->
             val clamped = markMs.coerceIn(0L, durationMs)
             val fraction = (clamped.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
             val centerPx = fraction * widthPx
@@ -532,7 +552,15 @@ private fun ScrubberAnnotations(
                 modifier = Modifier
                     .offset { IntOffset((centerPx - hitTargetPx / 2f).toInt(), 0) }
                     .size(width = hitTargetDp, height = 16.dp)
-                    .clickable { onSeek(markMs) },
+                    .combinedClickable(
+                        onClick = { onSeek(markMs) },
+                        onLongClick = onDelete?.let { del ->
+                            {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                del()
+                            }
+                        }
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Box(
