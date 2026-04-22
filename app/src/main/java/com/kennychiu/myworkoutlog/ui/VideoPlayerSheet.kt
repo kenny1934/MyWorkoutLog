@@ -504,6 +504,11 @@ private fun PlaybackSpeedRow(
  * rep timestamp and for hold start/end. Tap a pip to seek the player to that mark.
  * When delete callbacks are non-null, long-press on a pip removes it (with haptic).
  * Hidden entirely when there are no marks or the duration is not yet known.
+ *
+ * When the strip is wide enough for >= [LABEL_MIN_WIDTH_DP] of horizontal space per
+ * mark, rep pips get a 1-indexed number label above them and hold pips get `S` / `E`.
+ * Below that threshold (e.g. 15+ reps on the Z-Fold cover) labels are hidden; pip
+ * tap-to-seek and long-press-to-delete still work.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -528,51 +533,93 @@ private fun ScrubberAnnotations(
     val haptics = LocalHapticFeedback.current
     val hitTargetDp = 24.dp
     val hitTargetPx = with(density) { hitTargetDp.toPx() }
+    val labelHeight = 14.dp
+    val trackHeight = 16.dp
 
-    BoxWithConstraints(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(16.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(trackColor)
-    ) {
-        val widthPx = with(density) { maxWidth.toPx() }
-        val marks = buildList<Triple<Long, Color, (() -> Unit)?>> {
-            if (holdStartMs != null) add(Triple(holdStartMs, holdColor, onDeleteHoldStart))
-            if (holdEndMs != null) add(Triple(holdEndMs, holdColor, onDeleteHoldEnd))
-            repTimestamps.forEachIndexed { index, t ->
-                add(Triple(t, repColor, onDeleteRep?.let { cb -> { cb(index) } }))
-            }
+    val marks = buildList {
+        if (holdStartMs != null) add(ScrubberMark(holdStartMs, holdColor, "S", onDeleteHoldStart))
+        if (holdEndMs != null) add(ScrubberMark(holdEndMs, holdColor, "E", onDeleteHoldEnd))
+        repTimestamps.forEachIndexed { index, t ->
+            add(ScrubberMark(t, repColor, (index + 1).toString(), onDeleteRep?.let { cb -> { cb(index) } }))
         }
-        marks.forEach { (markMs, color, onDelete) ->
-            val clamped = markMs.coerceIn(0L, durationMs)
-            val fraction = (clamped.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
-            val centerPx = fraction * widthPx
+    }
+
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val widthPx = with(density) { maxWidth.toPx() }
+        val showLabels = marks.size > 0 && (maxWidth / marks.size) >= LABEL_MIN_WIDTH_DP
+        val labelOffsetPx = if (showLabels) with(density) { labelHeight.toPx() } else 0f
+        val totalHeight = if (showLabels) labelHeight + trackHeight else trackHeight
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(totalHeight)
+        ) {
             Box(
                 modifier = Modifier
-                    .offset { IntOffset((centerPx - hitTargetPx / 2f).toInt(), 0) }
-                    .size(width = hitTargetDp, height = 16.dp)
-                    .combinedClickable(
-                        onClick = { onSeek(markMs) },
-                        onLongClick = onDelete?.let { del ->
-                            {
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                del()
-                            }
-                        }
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(trackHeight)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(trackColor)
+            )
+
+            marks.forEach { mark ->
+                val clamped = mark.ms.coerceIn(0L, durationMs)
+                val fraction = (clamped.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+                val centerPx = fraction * widthPx
+                val leftPx = (centerPx - hitTargetPx / 2f).toInt()
+
+                if (showLabels) {
+                    Box(
+                        modifier = Modifier
+                            .offset { IntOffset(leftPx, 0) }
+                            .size(width = hitTargetDp, height = labelHeight),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = mark.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = mark.color
+                        )
+                    }
+                }
+
                 Box(
                     modifier = Modifier
-                        .size(width = 4.dp, height = 16.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(color)
-                )
+                        .offset { IntOffset(leftPx, labelOffsetPx.toInt()) }
+                        .size(width = hitTargetDp, height = trackHeight)
+                        .combinedClickable(
+                            onClick = { onSeek(mark.ms) },
+                            onLongClick = mark.onDelete?.let { del ->
+                                {
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    del()
+                                }
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(width = 4.dp, height = trackHeight)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(mark.color)
+                    )
+                }
             }
         }
     }
 }
+
+private val LABEL_MIN_WIDTH_DP = 20.dp
+
+private data class ScrubberMark(
+    val ms: Long,
+    val color: Color,
+    val label: String,
+    val onDelete: (() -> Unit)?
+)
 
 /**
  * Media3 [PlayerView] host. The [ExoPlayer] lifecycle is owned by the caller (so the
