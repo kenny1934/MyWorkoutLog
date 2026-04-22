@@ -9,6 +9,12 @@
     <!-- Account permission for Google Drive authentication -->
     <uses-permission android:name="android.permission.GET_ACCOUNTS" />
 
+    <!-- Read recent camera clips from MediaStore for one-tap "attach latest" video flow -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+
     <application
         android:name=".WorkoutApplication"
         android:allowBackup="true"

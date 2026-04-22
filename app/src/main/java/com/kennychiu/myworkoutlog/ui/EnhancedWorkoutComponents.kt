@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -468,6 +469,7 @@ fun EnhancedSetRow(
     val haptics = LocalHapticFeedback.current
     var showExpandedOptions by rememberSaveable { mutableStateOf(false) }
     var showRestTimeEditDialog by rememberSaveable { mutableStateOf(false) }
+    var showVideoSheet by rememberSaveable { mutableStateOf(false) }
 
     val weightRepsDone = weightValue.isNotEmpty() && repsValue.isNotEmpty()
     val secsDone = secsValue.isNotEmpty()
@@ -662,6 +664,20 @@ fun EnhancedSetRow(
                                 )
                             }
                         }
+                    }
+
+                    FilledTonalIconButton(
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            showVideoSheet = true
+                        },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Videocam,
+                            contentDescription = "Attach video",
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
 
                     FilledTonalIconButton(
@@ -881,6 +897,18 @@ fun EnhancedSetRow(
                     clear()
                     showRestTimeEditDialog = false
                 }
+            }
+        )
+    }
+
+    if (showVideoSheet) {
+        VideoPlayerSheet(
+            setNumber = setNumber,
+            initialUri = videoReference,
+            onDismiss = { showVideoSheet = false },
+            onAttach = { uri ->
+                onVideoSelected(uri)
+                showVideoSheet = false
             }
         )
     }

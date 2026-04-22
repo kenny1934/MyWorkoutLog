@@ -1,10 +1,15 @@
 package com.kennychiu.myworkoutlog.util
 
+import android.Manifest
 import android.content.ActivityNotFoundException
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -84,6 +90,67 @@ fun rememberVideoPickLauncher(onPicked: (String) -> Unit): () -> Unit {
             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
         )
     }
+}
+
+/** Permission required to query [MediaStore.Video] on the running platform. */
+val recentClipsPermission: String
+    get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Manifest.permission.READ_MEDIA_VIDEO
+    } else {
+        Manifest.permission.READ_EXTERNAL_STORAGE
+    }
+
+/** True when the app currently holds [recentClipsPermission]. */
+fun hasRecentClipsPermission(context: Context): Boolean =
+    ContextCompat.checkSelfPermission(context, recentClipsPermission) == PackageManager.PERMISSION_GRANTED
+
+/**
+ * One match from the recent-camera-clips MediaStore query: the playable content URI
+ * plus when it was added (epoch millis), used to label the thumbnail strip.
+ */
+data class RecentClip(val uri: Uri, val dateAddedEpochMillis: Long)
+
+/**
+ * Snapshot the [limit] newest videos in `DCIM/Camera` added within [withinSeconds] of now,
+ * matching Kenny's "film a set, walk to the phone within ~1 minute" workflow.
+ *
+ * Empty list when permission is missing — caller should request it first via [recentClipsPermission].
+ * Pre-API-29 falls back to `_DATA LIKE 'DCIM/Camera/%'` since `RELATIVE_PATH` only exists from Q.
+ */
+suspend fun queryRecentCameraClips(
+    context: Context,
+    withinSeconds: Long = 90L,
+    limit: Int = 3
+): List<RecentClip> = withContext(Dispatchers.IO) {
+    if (!hasRecentClipsPermission(context)) return@withContext emptyList()
+    val collection = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+    val projection = arrayOf(MediaStore.Video.Media._ID, MediaStore.Video.Media.DATE_ADDED)
+    val cutoff = System.currentTimeMillis() / 1_000L - withinSeconds
+    val (selection, args) = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        "${MediaStore.Video.Media.RELATIVE_PATH} LIKE ? AND ${MediaStore.Video.Media.DATE_ADDED} > ?" to
+            arrayOf("DCIM/Camera/%", cutoff.toString())
+    } else {
+        @Suppress("DEPRECATION")
+        "${MediaStore.Video.Media.DATA} LIKE ? AND ${MediaStore.Video.Media.DATE_ADDED} > ?" to
+            arrayOf("%/DCIM/Camera/%", cutoff.toString())
+    }
+    val sort = "${MediaStore.Video.Media.DATE_ADDED} DESC"
+    val results = mutableListOf<RecentClip>()
+    runCatching {
+        context.contentResolver.query(collection, projection, selection, args, sort)?.use { cursor ->
+            val idCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
+            val addedCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED)
+            while (cursor.moveToNext() && results.size < limit) {
+                val id = cursor.getLong(idCol)
+                val addedSec = cursor.getLong(addedCol)
+                results += RecentClip(
+                    uri = ContentUris.withAppendedId(collection, id),
+                    dateAddedEpochMillis = addedSec * 1_000L
+                )
+            }
+        }
+    }
+    results
 }
 
 /**

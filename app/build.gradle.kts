@@ -116,6 +116,9 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.0")
     // --- Drag-reorder primitives ---
     implementation(libs.reorderable)
+    // --- Media3 ExoPlayer (inline video playback in workout logger) ---
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
