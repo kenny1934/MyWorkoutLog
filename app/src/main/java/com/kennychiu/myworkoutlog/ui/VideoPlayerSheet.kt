@@ -411,7 +411,7 @@ fun VideoPlayerSheet(
                 )
             }
 
-            if (clips.size > 1) {
+            if (onAttach != null && clips.size > 1) {
                 Text(
                     text = "Recent clips",
                     style = MaterialTheme.typography.labelMedium,
