@@ -154,6 +154,16 @@ fun HistoryDetailScreen(
                     WorkoutSummaryCard(workout = currentWorkout)
                 }
 
+                // Per-workout video gallery (only when any clips are attached)
+                val hasAnyClip = currentWorkout.loggedExercises.any { exercise ->
+                    exercise.sets.any { !it.videoReference.isNullOrBlank() }
+                }
+                if (hasAnyClip) {
+                    item {
+                        WorkoutVideoGallery(workout = currentWorkout)
+                    }
+                }
+
                 items(currentWorkout.loggedExercises, key = { it.id }) { exercise ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),

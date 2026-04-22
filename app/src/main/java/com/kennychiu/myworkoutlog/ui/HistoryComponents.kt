@@ -6,15 +6,23 @@ import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -335,6 +343,145 @@ fun WorkoutSummaryCard(workout: LoggedWorkout) {
                 }
             }
         }
+    }
+}
+
+private data class WorkoutVideoClip(
+    val setId: String,
+    val setNumber: Int,
+    val exerciseName: String,
+    val videoRef: String,
+    val videoMarks: String?
+)
+
+@Composable
+fun WorkoutVideoGallery(workout: LoggedWorkout) {
+    val clips = remember(workout) {
+        workout.loggedExercises.flatMap { exercise ->
+            exercise.sets.mapIndexedNotNull { index, set ->
+                val ref = set.videoReference?.takeIf { it.isNotBlank() }
+                ref?.let {
+                    WorkoutVideoClip(
+                        setId = set.id,
+                        setNumber = index + 1,
+                        exerciseName = exercise.exerciseName,
+                        videoRef = it,
+                        videoMarks = set.videoMarks
+                    )
+                }
+            }
+        }
+    }
+    if (clips.isEmpty()) return
+
+    var expanded by rememberSaveable(workout.id) { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Videocam,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Clips (${clips.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = if (expanded) "Collapse clips" else "Expand clips"
+                )
+            }
+
+            AnimatedVisibility(visible = expanded) {
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(clips, key = { it.setId }) { clip ->
+                        WorkoutVideoGalleryThumbnail(clip)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WorkoutVideoGalleryThumbnail(clip: WorkoutVideoClip) {
+    val thumbnail = rememberVideoThumbnail(clip.videoRef)
+    var showSheet by rememberSaveable(clip.setId) { mutableStateOf(false) }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(112.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 112.dp, height = 72.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .clickable { showSheet = true },
+            contentAlignment = Alignment.Center
+        ) {
+            if (thumbnail != null) {
+                Image(
+                    bitmap = thumbnail,
+                    contentDescription = "Clip for set ${clip.setNumber} of ${clip.exerciseName}",
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Filled.Videocam,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Icon(
+                imageVector = Icons.Filled.PlayArrow,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(32.dp)
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "Set ${clip.setNumber}",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium
+        )
+        Text(
+            text = clip.exerciseName,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+
+    if (showSheet) {
+        VideoPlayerSheet(
+            setNumber = null,
+            initialUri = clip.videoRef,
+            initialMarks = clip.videoMarks,
+            onDismiss = { showSheet = false },
+            onAttach = null
+        )
     }
 }
 
