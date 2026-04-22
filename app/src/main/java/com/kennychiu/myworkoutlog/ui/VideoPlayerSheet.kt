@@ -299,7 +299,7 @@ fun VideoPlayerSheet(
             )
             val dualMode = previousSetRef != null && onAttach == null
             val primaryMaxHeight: Dp = if (dualMode && !layoutInfo.useMasterDetail) {
-                (configuration.screenHeightDp * 0.375f).dp.coerceAtMost(360.dp)
+                (configuration.screenHeightDp * 0.3f).dp.coerceAtMost(280.dp)
             } else {
                 (configuration.screenHeightDp * 0.5f).dp.coerceAtMost(480.dp)
             }
