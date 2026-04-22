@@ -14,7 +14,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.clickable
@@ -473,7 +472,6 @@ fun EnhancedSetRow(
     var showExpandedOptions by rememberSaveable { mutableStateOf(false) }
     var showRestTimeEditDialog by rememberSaveable { mutableStateOf(false) }
     var showVideoSheet by rememberSaveable { mutableStateOf(false) }
-    var showReviewSheet by rememberSaveable { mutableStateOf(false) }
 
     val weightRepsDone = weightValue.isNotEmpty() && repsValue.isNotEmpty()
     val secsDone = secsValue.isNotEmpty()
@@ -550,27 +548,10 @@ fun EnhancedSetRow(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
                         )
-                        if (!videoReference.isNullOrBlank()) {
-                            Surface(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .clickable {
-                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        showReviewSheet = true
-                                    },
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.PlayArrow,
-                                    contentDescription = "Review video",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier
-                                        .padding(4.dp)
-                                        .size(16.dp)
-                                )
-                            }
-                        }
+                        SetVideoReviewChip(
+                            videoRef = videoReference,
+                            videoMarks = videoMarks
+                        )
                     } else {
                         restTimeSeconds?.let { restTime ->
                             // Tap opens DurationEditDialog to correct the value; long-press
@@ -961,16 +942,6 @@ fun EnhancedSetRow(
             },
             showWeightReps = showWeightReps,
             showSecs = showSecs
-        )
-    }
-
-    if (showReviewSheet && !videoReference.isNullOrBlank()) {
-        VideoPlayerSheet(
-            setNumber = null,
-            initialUri = videoReference,
-            initialMarks = videoMarks,
-            onDismiss = { showReviewSheet = false },
-            onAttach = null
         )
     }
 }

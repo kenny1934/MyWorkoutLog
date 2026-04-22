@@ -29,12 +29,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Button
@@ -47,6 +49,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -57,6 +60,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,6 +85,53 @@ import com.kennychiu.myworkoutlog.util.queryRecentCameraClips
 import com.kennychiu.myworkoutlog.util.recentClipsPermission
 import com.kennychiu.myworkoutlog.util.rememberVideoPickLauncher
 import com.kennychiu.myworkoutlog.util.rememberVideoThumbnail
+
+/**
+ * Compact "▶ Review" chip for a set row. Renders nothing when [videoRef] is null or
+ * blank, so callers can drop it into any row without pre-checking. On tap, opens
+ * [VideoPlayerSheet] in review mode (no attach), seeded with persisted [videoMarks]
+ * so scrubber pips rehydrate for historic clips.
+ */
+@Composable
+fun SetVideoReviewChip(
+    videoRef: String?,
+    videoMarks: String? = null,
+    modifier: Modifier = Modifier
+) {
+    if (videoRef.isNullOrBlank()) return
+    var showSheet by rememberSaveable { mutableStateOf(false) }
+    val haptics = LocalHapticFeedback.current
+
+    Surface(
+        modifier = modifier
+            .clip(CircleShape)
+            .clickable {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                showSheet = true
+            },
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+    ) {
+        Icon(
+            imageVector = Icons.Filled.PlayArrow,
+            contentDescription = "Review video",
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .padding(4.dp)
+                .size(16.dp)
+        )
+    }
+
+    if (showSheet) {
+        VideoPlayerSheet(
+            setNumber = null,
+            initialUri = videoRef,
+            initialMarks = videoMarks,
+            onDismiss = { showSheet = false },
+            onAttach = null
+        )
+    }
+}
 
 /**
  * Bottom sheet wrapping a Media3 [PlayerView] for inline video review. When [setNumber]

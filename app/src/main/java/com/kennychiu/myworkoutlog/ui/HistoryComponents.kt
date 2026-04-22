@@ -74,6 +74,12 @@ fun HistorySetRow(
                 )
             }
 
+            SetVideoReviewChip(
+                videoRef = set.videoReference,
+                videoMarks = set.videoMarks,
+                modifier = Modifier.padding(end = 4.dp)
+            )
+
             // Expand/collapse button for additional data
             if (hasAdditionalData) {
                 IconButton(

@@ -10,6 +10,7 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.util.LruCache
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -193,10 +194,16 @@ fun rememberVideoAvailability(uriOrUrl: String?): VideoAvailability {
     return state
 }
 
+// Process-wide LRU so a history detail with many clips doesn't spin up a fresh
+// MediaMetadataRetriever per row on every recomposition. 20 entries is plenty for
+// the sheet's recent-clips strip (~3) + a screenful of history rows.
+private val thumbnailCache = LruCache<String, ImageBitmap>(20)
+
 /**
  * Extract a thumbnail frame for a local content URI. Returns null for remote links
  * or when extraction fails (source deleted, unsupported codec, permission revoked).
- * Keyed on [uriOrUrl] so the frame re-extracts when the reference changes.
+ * Keyed on [uriOrUrl] so the frame re-extracts when the reference changes; successful
+ * decodes are cached in a process-wide LRU so scroll over many history rows is cheap.
  */
 @Composable
 fun rememberVideoThumbnail(uriOrUrl: String?): ImageBitmap? {
@@ -209,12 +216,17 @@ fun rememberVideoThumbnail(uriOrUrl: String?): ImageBitmap? {
             bitmap = null
             return@LaunchedEffect
         }
+        thumbnailCache.get(source)?.let {
+            bitmap = it
+            return@LaunchedEffect
+        }
         bitmap = withContext(Dispatchers.IO) {
             val retriever = MediaMetadataRetriever()
             try {
                 retriever.setDataSource(context, Uri.parse(source))
                 retriever.getFrameAtTime(0L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                     ?.asImageBitmap()
+                    ?.also { thumbnailCache.put(source, it) }
             } catch (_: Throwable) {
                 null
             } finally {
