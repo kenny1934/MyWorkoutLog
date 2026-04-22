@@ -9,9 +9,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -34,10 +36,16 @@ private data class AllClipEntry(
     val workoutId: String,
     val date: String,
     val startTimestamp: Long?,
+    val exerciseId: String,
     val exerciseName: String,
     val setNumber: Int,
     val videoRef: String,
     val videoMarks: String?
+)
+
+private data class ExerciseFilterOption(
+    val exerciseId: String,
+    val exerciseName: String
 )
 
 @Composable
@@ -46,7 +54,18 @@ fun AllClipsScreen(
     onNavigateUp: () -> Unit
 ) {
     val workouts by viewModel.allLoggedWorkouts.collectAsStateWithLifecycle()
-    val clips = remember(workouts) { flattenClipsChronological(workouts) }
+    val allClips = remember(workouts) { flattenClipsChronological(workouts) }
+    val exerciseOptions = remember(allClips) {
+        allClips
+            .map { ExerciseFilterOption(it.exerciseId, it.exerciseName) }
+            .distinctBy { it.exerciseId }
+            .sortedBy { it.exerciseName.lowercase() }
+    }
+    var selectedExerciseId by rememberSaveable { mutableStateOf<String?>(null) }
+    val visibleClips = remember(allClips, selectedExerciseId) {
+        val id = selectedExerciseId
+        if (id == null) allClips else allClips.filter { it.exerciseId == id }
+    }
     val layoutInfo = rememberAdaptiveLayoutInfo()
     val columnCount = if (layoutInfo.useMasterDetail) 4 else 2
 
@@ -64,48 +83,124 @@ fun AllClipsScreen(
         },
         contentWindowInsets = WindowInsets(0)
     ) { paddingValues ->
-        if (clips.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            if (exerciseOptions.isNotEmpty()) {
+                ExerciseFilterChipRow(
+                    options = exerciseOptions,
+                    selectedExerciseId = selectedExerciseId,
+                    onSelectionChange = { selectedExerciseId = it }
+                )
+            }
+
+            if (visibleClips.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Videocam,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    AllClipsEmptyState(
+                        hasAnyClip = allClips.isNotEmpty(),
+                        filterName = exerciseOptions.firstOrNull { it.exerciseId == selectedExerciseId }?.exerciseName,
+                        onClearFilter = { selectedExerciseId = null }
                     )
-                    Text(
-                        text = "No clips yet",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "Attach a video to a set during a workout to see it here.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(columnCount),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentPadding = PaddingValues(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(visibleClips, key = { it.setId }) { clip ->
+                        AllClipsCell(clip)
+                    }
                 }
             }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(columnCount),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(clips, key = { it.setId }) { clip ->
-                    AllClipsCell(clip)
+        }
+    }
+}
+
+@Composable
+private fun ExerciseFilterChipRow(
+    options: List<ExerciseFilterOption>,
+    selectedExerciseId: String?,
+    onSelectionChange: (String?) -> Unit
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item(key = "__all__") {
+            FilterChip(
+                onClick = { onSelectionChange(null) },
+                label = { Text("All") },
+                selected = selectedExerciseId == null
+            )
+        }
+        items(options, key = { it.exerciseId }) { option ->
+            FilterChip(
+                onClick = { onSelectionChange(option.exerciseId) },
+                label = { Text(option.exerciseName) },
+                selected = selectedExerciseId == option.exerciseId
+            )
+        }
+    }
+}
+
+@Composable
+private fun AllClipsEmptyState(
+    hasAnyClip: Boolean,
+    filterName: String?,
+    onClearFilter: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Videocam,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        when {
+            !hasAnyClip -> {
+                Text(
+                    text = "No clips yet",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Attach a video to a set during a workout to see it here.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            filterName != null -> {
+                Text(
+                    text = "No clips for $filterName",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                TextButton(onClick = onClearFilter) {
+                    Text("Show all clips")
                 }
+            }
+            else -> {
+                Text(
+                    text = "No clips match this filter",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -191,6 +286,7 @@ private fun flattenClipsChronological(workouts: List<LoggedWorkout>): List<AllCl
                         workoutId = workout.id,
                         date = workout.date,
                         startTimestamp = workout.startTimestamp,
+                        exerciseId = exercise.exerciseId,
                         exerciseName = exercise.exerciseName,
                         setNumber = index + 1,
                         videoRef = it,
