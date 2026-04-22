@@ -5,6 +5,9 @@ package com.kennychiu.myworkoutlog.ui
 import com.kennychiu.myworkoutlog.data.*
 import com.kennychiu.myworkoutlog.viewmodel.*
 import com.kennychiu.myworkoutlog.util.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -100,6 +103,21 @@ fun AllClipsScreen(
     val coroutineScope = rememberCoroutineScope()
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
 
+    val currentStickyDate by remember(dateToHeaderIndex) {
+        derivedStateOf {
+            if (dateToHeaderIndex.isEmpty()) null
+            else dateToHeaderIndex.entries
+                .lastOrNull { it.value <= gridState.firstVisibleItemIndex }
+                ?.key
+        }
+    }
+    val showStickyHeader by remember {
+        derivedStateOf {
+            gridState.firstVisibleItemIndex > 0 ||
+                gridState.firstVisibleItemScrollOffset > 0
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -151,27 +169,42 @@ fun AllClipsScreen(
                     )
                 }
             } else {
-                LazyVerticalGrid(
-                    state = gridState,
-                    columns = GridCells.Fixed(columnCount),
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .weight(1f)
                 ) {
-                    groupedByDate.forEach { (date, clipsForDate) ->
-                        item(
-                            key = "hdr-$date",
-                            span = { GridItemSpan(maxLineSpan) }
-                        ) {
-                            DateGroupHeader(isoDate = date, clipCount = clipsForDate.size)
-                        }
-                        items(clipsForDate, key = { it.setId }) { clip ->
-                            AllClipsCell(clip)
+                    LazyVerticalGrid(
+                        state = gridState,
+                        columns = GridCells.Fixed(columnCount),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        groupedByDate.forEach { (date, clipsForDate) ->
+                            item(
+                                key = "hdr-$date",
+                                span = { GridItemSpan(maxLineSpan) }
+                            ) {
+                                DateGroupHeader(isoDate = date, clipCount = clipsForDate.size)
+                            }
+                            items(clipsForDate, key = { it.setId }) { clip ->
+                                AllClipsCell(clip)
+                            }
                         }
                     }
+                    StickyDateHeaderOverlay(
+                        visible = showStickyHeader && currentStickyDate != null,
+                        isoDate = currentStickyDate,
+                        clipCount = currentStickyDate?.let { groupedByDate[it]?.size } ?: 0,
+                        onClick = {
+                            val date = currentStickyDate ?: return@StickyDateHeaderOverlay
+                            val index = dateToHeaderIndex[date] ?: return@StickyDateHeaderOverlay
+                            coroutineScope.launch { gridState.animateScrollToItem(index) }
+                        },
+                        modifier = Modifier.align(Alignment.TopCenter)
+                    )
                 }
             }
         }
@@ -380,6 +413,67 @@ private fun AllClipsCell(clip: AllClipEntry) {
             onDismiss = { showSheet = false },
             onAttach = null
         )
+    }
+}
+
+@Composable
+private fun StickyDateHeaderOverlay(
+    visible: Boolean,
+    isoDate: String?,
+    clipCount: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(
+        visible = visible && isoDate != null,
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = modifier
+    ) {
+        if (isoDate != null) {
+            StickyDateHeaderBar(
+                isoDate = isoDate,
+                clipCount = clipCount,
+                onClick = onClick
+            )
+        }
+    }
+}
+
+@Composable
+private fun StickyDateHeaderBar(
+    isoDate: String,
+    clipCount: Int,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 3.dp,
+        shadowElevation = 2.dp,
+        onClick = onClick
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = formatDateHeader(isoDate),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = if (clipCount == 1) "1 clip" else "$clipCount clips",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
