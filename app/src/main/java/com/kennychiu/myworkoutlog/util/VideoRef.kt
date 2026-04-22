@@ -154,6 +154,46 @@ suspend fun queryRecentCameraClips(
 }
 
 /**
+ * Availability of a stored video reference. [Unknown] is the transient state before
+ * the probe completes (including for remote URLs, which aren't probed — they resolve
+ * to [Available] immediately).
+ */
+enum class VideoAvailability { Unknown, Available, Broken }
+
+/**
+ * Cheap tri-state probe for whether a stored video reference can still be opened.
+ * Content URIs can die when the source file is deleted from Photos or when the
+ * picker no longer holds persistable read permission; this surfaces that so the UI
+ * can prompt a re-attach instead of silently showing an empty thumbnail.
+ */
+@Composable
+fun rememberVideoAvailability(uriOrUrl: String?): VideoAvailability {
+    val context = LocalContext.current
+    var state by remember(uriOrUrl) { mutableStateOf(VideoAvailability.Unknown) }
+    LaunchedEffect(uriOrUrl) {
+        val source = uriOrUrl?.trim()
+        if (source.isNullOrEmpty()) {
+            state = VideoAvailability.Unknown
+            return@LaunchedEffect
+        }
+        if (isRemoteVideoLink(source)) {
+            state = VideoAvailability.Available
+            return@LaunchedEffect
+        }
+        state = withContext(Dispatchers.IO) {
+            try {
+                context.contentResolver.openAssetFileDescriptor(Uri.parse(source), "r")?.use {
+                    VideoAvailability.Available
+                } ?: VideoAvailability.Broken
+            } catch (_: Throwable) {
+                VideoAvailability.Broken
+            }
+        }
+    }
+    return state
+}
+
+/**
  * Extract a thumbnail frame for a local content URI. Returns null for remote links
  * or when extraction fails (source deleted, unsupported codec, permission revoked).
  * Keyed on [uriOrUrl] so the frame re-extracts when the reference changes.

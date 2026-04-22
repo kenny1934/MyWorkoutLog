@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Backspace
+import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -1310,6 +1311,10 @@ fun VideoReferenceSelector(
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 onVideoRemoved()
             },
+            onReplace = {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                pickVideo()
+            },
             modifier = modifier.fillMaxWidth()
         )
     } else {
@@ -1357,11 +1362,16 @@ fun VideoReferencePreview(
 ) {
     val thumbnail = rememberVideoThumbnail(videoPath)
     val isRemote = isRemoteVideoLink(videoPath)
+    val availability = rememberVideoAvailability(videoPath)
+    val isBroken = availability == VideoAvailability.Broken
 
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
+            .background(
+                if (isBroken) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            )
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -1371,29 +1381,36 @@ fun VideoReferencePreview(
                 .size(48.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
-                .clickable { onPlay() },
+                .then(if (isBroken) Modifier else Modifier.clickable { onPlay() }),
             contentAlignment = Alignment.Center
         ) {
-            if (thumbnail != null) {
-                Image(
-                    bitmap = thumbnail,
-                    contentDescription = "Video thumbnail",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.25f))
-                )
-                Icon(
-                    imageVector = Icons.Filled.PlayArrow,
+            when {
+                isBroken -> Icon(
+                    imageVector = Icons.Filled.BrokenImage,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(24.dp)
                 )
-            } else {
-                Icon(
+                thumbnail != null -> {
+                    Image(
+                        bitmap = thumbnail,
+                        contentDescription = "Video thumbnail",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.25f))
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.PlayArrow,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                else -> Icon(
                     imageVector = if (isRemote) Icons.Filled.Link else Icons.Filled.PlayArrow,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
@@ -1405,17 +1422,17 @@ fun VideoReferencePreview(
         Column(
             modifier = Modifier
                 .weight(1f)
-                .clickable { onPlay() }
+                .then(if (isBroken) Modifier else Modifier.clickable { onPlay() })
         ) {
             Text(
-                text = label,
+                text = if (isBroken) "Video unavailable · re-attach" else label,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary,
+                color = if (isBroken) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            if (isRemote) {
+            if (isRemote && !isBroken) {
                 Text(
                     text = videoPath,
                     style = MaterialTheme.typography.labelSmall,
