@@ -690,18 +690,35 @@ fun EnhancedSetRow(
                         }
                     }
 
-                    FilledTonalIconButton(
-                        onClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            showVideoSheet = true
-                        },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Videocam,
-                            contentDescription = "Attach video",
-                            modifier = Modifier.size(18.dp)
-                        )
+                    val hasVideoAttached = !videoReference.isNullOrBlank()
+                    if (hasVideoAttached) {
+                        FilledIconButton(
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                showVideoSheet = true
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Videocam,
+                                contentDescription = "Video attached — tap to review or replace",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    } else {
+                        FilledTonalIconButton(
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                showVideoSheet = true
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Videocam,
+                                contentDescription = "Attach video",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
 
                     FilledTonalIconButton(

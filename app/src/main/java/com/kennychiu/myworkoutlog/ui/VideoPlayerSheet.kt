@@ -1,8 +1,10 @@
 package com.kennychiu.myworkoutlog.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -57,6 +59,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.kennychiu.myworkoutlog.util.RecentClip
@@ -97,6 +101,7 @@ fun VideoPlayerSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var permissionGranted by remember { mutableStateOf(hasRecentClipsPermission(context)) }
+    var permissionRequested by remember { mutableStateOf(false) }
     var clips by remember { mutableStateOf<List<RecentClip>>(emptyList()) }
     var selectedUri by remember { mutableStateOf(initialUri) }
 
@@ -104,15 +109,31 @@ fun VideoPlayerSheet(
     var holdStartMs by remember { mutableStateOf<Long?>(null) }
     var holdEndMs by remember { mutableStateOf<Long?>(null) }
     var playbackSpeed by remember { mutableStateOf(1f) }
+    var videoAspect by remember { mutableStateOf<Float?>(null) }
 
     val player = remember {
         ExoPlayer.Builder(context).build().apply { playWhenReady = false }
     }
-    DisposableEffect(Unit) {
-        onDispose { player.release() }
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                val w = videoSize.width
+                val h = videoSize.height
+                if (w > 0 && h > 0) {
+                    val pixelRatio = videoSize.pixelWidthHeightRatio.takeIf { it > 0f } ?: 1f
+                    videoAspect = (w * pixelRatio) / h
+                }
+            }
+        }
+        player.addListener(listener)
+        onDispose {
+            player.removeListener(listener)
+            player.release()
+        }
     }
     LaunchedEffect(selectedUri) {
         val uri = selectedUri
+        videoAspect = null
         if (uri.isNullOrBlank()) {
             player.clearMediaItems()
         } else {
@@ -126,7 +147,10 @@ fun VideoPlayerSheet(
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
-    ) { granted -> permissionGranted = granted }
+    ) { granted ->
+        permissionGranted = granted
+        permissionRequested = true
+    }
 
     LaunchedEffect(permissionGranted) {
         if (!permissionGranted) {
@@ -173,7 +197,7 @@ fun VideoPlayerSheet(
                 hasMedia = !selectedUri.isNullOrBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
+                    .aspectRatio(videoAspect ?: (16f / 9f))
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color.Black)
             )
@@ -246,21 +270,34 @@ fun VideoPlayerSheet(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                if (permissionRequested) {
+                    OutlinedButton(
+                        onClick = {
+                            val intent = Intent(
+                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                Uri.fromParts("package", context.packageName, null)
+                            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(intent)
+                        }
+                    ) {
+                        Text("Open Settings")
+                    }
+                }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = { galleryPicker() },
-                    modifier = Modifier.weight(1f)
+            if (onAttach != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Filled.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.size(8.dp))
-                    Text("Gallery")
-                }
-                if (onAttach != null) {
+                    OutlinedButton(
+                        onClick = { galleryPicker() },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Filled.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text("Gallery")
+                    }
                     Button(
                         onClick = {
                             val uri = selectedUri ?: return@Button
