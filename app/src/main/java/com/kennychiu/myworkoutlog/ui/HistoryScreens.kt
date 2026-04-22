@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.concurrent.TimeUnit
@@ -98,9 +99,11 @@ private fun HistoryHeader(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Workout History",
+                    text = "History",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
                 AllClipsIconButton(onClick = onOpenAllClips)
@@ -127,16 +130,23 @@ private fun HistoryHeader(
             }
         }
     } else {
-        // Original Row layout for single-column mode (full width available)
+        // Row layout for single-column mode. Title flexes with weight + ellipsis
+        // so it shrinks before the Videocam + FilterChips can get squashed on the
+        // Z-Fold cover width.
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Workout History", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = "History",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
 
             AllClipsIconButton(onClick = onOpenAllClips)
-            Spacer(modifier = Modifier.width(4.dp))
 
             // View mode toggle buttons
             Row {
