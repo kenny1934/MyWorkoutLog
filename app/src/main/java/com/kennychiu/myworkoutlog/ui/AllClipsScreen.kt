@@ -411,7 +411,9 @@ private fun AllClipsCell(clip: AllClipEntry) {
             initialUri = clip.videoRef,
             initialMarks = clip.videoMarks,
             onDismiss = { showSheet = false },
-            onAttach = null
+            onAttach = null,
+            exerciseId = clip.exerciseId,
+            excludingWorkoutId = clip.workoutId
         )
     }
 }

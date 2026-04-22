@@ -97,6 +97,8 @@ import com.kennychiu.myworkoutlog.util.rememberVideoThumbnail
 fun SetVideoReviewChip(
     videoRef: String?,
     videoMarks: String? = null,
+    exerciseId: String? = null,
+    excludingWorkoutId: String? = null,
     modifier: Modifier = Modifier
 ) {
     if (videoRef.isNullOrBlank()) return
@@ -129,7 +131,9 @@ fun SetVideoReviewChip(
             initialUri = videoRef,
             initialMarks = videoMarks,
             onDismiss = { showSheet = false },
-            onAttach = null
+            onAttach = null,
+            exerciseId = exerciseId,
+            excludingWorkoutId = excludingWorkoutId
         )
     }
 }
@@ -154,6 +158,11 @@ fun SetVideoReviewChip(
  *  - Playback speed (0.5x / 1x / 2x) is shown whenever a clip is loaded — both attach and review modes.
  *  - Scrubber pip strip is shown in attach mode and in review mode when [initialMarks] yields any pips.
  *  - In review mode ([onAttach] is null) the counter, hold-mark, and frame-stepper helpers are hidden.
+ *
+ * [exerciseId] and [excludingWorkoutId] are plumbing for A4 comparison mode (review
+ * only). Slice 121 receives them without using them — the dual-player UI lands in
+ * slice 122. Both must be non-null to enable comparison; attach-mode callers should
+ * leave them null.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -165,6 +174,8 @@ fun VideoPlayerSheet(
     initialMarks: String? = null,
     showWeightReps: Boolean = false,
     showSecs: Boolean = false,
+    @Suppress("UNUSED_PARAMETER") exerciseId: String? = null,
+    @Suppress("UNUSED_PARAMETER") excludingWorkoutId: String? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current

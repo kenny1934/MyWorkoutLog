@@ -115,6 +115,24 @@ interface LoggedWorkoutDao {
         LIMIT 1
     """)
     fun getLatestWorkoutWithExerciseBefore(exerciseId: String, beforeDate: String): LoggedWorkout?
+
+    // Candidate workouts for "most recent prior clip of this exercise" — the SQL
+    // videoReference match is a substring check against the JSON blob, so a workout
+    // that contains the target exercise AND a different exercise with a video will
+    // also match. Kotlin-side filtering (findMostRecentSetWithVideo) narrows it down.
+    @Query("""
+        SELECT * FROM logged_workout_table
+        WHERE loggedExercises LIKE '%"exerciseId":"' || :exerciseId || '"%'
+        AND loggedExercises LIKE '%"videoReference":"%'
+        AND id != :excludingWorkoutId
+        ORDER BY date DESC, startTimestamp DESC
+        LIMIT :limit
+    """)
+    fun getWorkoutsWithExerciseAndVideo(
+        exerciseId: String,
+        excludingWorkoutId: String,
+        limit: Int = 10
+    ): Flow<List<LoggedWorkout>>
     
     // Get recent workouts with same template (for session-based context)
     @Query("""

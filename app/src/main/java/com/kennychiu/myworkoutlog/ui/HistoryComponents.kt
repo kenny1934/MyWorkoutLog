@@ -85,6 +85,8 @@ fun HistorySetRow(
             SetVideoReviewChip(
                 videoRef = set.videoReference,
                 videoMarks = set.videoMarks,
+                exerciseId = exercise.exerciseId,
+                excludingWorkoutId = workout.id,
                 modifier = Modifier.padding(end = 4.dp)
             )
 
@@ -348,6 +350,8 @@ fun WorkoutSummaryCard(workout: LoggedWorkout) {
 
 private data class WorkoutVideoClip(
     val setId: String,
+    val workoutId: String,
+    val exerciseId: String,
     val setNumber: Int,
     val exerciseName: String,
     val videoRef: String,
@@ -440,6 +444,8 @@ private fun rememberWorkoutVideoClips(workout: LoggedWorkout): List<WorkoutVideo
                 ref?.let {
                     WorkoutVideoClip(
                         setId = set.id,
+                        workoutId = workout.id,
+                        exerciseId = exercise.exerciseId,
                         setNumber = index + 1,
                         exerciseName = exercise.exerciseName,
                         videoRef = it,
@@ -509,7 +515,9 @@ private fun WorkoutVideoGalleryThumbnail(clip: WorkoutVideoClip) {
             initialUri = clip.videoRef,
             initialMarks = clip.videoMarks,
             onDismiss = { showSheet = false },
-            onAttach = null
+            onAttach = null,
+            exerciseId = clip.exerciseId,
+            excludingWorkoutId = clip.workoutId
         )
     }
 }
