@@ -470,6 +470,7 @@ fun EnhancedSetRow(
     var showExpandedOptions by rememberSaveable { mutableStateOf(false) }
     var showRestTimeEditDialog by rememberSaveable { mutableStateOf(false) }
     var showVideoSheet by rememberSaveable { mutableStateOf(false) }
+    var showReviewSheet by rememberSaveable { mutableStateOf(false) }
 
     val weightRepsDone = weightValue.isNotEmpty() && repsValue.isNotEmpty()
     val secsDone = secsValue.isNotEmpty()
@@ -546,6 +547,37 @@ fun EnhancedSetRow(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
                         )
+                        if (!videoReference.isNullOrBlank()) {
+                            Surface(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .clickable {
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        showReviewSheet = true
+                                    },
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.PlayArrow,
+                                        contentDescription = "Review video",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = "Review",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
                     } else {
                         restTimeSeconds?.let { restTime ->
                             // Tap opens DurationEditDialog to correct the value; long-press
@@ -918,6 +950,15 @@ fun EnhancedSetRow(
             },
             showWeightReps = showWeightReps,
             showSecs = showSecs
+        )
+    }
+
+    if (showReviewSheet && !videoReference.isNullOrBlank()) {
+        VideoPlayerSheet(
+            setNumber = null,
+            initialUri = videoReference,
+            onDismiss = { showReviewSheet = false },
+            onAttach = null
         )
     }
 }
