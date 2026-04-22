@@ -441,7 +441,8 @@ private fun WorkoutLoggerScreenContent(
                                 onRemoveSet = { exerciseId, setId -> viewModel.removeSetFromExercise(exerciseId, setId) },
                                 onStartRest = { exerciseId, setId -> viewModel.startRestTimerForSet(exerciseId, setId) },
                                 onSetRestTime = { exerciseId, setId, seconds -> viewModel.setRestTimeForSet(exerciseId, setId, seconds) },
-                                performanceSuggestion = selectedExercise?.let { viewModel.getPerformanceSuggestion(it.exerciseId) }
+                                performanceSuggestion = selectedExercise?.let { viewModel.getPerformanceSuggestion(it.exerciseId) },
+                                demoVideoLink = selectedExercise?.let { viewModel.getExerciseDemoVideo(it.exerciseId) }
                             )
                         },
                         navigationRail = {
@@ -516,6 +517,7 @@ private fun WorkoutLoggerScreenContent(
 
                     val lastPerformance = viewModel.getLastPerformance(exercise.exerciseId)
                     val progressionHint = viewModel.getProgressionHint(exercise.exerciseId)
+                    val demoVideoLink = viewModel.getExerciseDemoVideo(exercise.exerciseId)
 
                     EnhancedExerciseCard(
                         exerciseName = exercise.exerciseName,
@@ -525,6 +527,7 @@ private fun WorkoutLoggerScreenContent(
                         totalSets = totalSets,
                         lastPerformance = lastPerformance,
                         progressionHint = progressionHint,
+                        demoVideoLink = demoVideoLink,
                         onAddSet = { viewModel.addSetToExercise(exercise.id) },
                         onLongClick = {
                             selectedExerciseForMenu = exercise

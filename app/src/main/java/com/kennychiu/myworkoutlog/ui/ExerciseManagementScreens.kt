@@ -90,8 +90,8 @@ private fun ExerciseManagementSingleColumnView(
     if (showAddDialog) {
         AddExerciseDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = { name, equipment, usesBodyweight, muscleGroups ->
-                viewModel.insert(name, equipment, usesBodyweight, muscleGroups)
+            onConfirm = { name, equipment, usesBodyweight, muscleGroups, videoLink ->
+                viewModel.insert(name, equipment, usesBodyweight, muscleGroups, videoLink)
                 showAddDialog = false
             }
         )
@@ -302,8 +302,8 @@ private fun ExerciseManagementMasterDetailView(
                         viewModel.delete(exerciseToDelete)
                         selectedExercise = null
                     },
-                    onCreateNewExercise = { name, equipment, usesBodyweight, muscleGroups ->
-                        viewModel.insert(name, equipment, usesBodyweight, muscleGroups)
+                    onCreateNewExercise = { name, equipment, usesBodyweight, muscleGroups, videoLink ->
+                        viewModel.insert(name, equipment, usesBodyweight, muscleGroups, videoLink)
                     }
                 )
             }
@@ -313,8 +313,8 @@ private fun ExerciseManagementMasterDetailView(
     if (showAddDialog) {
         AddExerciseDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = { name, equipment, usesBodyweight, muscleGroups ->
-                viewModel.insert(name, equipment, usesBodyweight, muscleGroups)
+            onConfirm = { name, equipment, usesBodyweight, muscleGroups, videoLink ->
+                viewModel.insert(name, equipment, usesBodyweight, muscleGroups, videoLink)
                 showAddDialog = false
             }
         )
@@ -324,12 +324,13 @@ private fun ExerciseManagementMasterDetailView(
 @Composable
 fun AddExerciseDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String, Boolean, List<MuscleGroup>) -> Unit
+    onConfirm: (String, String, Boolean, List<MuscleGroup>, String?) -> Unit
 ) {
     var newExerciseName by remember { mutableStateOf("") }
     var newExerciseEquipment by remember { mutableStateOf("") }
     var newExerciseUsesBodyweight by remember { mutableStateOf(false) }
     var selectedMuscleGroups by remember { mutableStateOf<List<MuscleGroup>>(emptyList()) }
+    var videoLink by remember { mutableStateOf<String?>(null) }
     var showMuscleGroupDialog by remember { mutableStateOf(false) }
 
     if (showMuscleGroupDialog) {
@@ -375,12 +376,21 @@ fun AddExerciseDialog(
                 Button(onClick = { showMuscleGroupDialog = true }, modifier = Modifier.fillMaxWidth()) {
                     Text("Select Muscle Groups")
                 }
+                Text(
+                    text = "Demo reference (optional)",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                ExerciseDemoField(
+                    value = videoLink,
+                    onValueChange = { videoLink = it }
+                )
             }
         },
         confirmButton = {
             Button(onClick = {
                 if (newExerciseName.isNotBlank()) {
-                    onConfirm(newExerciseName, newExerciseEquipment, newExerciseUsesBodyweight, selectedMuscleGroups)
+                    onConfirm(newExerciseName, newExerciseEquipment, newExerciseUsesBodyweight, selectedMuscleGroups, videoLink)
                 }
             }) { Text("Create") }
         },
@@ -400,6 +410,7 @@ fun EditExerciseDialog(
     var editedEquipment by remember { mutableStateOf(exercise.equipment.joinToString()) }
     var editedUsesBodyweight by remember { mutableStateOf(exercise.usesBodyweight) }
     var editedMuscleGroups by remember { mutableStateOf(exercise.targetMuscleGroups) }
+    var editedVideoLink by remember { mutableStateOf(exercise.videoLink) }
     var showMuscleGroupDialog by remember { mutableStateOf(false) }
 
     if (showMuscleGroupDialog) {
@@ -445,6 +456,15 @@ fun EditExerciseDialog(
                 Button(onClick = { showMuscleGroupDialog = true }, modifier = Modifier.fillMaxWidth()) {
                     Text("Select Muscle Groups")
                 }
+                Text(
+                    text = "Demo reference (optional)",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                ExerciseDemoField(
+                    value = editedVideoLink,
+                    onValueChange = { editedVideoLink = it }
+                )
             }
         },
         confirmButton = {
@@ -453,7 +473,8 @@ fun EditExerciseDialog(
                     name = editedName,
                     equipment = try { listOf(Equipment.valueOf(editedEquipment.uppercase().trim())) } catch (e: Exception) { exercise.equipment },
                     usesBodyweight = editedUsesBodyweight,
-                    targetMuscleGroups = editedMuscleGroups
+                    targetMuscleGroups = editedMuscleGroups,
+                    videoLink = editedVideoLink?.takeIf { it.isNotBlank() }
                 )
                 onConfirm(updatedExercise)
             }) { Text("Save") }
@@ -881,7 +902,7 @@ private fun ExerciseDetailPanel(
     selectedExercise: Exercise?,
     onExerciseUpdated: (Exercise) -> Unit,
     onExerciseDeleted: (Exercise) -> Unit,
-    onCreateNewExercise: (String, String, Boolean, List<MuscleGroup>) -> Unit
+    onCreateNewExercise: (String, String, Boolean, List<MuscleGroup>, String?) -> Unit
 ) {
     if (selectedExercise == null) {
         // Show placeholder encouraging exercise selection
@@ -937,12 +958,13 @@ private fun ExerciseDetailView(
     if (isEditing) {
         ExerciseCreateEditForm(
             exercise = exercise,
-            onSave = { name, equipment, usesBodyweight, muscleGroups ->
+            onSave = { name, equipment, usesBodyweight, muscleGroups, videoLink ->
                 val updatedExercise = exercise.copy(
                     name = name,
                     equipment = try { listOf(Equipment.valueOf(equipment.uppercase().trim())) } catch (e: Exception) { exercise.equipment },
                     usesBodyweight = usesBodyweight,
-                    targetMuscleGroups = muscleGroups
+                    targetMuscleGroups = muscleGroups,
+                    videoLink = videoLink
                 )
                 onEdit(updatedExercise)
                 isEditing = false
@@ -1155,7 +1177,7 @@ private fun ExercisePropertyRow(
 @Composable
 private fun ExerciseCreateEditForm(
     exercise: Exercise?,
-    onSave: (String, String, Boolean, List<MuscleGroup>) -> Unit,
+    onSave: (String, String, Boolean, List<MuscleGroup>, String?) -> Unit,
     onCancel: () -> Unit
 ) {
     var exerciseName by remember { mutableStateOf(exercise?.name ?: "") }
@@ -1163,7 +1185,7 @@ private fun ExerciseCreateEditForm(
     var exerciseUsesBodyweight by remember { mutableStateOf(exercise?.usesBodyweight ?: false) }
     var selectedMuscleGroups by remember { mutableStateOf(exercise?.targetMuscleGroups ?: emptyList()) }
     var exerciseNotes by remember { mutableStateOf(exercise?.notes ?: "") }
-    var exerciseVideoLink by remember { mutableStateOf(exercise?.videoLink ?: "") }
+    var exerciseVideoLink by remember { mutableStateOf(exercise?.videoLink) }
     var showMuscleGroupDialog by remember { mutableStateOf(false) }
     
     LazyColumn(
@@ -1325,18 +1347,20 @@ private fun ExerciseCreateEditForm(
                         minLines = 3,
                         maxLines = 5
                     )
-                    
-                    OutlinedTextField(
+
+                    Text(
+                        text = "Demo reference (optional)",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    ExerciseDemoField(
                         value = exerciseVideoLink,
-                        onValueChange = { exerciseVideoLink = it },
-                        label = { Text("Video Link") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        onValueChange = { exerciseVideoLink = it }
                     )
                 }
             }
         }
-        
+
         item {
             // Action buttons
             Row(
@@ -1349,11 +1373,17 @@ private fun ExerciseCreateEditForm(
                 ) {
                     Text("Cancel")
                 }
-                
+
                 Button(
                     onClick = {
                         if (exerciseName.isNotBlank()) {
-                            onSave(exerciseName, exerciseEquipment, exerciseUsesBodyweight, selectedMuscleGroups)
+                            onSave(
+                                exerciseName,
+                                exerciseEquipment,
+                                exerciseUsesBodyweight,
+                                selectedMuscleGroups,
+                                exerciseVideoLink?.takeIf { it.isNotBlank() }
+                            )
                         }
                     },
                     modifier = Modifier.weight(1f),

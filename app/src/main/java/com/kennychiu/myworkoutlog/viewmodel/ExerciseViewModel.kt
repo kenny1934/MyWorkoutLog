@@ -28,7 +28,8 @@ class ExerciseViewModel(private val exerciseDao: ExerciseDao) : ViewModel() {
         exerciseName: String,
         equipmentString: String,
         usesBodyweight: Boolean,
-        muscleGroups: List<MuscleGroup>
+        muscleGroups: List<MuscleGroup>,
+        videoLink: String? = null
     ) {
         // viewModelScope.launch runs this code in a background coroutine
         // so we don't block the UI thread with database operations.
@@ -45,7 +46,8 @@ class ExerciseViewModel(private val exerciseDao: ExerciseDao) : ViewModel() {
                 } catch (e: Exception) {
                     listOf(Equipment.OTHER)
                 },
-                targetMuscleGroups = muscleGroups
+                targetMuscleGroups = muscleGroups,
+                videoLink = videoLink?.takeIf { it.isNotBlank() }
             )
             exerciseDao.insert(newExercise)
         }

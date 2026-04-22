@@ -753,6 +753,14 @@ class WorkoutLoggerViewModel(
         return _lastPerformanceSummaries.value[exerciseId]
     }
 
+    // URL or content URI attached to the Exercise as a movement-demo reference.
+    // Null for any exercise that has no link or whose entry has been deleted.
+    fun getExerciseDemoVideo(exerciseId: String): String? {
+        return allExercises.value.firstOrNull { it.id == exerciseId }
+            ?.videoLink
+            ?.takeIf { it.isNotBlank() }
+    }
+
     // Calculate and cache performance suggestions for all exercises in current workout
     private fun calculatePerformanceSuggestions() {
         viewModelScope.launch(Dispatchers.IO) {

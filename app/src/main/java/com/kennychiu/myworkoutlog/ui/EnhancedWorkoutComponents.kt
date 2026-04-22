@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Backspace
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
@@ -30,28 +31,29 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.delay
 import androidx.compose.foundation.BorderStroke
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import android.content.Intent
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -201,6 +203,7 @@ fun EnhancedExerciseCard(
     totalSets: Int = 0,
     lastPerformance: String? = null,
     progressionHint: String? = null,
+    demoVideoLink: String? = null,
     modifier: Modifier = Modifier,
     onAddSet: () -> Unit = {},
     onLongClick: () -> Unit = {},
@@ -349,6 +352,8 @@ fun EnhancedExerciseCard(
                                 }
                             }
                         }
+
+                        ExerciseDemoChip(videoLink = demoVideoLink)
                     }
                     
                     // Last performance indicator
@@ -1058,7 +1063,158 @@ fun EnhancedTimerBar(
 
 
 /**
- * Video selection component for recording form references
+ * Exercise-level demo reference picker: accepts either a pasted URL or a gallery
+ * pick, stored in a single String? field. Shared between Create/Edit exercise forms.
+ * No record-now option — exercise-level demos are set-once, so between-sets
+ * capture isn't relevant; keeps the dialog compact.
+ */
+@Composable
+fun ExerciseDemoField(
+    value: String?,
+    onValueChange: (String?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
+
+    // Local draft for the URL text field. Kept separate from [value] so the user can
+    // type a URL without committing on every keystroke; commit happens onFocusChanged.
+    var urlDraft by rememberSaveable(value) {
+        mutableStateOf(value?.takeIf { isRemoteVideoLink(it) }.orEmpty())
+    }
+    val pickVideo = rememberVideoPickLauncher { uri ->
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        onValueChange(uri)
+    }
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (value != null) {
+            VideoReferencePreview(
+                videoPath = value,
+                label = if (isRemoteVideoLink(value)) "Demo link · tap to open" else "Demo video · tap to play",
+                onPlay = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    launchVideoViewer(context, value)
+                },
+                onRemove = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    urlDraft = ""
+                    onValueChange(null)
+                },
+            )
+        } else {
+            OutlinedTextField(
+                value = urlDraft,
+                onValueChange = { urlDraft = it },
+                label = { Text("Demo link (YouTube, etc.)") },
+                placeholder = { Text("https://…") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    if (urlDraft.isNotBlank()) {
+                        IconButton(onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onValueChange(urlDraft.trim())
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = "Save link",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                HorizontalDivider(modifier = Modifier.weight(1f))
+                Text(
+                    text = "or",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                HorizontalDivider(modifier = Modifier.weight(1f))
+            }
+            OutlinedButton(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    pickVideo()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                ),
+                border = BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.VideoLibrary,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(text = "Pick demo video from gallery")
+            }
+        }
+    }
+}
+
+/**
+ * Compact "▶ demo" chip for the exercise header during a workout. Null videoLink
+ * renders nothing so callers can pass the field unguarded.
+ */
+@Composable
+fun ExerciseDemoChip(
+    videoLink: String?,
+    modifier: Modifier = Modifier,
+) {
+    if (videoLink.isNullOrBlank()) return
+    val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                launchVideoViewer(context, videoLink)
+            },
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.PlayArrow,
+                contentDescription = "Play demo",
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(14.dp)
+            )
+            Text(
+                text = "Demo",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        }
+    }
+}
+
+/**
+ * Set-level form-video selector: empty state shows [Record] + [Pick] side by side;
+ * filled state shows a thumbnail preview that opens the system video viewer on tap,
+ * with a trailing delete icon. Uses the shared picker/capture/viewer utilities so
+ * the exercise-level demo (Slice A) shares the same URI handling.
  */
 @Composable
 fun VideoReferenceSelector(
@@ -1069,106 +1225,199 @@ fun VideoReferenceSelector(
 ) {
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
-    
-    // Video picker launcher
-    val videoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        uri?.let { selectedUri ->
-            // Store the URI directly (no copying to local storage)
-            try {
-                // Grant persistent permission to access the URI
-                context.contentResolver.takePersistableUriPermission(
-                    selectedUri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-                
-                onVideoSelected(selectedUri.toString())
-                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-            } catch (e: Exception) {
-                // Handle error - URI might not support persistent permissions
-                // Still store the URI as it might work for current session
-                onVideoSelected(selectedUri.toString())
-                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-            }
-        }
+
+    val pickVideo = rememberVideoPickLauncher { uri ->
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        onVideoSelected(uri)
     }
-    
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        // Video status indicator
-        if (currentVideoPath != null) {
-            // Show video attached indicator
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.VideoLibrary,
-                    contentDescription = "Video attached",
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = "Form video referenced",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-            
-            // Remove video button
-            IconButton(
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onVideoRemoved()
-                },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Delete,
-                    contentDescription = "Remove video",
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
-        } else {
-            // Show add video button
+    val captureVideo = rememberVideoCaptureLauncher { uri ->
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        onVideoSelected(uri)
+    }
+
+    if (currentVideoPath != null) {
+        VideoReferencePreview(
+            videoPath = currentVideoPath,
+            label = "Form video · tap to play",
+            onPlay = {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                launchVideoViewer(context, currentVideoPath)
+            },
+            onRemove = {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                onVideoRemoved()
+            },
+            modifier = modifier.fillMaxWidth()
+        )
+    } else {
+        Row(
+            modifier = modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             OutlinedButton(
                 onClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    videoPickerLauncher.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
-                    )
+                    captureVideo()
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = MaterialTheme.colorScheme.primary
                 ),
                 border = BorderStroke(
-                    1.dp, 
+                    1.dp,
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Videocam,
+                    contentDescription = "Record form video",
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Record",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            OutlinedButton(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    pickVideo()
+                },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                ),
+                border = BorderStroke(
+                    1.dp,
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                 )
             ) {
                 Icon(
                     imageVector = Icons.Filled.VideoLibrary,
-                    contentDescription = "Add form video",
+                    contentDescription = "Pick form video from gallery",
                     modifier = Modifier.size(16.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "Reference Form Video",
+                    text = "Pick",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
+        }
+    }
+}
+
+/**
+ * Filled-state preview row: thumbnail (or link/play-icon fallback) + label + delete.
+ * Shared between [VideoReferenceSelector] and the exercise-level demo picker so the
+ * two features render identically.
+ */
+@Composable
+fun VideoReferencePreview(
+    videoPath: String,
+    label: String,
+    onPlay: () -> Unit,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
+    onReplace: (() -> Unit)? = null,
+) {
+    val thumbnail = rememberVideoThumbnail(videoPath)
+    val isRemote = isRemoteVideoLink(videoPath)
+
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .clickable { onPlay() },
+            contentAlignment = Alignment.Center
+        ) {
+            if (thumbnail != null) {
+                Image(
+                    bitmap = thumbnail,
+                    contentDescription = "Video thumbnail",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.25f))
+                )
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            } else {
+                Icon(
+                    imageVector = if (isRemote) Icons.Filled.Link else Icons.Filled.PlayArrow,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clickable { onPlay() }
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (isRemote) {
+                Text(
+                    text = videoPath,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        if (onReplace != null) {
+            IconButton(
+                onClick = onReplace,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = "Replace video",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
+        IconButton(
+            onClick = onRemove,
+            modifier = Modifier.size(32.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Delete,
+                contentDescription = "Remove video",
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.error
+            )
         }
     }
 }

@@ -470,6 +470,7 @@ fun EnhancedExerciseDetailPanel(
     onStartRest: (String, String) -> Unit,
     onSetRestTime: (String, String, Int?) -> Unit,
     performanceSuggestion: PerformanceSuggestion?,
+    demoVideoLink: String? = null,
     modifier: Modifier = Modifier
 ) {
     if (exercise == null) {
@@ -522,12 +523,18 @@ fun EnhancedExerciseDetailPanel(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(
-                        text = exercise.exerciseName,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = exercise.exerciseName,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        ExerciseDemoChip(videoLink = demoVideoLink)
+                    }
                     if (exercise.isSubstitute == true) {
                         val orig = exercise.originalExerciseName?.takeIf { it.isNotBlank() }
                         Text(
