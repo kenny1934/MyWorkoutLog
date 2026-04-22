@@ -14,12 +14,14 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -31,8 +33,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 private data class AllClipEntry(
     val setId: String,
@@ -72,6 +78,28 @@ fun AllClipsScreen(
     val layoutInfo = rememberAdaptiveLayoutInfo()
     val columnCount = if (layoutInfo.useMasterDetail) 4 else 2
 
+    val groupedByDate = remember(visibleClips) { visibleClips.groupBy { it.date } }
+    val dateToHeaderIndex = remember(groupedByDate) {
+        buildMap<String, Int> {
+            var cursor = 0
+            groupedByDate.forEach { (date, clips) ->
+                put(date, cursor)
+                cursor += 1 + clips.size
+            }
+        }
+    }
+    val videoDateMillis = remember(visibleClips) {
+        visibleClips.asSequence()
+            .map { it.date }
+            .distinct()
+            .mapNotNull { parseIsoDateToUtcMidnightMillis(it) }
+            .toSet()
+    }
+
+    val gridState = rememberLazyGridState()
+    val coroutineScope = rememberCoroutineScope()
+    var showDatePicker by rememberSaveable { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -79,6 +107,16 @@ fun AllClipsScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateUp) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (videoDateMillis.isNotEmpty()) {
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(
+                                imageVector = Icons.Outlined.CalendarToday,
+                                contentDescription = "Jump to date"
+                            )
+                        }
                     }
                 },
                 windowInsets = WindowInsets(0)
@@ -113,10 +151,8 @@ fun AllClipsScreen(
                     )
                 }
             } else {
-                val groupedByDate = remember(visibleClips) {
-                    visibleClips.groupBy { it.date }
-                }
                 LazyVerticalGrid(
+                    state = gridState,
                     columns = GridCells.Fixed(columnCount),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -139,6 +175,64 @@ fun AllClipsScreen(
                 }
             }
         }
+    }
+
+    if (showDatePicker) {
+        JumpToDateDialog(
+            selectableMillis = videoDateMillis,
+            onDismiss = { showDatePicker = false },
+            onDateSelected = { millis ->
+                val iso = utcMillisToIsoDate(millis)
+                val index = dateToHeaderIndex[iso]
+                if (index != null) {
+                    coroutineScope.launch { gridState.animateScrollToItem(index) }
+                }
+                showDatePicker = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun JumpToDateDialog(
+    selectableMillis: Set<Long>,
+    onDismiss: () -> Unit,
+    onDateSelected: (Long) -> Unit
+) {
+    val selectableYears = remember(selectableMillis) {
+        selectableMillis.map { utcMillisToYear(it) }.toSet()
+    }
+    val selectableDates = remember(selectableMillis, selectableYears) {
+        object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+                utcTimeMillis in selectableMillis
+            override fun isSelectableYear(year: Int): Boolean =
+                year in selectableYears
+        }
+    }
+    val initialMillis = remember(selectableMillis) { selectableMillis.maxOrNull() }
+    val pickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialMillis,
+        selectableDates = selectableDates
+    )
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = { pickerState.selectedDateMillis?.let(onDateSelected) },
+                enabled = pickerState.selectedDateMillis != null
+            ) {
+                Text("Jump")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    ) {
+        DatePicker(
+            state = pickerState,
+            showModeToggle = false
+        )
     }
 }
 
@@ -312,6 +406,9 @@ private fun DateGroupHeader(isoDate: String, clipCount: Int) {
 
 private val isoDateParser = SimpleDateFormat("yyyy-MM-dd", Locale.US)
 private val dateHeaderFormatter = SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault())
+private val utcIsoDateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+    timeZone = TimeZone.getTimeZone("UTC")
+}
 
 private fun formatDateHeader(isoDate: String): String {
     return try {
@@ -320,6 +417,23 @@ private fun formatDateHeader(isoDate: String): String {
     } catch (_: Exception) {
         isoDate
     }
+}
+
+private fun parseIsoDateToUtcMidnightMillis(isoDate: String): Long? {
+    return try {
+        utcIsoDateFormatter.parse(isoDate)?.time
+    } catch (_: Exception) {
+        null
+    }
+}
+
+private fun utcMillisToIsoDate(utcMillis: Long): String =
+    utcIsoDateFormatter.format(Date(utcMillis))
+
+private fun utcMillisToYear(utcMillis: Long): Int {
+    val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+    cal.timeInMillis = utcMillis
+    return cal.get(Calendar.YEAR)
 }
 
 private fun flattenClipsChronological(workouts: List<LoggedWorkout>): List<AllClipEntry> =
